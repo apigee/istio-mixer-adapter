@@ -1,0 +1,62 @@
+# handler configuration for apigee adapter
+apiVersion: "config.istio.io/v1alpha2"
+kind: apigee
+metadata:
+ name: apigee_handler
+ namespace: istio-config-default
+spec:
+ apid_base: http://192.168.64.17:31625/
+ org_name: edgexfeb1
+---
+# template 'auth' instance
+apiVersion: "config.istio.io/v1alpha2"
+kind: auth
+metadata:
+ name: apigee_auth
+ namespace: istio-config-default
+spec:
+ apikey: request.headers["apikey"] | ""
+ uripath: request.path | "/"
+ auth_fail_message: apigee.authFailMessage
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: logentry
+metadata:
+  name: apigee_analytics
+  namespace: istio-config-default
+spec:
+  severity: '"Default"'
+  timestamp: request.time
+  variables:
+    response_status_code: response.code | 0
+    client_ip: source.ip | ip("0.0.0.0")
+    request_verb: request.method | ""
+    request_uri: request.path | ""
+    request_path: request.path | ""
+    useragent: request.useragent | ""
+    client_received_start_timestamp: request.time
+    client_received_end_timestamp: request.time
+    client_sent_start_timestamp: response.time
+    client_sent_end_timestamp: response.time
+    apiproxy: apigee.apiProxy | ""
+    apiproxy_revision: apigee.apiRevision | ""
+    developer_email: apigee.developerEmail | ""
+    developer_app: apigee.developerApp | ""
+    access_token: apigee.accessToken | ""
+    client_id: apigee.clientID | ""
+    api_product: apigee.apiProduct | ""
+  monitoredResourceType: '"UNSPECIFIED"'
+---
+# handler dispatch rule
+apiVersion: "config.istio.io/v1alpha2"
+kind: rule
+metadata:
+ name: apigeerule
+ namespace: istio-config-default
+spec:
+ match: "true"
+ actions:
+ - handler: apigee_handler.apigee
+   instances:
+   - apigee_analytics.logentry
+   - apigee_auth.auth

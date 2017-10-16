@@ -1,0 +1,43 @@
+subject: namespace:ns
+revision: "2022"
+rules:
+- selector: # must be empty for preprocessing adapters
+  aspects:
+  # when running local without a kubeconfig file specified in globalconfig,
+  # this aspect should be commented out. It is only needed when the attributes
+  # it produces are needed elsewhere in the config.
+  - kind: attributes
+    params:
+      input_expressions:
+        sourceUID: source.uid | ""
+        sourceIP: source.ip | ip("0.0.0.0") # default to unspecified ip addr
+        destinationUID: destination.uid | ""
+        destinationIP: destination.ip | ip("0.0.0.0") # default to unspecified ip addr
+      attribute_bindings:
+        source.ip: sourcePodIp
+        source.labels: sourceLabels
+        source.namespace: sourceNamespace
+        source.service: sourceService
+        source.serviceAccount: sourceServiceAccountName
+        destination.ip: destinationPodIp
+        destination.labels: destinationLabels
+        destination.namespace: destinationNamespace
+        destination.service: destinationService
+        destination.serviceAccount: destinationServiceAccountName
+- selector: # must be empty for preprocessing adapters
+  aspects:
+  - kind: attributes
+    adapter: apigeelegacy
+    params:
+      input_expressions:
+        apikey: request.headers["apikey"] | ""
+        uripath: request.path | "/"
+      attribute_bindings:
+        apigee.apiProxy: apigee.apiProxy
+        apigee.apiRevision: apigee.apiRevision
+        apigee.developerEmail: apigee.developerEmail
+        apigee.developerApp: apigee.developerApp
+        apigee.accessToken: apigee.accessToken
+        apigee.clientID: apigee.clientID
+        apigee.apiProduct: apigee.apiProduct
+        apigee.authFailMessage: apigee.authFailMessage

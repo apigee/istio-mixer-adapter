@@ -1,0 +1,56 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: apid
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: apid
+    spec:
+      containers:
+      - name: apid
+        image: scottganyo/apid:latest
+        ports:
+        - containerPort: 9000
+          protocol: TCP
+        env:
+        - name: apid_api_expvar_path
+          value: /expvar
+        - name: apid_apigeesync_proxy_server_base
+          value: https://hybrid-eap.apigee.com/edgex
+        - name: apid_apigeesync_snapshot_server_base
+          value: https://hybrid-eap.apigee.com/edgex
+        - name: apid_apigeesync_change_server_base
+          value: https://hybrid-eap.apigee.com/edgex
+        - name: apid_apidanalytics_uap_server_base
+          value: https://hybrid-eap.apigee.com/edgex
+        - name: apid_apigeesync_blob_server_base
+          value: https://hybrid-eap.apigee.com/edgex
+        - name: apid_gatewaydeploy_bundle_download_endpoint
+          value: http://127.0.0.1:9000
+        - name: apid_api_listen
+          value: :9000
+        - name: apid_log_level
+          value: debug
+        - name: apid_apigeesync_consumer_key
+          value: uPHZn3iBMsJripILNAvDfIyBWlYGZWfT
+        - name: apid_apigeesync_consumer_secret
+          value: ss9M17uMWj6D7u0d
+        - name: apid_apigeesync_cluster_id
+          value: 3557b885-aede-4f17-9169-b31ea8d4b5d0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apid
+spec:
+  type: NodePort
+  selector:
+    app: apid
+  ports:
+  - name: http
+    protocol: TCP
+    port: 9000
+    targetPort: 9000
