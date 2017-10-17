@@ -113,28 +113,3 @@ spec:
         valueType: STRING
       destination.serviceAccount:
         valueType: STRING
----
-# Apigee Legacy Generator
-apiVersion: "config.istio.io/v1alpha2"
-kind: attributemanifest
-metadata:
-  name: apigeelegacy
-  namespace: istio-config-default
-spec:
-   attributes:
-      apigee.apiProxy:
-        valueType: STRING
-      apigee.apiRevision:
-        valueType: STRING
-      apigee.developerEmail:
-        valueType: STRING
-      apigee.developerApp:
-        valueType: STRING
-      apigee.accessToken:
-        valueType: STRING
-      apigee.clientID:
-        valueType: STRING
-      apigee.apiProduct:
-        valueType: STRING
-      apigee.authFailMessage:
-        valueType: STRING

@@ -7,7 +7,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "apigee.go",
-        "legacy_generator.go"
     ],
     deps = [
         "//apigee/analytics:go_default_library",

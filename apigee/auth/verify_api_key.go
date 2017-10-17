@@ -9,14 +9,14 @@ import (
 	"path"
 )
 
-func VerifyAPIKey(apidBase, orgName, apikey, uriPath string) (success VerifyApiKeySuccessResponse, fail ErrorResponse, err error) {
+func VerifyAPIKey(apidBase, orgName, apiKey, uriPath string) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {
 	parsed, _ := url.Parse(apidBase) // already validated
 	parsed.Path = path.Join(parsed.Path, "/verifiers/apikey")
 	apidUrl := parsed.String()
 
 	verifyRequestBody := VerifyApiKeyRequest{
 		Action:           "verify",
-		Key:              apikey,
+		Key:              apiKey,
 		OrganizationName: orgName,
 		UriPath:          uriPath,
 		// todo: ApiProxyName?
@@ -25,10 +25,9 @@ func VerifyAPIKey(apidBase, orgName, apikey, uriPath string) (success VerifyApiK
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(verifyRequestBody)
 
-	var req *http.Request
-	req, err = http.NewRequest(http.MethodPost, apidUrl, body)
+	req, err := http.NewRequest(http.MethodPost, apidUrl, body)
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -37,10 +36,9 @@ func VerifyAPIKey(apidBase, orgName, apikey, uriPath string) (success VerifyApiK
 	fmt.Printf("Sending to apid (%s): %s\n", apidUrl, body)
 
 	client := http.DefaultClient
-	var resp *http.Response
-	resp, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 	defer resp.Body.Close()
 
@@ -48,23 +46,26 @@ func VerifyAPIKey(apidBase, orgName, apikey, uriPath string) (success VerifyApiK
 	_, err = buf.ReadFrom(resp.Body)
 	respBody := buf.Bytes()
 
-	switch resp.StatusCode {
 
+	switch resp.StatusCode {
 	case 200:
+		var success VerifyApiKeySuccessResponse
 		if err = json.Unmarshal(respBody, &success); err != nil {
-			return
+			fmt.Printf("Error unmarshaling: %s\n", string(respBody))
+			return nil, nil, err
 		}
 		if success.Developer.Id != "" {
 			fmt.Printf("Returning success: %v\n", success)
-			return
+			return &success, nil, nil
 		}
 
+		var fail ErrorResponse
 		err = json.Unmarshal(respBody, &fail)
 		fmt.Printf("Returning fail: %v\n", fail)
-		return
+		return nil, &fail, nil
 
 	default:
 		err = fmt.Errorf(string(respBody))
-		return
+		return nil, nil, err
 	}
 }

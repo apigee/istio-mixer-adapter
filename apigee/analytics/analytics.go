@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]interface{}) (err error) {
+func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]interface{}) error {
 
 	fmt.Println("SendAnalyticsRecord")
 
@@ -39,10 +39,9 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(request)
 
-	var req *http.Request
-	req, err = http.NewRequest(http.MethodPost, apidUrl, body)
+	req, err := http.NewRequest(http.MethodPost, apidUrl, body)
 	if err != nil {
-		return
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -51,10 +50,9 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 	fmt.Printf("Sending to apid (%s): %s\n", apidUrl, body)
 
 	client := http.DefaultClient
-	var resp *http.Response
-	resp, err = client.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		return
+		return err
 	}
 	defer resp.Body.Close()
 

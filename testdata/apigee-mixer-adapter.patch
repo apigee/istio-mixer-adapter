@@ -1,0 +1,62 @@
+Index: WORKSPACE
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- WORKSPACE	(date 1507663155000)
++++ WORKSPACE	(revision )
+@@ -615,3 +615,8 @@
+     commit = "b0822890273f91d5aa8c40ea1a89ba01e0f0ee9d",  # Aug 22, 2017
+     remote = "https://github.com/istio/test-infra.git",
+ )
++
++local_repository(
++  name = "com_github_apigee_istio_mixer_adapter",
++  path = "/Users/theganyo/dev/istio/src/github.com/apigee/istio-mixer-adapter",
++)
+\ No newline at end of file
+Index: adapter/BUILD
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- adapter/BUILD	(date 1507663155000)
++++ adapter/BUILD	(revision )
+@@ -7,6 +7,7 @@
+ inventory_library(
+     name = "go_default_library",
+     packages = {
++        "apigee": "github.com/apigee/istio-mixer-adapter/apigee",
+         "denier": "istio.io/mixer/adapter/denier",
+         "list": "istio.io/mixer/adapter/list",
+         "noop": "istio.io/mixer/adapter/noop",
+@@ -18,6 +19,7 @@
+         "memquota": "istio.io/mixer/adapter/memquota2",
+     },
+     deps = [
++        "@com_github_apigee_istio_mixer_adapter//apigee:go_default_library",
+         "//adapter/denier:go_default_library",
+         "//adapter/list:go_default_library",
+         "//adapter/memquota2:go_default_library",
+Index: template/BUILD
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- template/BUILD	(date 1507663155000)
++++ template/BUILD	(revision )
+@@ -11,6 +11,7 @@
+         "//template/quota:go_default_library_proto.descriptor_set": "istio.io/mixer/template/quota",
+         "//template/reportnothing:go_default_library_proto.descriptor_set": "istio.io/mixer/template/reportnothing",
+         "//template/checknothing:go_default_library_proto.descriptor_set": "istio.io/mixer/template/checknothing",
++        "@com_github_apigee_istio_mixer_adapter//template/auth:go_default_library_proto.descriptor_set": "github.com/apigee/istio-mixer-adapter/template/auth",
+     },
+     deps = [
+         "//template/checknothing:go_default_library",
+@@ -19,5 +20,6 @@
+         "//template/metric:go_default_library",
+         "//template/quota:go_default_library",
+         "//template/reportnothing:go_default_library",
++        "@com_github_apigee_istio_mixer_adapter//template/auth:go_default_library",
+     ],
+ )

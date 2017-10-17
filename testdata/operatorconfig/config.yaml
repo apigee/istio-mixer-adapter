@@ -1,4 +1,4 @@
-# handler configuration for apigee adapter
+# handler configuration for adapter 'apigee'
 apiVersion: "config.istio.io/v1alpha2"
 kind: apigee
 metadata:
@@ -8,7 +8,7 @@ spec:
  apid_base: http://192.168.64.22:30480
  org_name: edgex01
 ---
-# template 'auth' instance
+# instance configuration for template 'auth'
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
 metadata:
@@ -17,8 +17,8 @@ metadata:
 spec:
  apikey: request.headers["apikey"] | ""
  uripath: request.path | "/"
- auth_fail_message: apigee.authFailMessage
 ---
+# instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
 kind: logentry
 metadata:
@@ -28,6 +28,7 @@ spec:
   severity: '"Default"'
   timestamp: request.time
   variables:
+    apikey: request.headers["apikey"] | "" # HACK
     response_status_code: response.code | 0
     client_ip: source.ip | ip("0.0.0.0")
     request_verb: request.method | ""
@@ -38,16 +39,9 @@ spec:
     client_received_end_timestamp: request.time
     client_sent_start_timestamp: response.time
     client_sent_end_timestamp: response.time
-    apiproxy: apigee.apiProxy | ""
-    apiproxy_revision: apigee.apiRevision | ""
-    developer_email: apigee.developerEmail | ""
-    developer_app: apigee.developerApp | ""
-    access_token: apigee.accessToken | ""
-    client_id: apigee.clientID | ""
-    api_product: apigee.apiProduct | ""
   monitoredResourceType: '"UNSPECIFIED"'
 ---
-# handler dispatch rule
+# rule to dispatch to handler 'apigee'
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
@@ -56,7 +50,7 @@ metadata:
 spec:
  match: "true"
  actions:
- - handler: apigee_handler.apigee # name.kind.namespace (ns optional)
+ - handler: apigee_handler.apigee
    instances:
-   - apigee_analytics.logentry
    - apigee_auth.auth
+   - apigee_analytics.logentry

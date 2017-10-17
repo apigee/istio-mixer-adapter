@@ -38,7 +38,9 @@ In Minikube, you can retrieve `apid_base` via `minikube service apid --url`
 
 ### Build mixer with apigee-mixer-adapter
 
-        TODO...
+        apply testdata/apigee-mixer-adapter.patch to mixer repo
+        edit mixer/WORKSPACE to adjust path to apigee-mixer-adapter repo 
+        bazel build //...
 
 ### Configure mixer
 
@@ -47,12 +49,12 @@ Edit `operatorconfig/config.yml` to specify your `apid_base` and `org`.
 
 ### Launch Mixer
 
-    export MIXER_REPO=$GOPATH/XXX
-    export ADAPTER_REPO=$GOPATH/XXX
+    export MIXER_DIR=<your mixer dir>
+    export ADAPTER_DIR=<your adapter dir>
 
-    $MIXER_REPO/bazel-bin/cmd/server/mixs server --logtostderr \
-        --configStoreURL=fs://ADAPTER_REPO/testdata/configroot \
-        --configStore2URL=fs://ADAPTER_REPO/testdata/sampleoperatorconfig 
+    $MIXER_DIR/bazel-bin/cmd/server/mixs server --alsologtostderr \
+        --configStore2URL=fs://$ADAPTER_DIR/testdata/operatorconfig \
+        --configStoreURL=fs://$MIXER_DIR
 
 ### Sample commands
 
@@ -60,19 +62,25 @@ Edit `operatorconfig/config.yml` to specify your `apid_base` and `org`.
 
 #### do auth check
 
-    export API_KEY=<a valid api key>
+    export API_KEY=<your api key>
 
-    bazel-bin/cmd/client/mixc check \
+    $MIXER_DIR/bazel-bin/cmd/client/mixc check \
         --string_attributes="destination.service=svc.cluster.local,request.path="/"" \
         --stringmap_attributes="request.headers=apikey:$API_KEY"
-    
-You should see "OK" only if the API key is valid. If not, there's probably an issue with configuration.
+
+You should see "OK" if the API key is valid. If not, there's probably an issue with configuration.
+
+    $MIXER_DIR/bazel-bin/cmd/client/mixc check \
+        --string_attributes="destination.service=svc.cluster.local,request.path="/"" \
+        --stringmap_attributes="request.headers=apikey:BAD_KEY"
+
+You should see "OK" if the API key is valid. If not, there's probably an issue with configuration.
 
 #### send an analytics record
 
-Note: You'll need to adjust the timestamps.
+Note: You'll likely want to adjust the timestamps.
 
-    bazel-bin/cmd/client/mixc report \
+    $MIXER_DIR/bazel-bin/cmd/client/mixc report \
         --string_attributes='destination.service=svc.cluster.local,request.path="/"' \
         --stringmap_attributes="request.headers=apikey:$API_KEY" \
         --timestamp_attributes="request.time=2017-01-01T01:00:00Z,response.time=2017-01-01T01:01:00Z"

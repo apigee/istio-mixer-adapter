@@ -7,12 +7,12 @@ import (
 	"time"
 
 	rpc "github.com/googleapis/googleapis/google/rpc"
-	apidAnalytics "github.com/apigee/istio-mixer-adapter/apigee/analytics"
+	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
-	"github.com/apigee/istio-mixer-adapter/template/auth"
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	authT "github.com/apigee/istio-mixer-adapter/template/auth"
 	"istio.io/mixer/pkg/adapter"
 	"istio.io/mixer/template/logentry"
-	//"istio.io/mixer/template/metric"
 	"istio.io/mixer/template/quota"
 )
 
@@ -27,8 +27,7 @@ func GetInfo() adapter.Info {
 		SupportedTemplates: []string{
 			logentry.TemplateName,
 			quota.TemplateName,
-			auth.TemplateName,
-			//metric.TemplateName,
+			authT.TemplateName,
 		},
 		NewBuilder:    func() adapter.HandlerBuilder { return &builder{} },
 		DefaultConfig: &config.Params{},
@@ -39,15 +38,13 @@ func GetInfo() adapter.Info {
 
 type builder struct {
 	adapterConfig *config.Params
-	//metricTypes   map[string]*metric.Type
 }
 
 // force interface checks at compile time
 var _ adapter.HandlerBuilder = (*builder)(nil)
-var _ auth.HandlerBuilder = (*builder)(nil)
+var _ authT.HandlerBuilder = (*builder)(nil)
 var _ logentry.HandlerBuilder = (*builder)(nil)
 var _ quota.HandlerBuilder = (*builder)(nil)
-//var _ metric.HandlerBuilder = (*builder)(nil)
 
 // adapter.HandlerBuilder
 func (b *builder) SetAdapterConfig(cfg adapter.Config) {
@@ -59,7 +56,6 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	return &handler{
 		apidBase:    b.adapterConfig.ApidBase,
 		orgName:     b.adapterConfig.OrgName,
-		//metricTypes: b.metricTypes,
 		env:         env,
 	}, nil
 }
@@ -83,12 +79,7 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 	return ce
 }
 
-//func (b *builder) SetMetricTypes(t map[string]*metric.Type) {
-//	fmt.Printf("SetMetricTypes: %v\n", t)
-//	b.metricTypes = t
-//}
-
-func (*builder) SetAuthTypes(t map[string]*auth.Type)    {
+func (*builder) SetAuthTypes(t map[string]*authT.Type)    {
 	fmt.Printf("SetAuthTypes: %v\n", t)
 }
 
@@ -103,30 +94,78 @@ type handler struct {
 	apidBase    string
 	orgName     string
 	env         adapter.Env
-	//metricTypes map[string]*metric.Type
 }
 
 // force interface checks at compile time
 var _ adapter.Handler = (*handler)(nil)
-var _ auth.Handler = (*handler)(nil)
+var _ authT.Handler = (*handler)(nil)
 var _ quota.Handler = (*handler)(nil)
 var _ logentry.Handler = (*handler)(nil)
-//var _ metric.Handler = (*handler)(nil)
 
 // adapter.Handler
 func (h *handler) Close() error { return nil }
 
-func (h *handler) HandleLogEntry(ctx context.Context, logs []*logentry.Instance) error {
+func (h *handler) HandleLogEntry(ctx context.Context, logEntries []*logentry.Instance) error {
 	fmt.Println("HandleLogEntry")
 
-	for _, log := range logs {
-		// todo
-		err := apidAnalytics.SendAnalyticsRecord(h.apidBase, h.orgName, "test", log.Variables)
+	for _, logEntry := range logEntries {
+
+		h.annotateWithAuthFields(logEntry)
+
+		err := analytics.SendAnalyticsRecord(h.apidBase, h.orgName, "test", logEntry.Variables)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (h *handler) annotateWithAuthFields(logEntry *logentry.Instance) {
+
+	// todo: hack - perform authentication here as Istio is not able to pass auth context
+	apiKey := ""
+	if v := logEntry.Variables["apikey"]; v != nil {
+		apiKey = v.(string)
+		delete(logEntry.Variables, "apikey")
+	}
+
+	path := "/"
+	if v := logEntry.Variables["request_uri"]; v != nil {
+		path = v.(string)
+		if path == "" {
+			path = "/"
+		}
+	}
+
+	success, fail, err := auth.VerifyAPIKey(h.apidBase, h.orgName, apiKey, path)
+	if err != nil {
+		fmt.Printf("annotateWithAuthFields error: %v\n", err)
+		return
+	}
+	if fail != nil {
+		fmt.Printf("annotateWithAuthFields fail: %v\n", fail.ResponseMessage)
+		return
+	}
+
+	// todo: verify
+	app := ""
+	if len(success.Developer.Apps) > 0 {
+		app = success.Developer.Apps[0]
+	}
+
+	// todo: verify
+	proxy := ""
+	if len(success.ApiProduct.Apiproxies) > 0 {
+		proxy = success.ApiProduct.Apiproxies[0]
+	}
+
+	logEntry.Variables["apiproxy"] = proxy
+	logEntry.Variables["apiRevision"] = "" // todo: is this available?
+	logEntry.Variables["developerEmail"] = success.Developer.Email
+	logEntry.Variables["developerApp"] = app
+	logEntry.Variables["accessToken"] = success.ClientId.ClientSecret
+	logEntry.Variables["clientID"] = success.ClientId.ClientId
+	logEntry.Variables["apiProduct"] = success.ApiProduct.Name
 }
 
 func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
@@ -136,38 +175,32 @@ func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter
 	}, nil
 }
 
-func (h *handler) HandleAuth(ctx context.Context, inst *auth.Instance) (adapter.CheckResult, error) {
+func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	fmt.Printf("HandleAuth: %v\n", inst)
 
-	if inst.AuthFailMessage == "" {
+	success, fail, err := auth.VerifyAPIKey(h.apidBase, h.orgName, inst.Apikey, inst.Uripath)
+	if err != nil {
+		fmt.Printf("apid err: %v\n", err)
+		return adapter.CheckResult{
+			Status: rpc.Status{
+				Code:    int32(rpc.PERMISSION_DENIED),
+				Message: err.Error(),
+			},
+		}, err
+	}
+
+	if success != nil {
 		fmt.Println("auth success!")
 		return adapter.CheckResult{
 			Status: rpc.Status{Code: int32(rpc.OK)},
 		}, nil
 	}
 
-	fmt.Printf("auth fail: %v\n", inst.AuthFailMessage)
+	fmt.Printf("auth fail: %v\n", fail.ResponseMessage)
 	return adapter.CheckResult{
 		Status: rpc.Status{
 			Code:    int32(rpc.PERMISSION_DENIED),
-			Message: inst.AuthFailMessage,
+			Message: fail.ResponseMessage,
 		},
 	}, nil
 }
-
-//func (h *handler) HandleMetric(ctx context.Context, insts []*metric.Instance) error {
-//	fmt.Println("HandleMetric")
-//	//for _, inst := range insts {
-//	//	if _, ok := h.metricTypes[inst.Name]; !ok {
-//	//		h.env.Logger().Errorf("Cannot find Type for instance %s", inst.Name)
-//	//		continue
-//	//	}
-//	//	h.env.Logger().Infof(`HandleMetric invoke for :
-//	//	Instance Name  :'%s'
-//	//	Instance Value : %v,
-//	//	Type           : %v`, inst.Name, *inst, *h.metricTypes[inst.Name])
-//	//}
-//	//
-//	return nil
-//}
-
