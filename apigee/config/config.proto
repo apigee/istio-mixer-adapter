@@ -2,13 +2,9 @@ syntax = "proto3";
 
 package config;
 
-//import "google/protobuf/duration.proto";
-import "gogoproto/gogo.proto";
-
 option go_package="config";
-option (gogoproto.goproto_getters_all) = false;
-option (gogoproto.equal_all) = false;
-option (gogoproto.gostring_all) = false;
+
+import "google/protobuf/descriptor.proto";
 
 message Params {
     string apid_base = 1;
