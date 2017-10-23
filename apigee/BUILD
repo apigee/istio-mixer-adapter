@@ -28,14 +28,15 @@ go_test(
     ],
     library = ":go_default_library",
     data = [
-#        "//testdata/operatorconfig",
+        "//testdata"
     ],
     deps = [
         "@io_istio_api//:mixer/v1",  # keep
         "@org_golang_x_net//context:go_default_library",
         "@com_github_istio_mixer//template:go_default_library",
         "@com_github_istio_mixer//test/testenv:go_default_library",
-
+        "@com_github_istio_mixer//pkg/adapter:go_default_library",
+        "@com_github_istio_mixer//pkg/template:go_default_library",
 
         "//apigee/analytics:go_default_library",
         "//apigee/auth:go_default_library",
@@ -43,7 +44,6 @@ go_test(
         "//template/auth:go_default_library",
         "@com_github_gogo_protobuf//types:go_default_library",
         "@com_github_googleapis_googleapis//:google/rpc",
-        "@com_github_istio_mixer//pkg/adapter:go_default_library",
         "@com_github_istio_mixer//template/logentry:go_default_library",
         "@com_github_istio_mixer//template/quota:go_default_library",
     ],

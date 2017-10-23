@@ -9,4 +9,5 @@ option (istio.mixer.v1.template.template_variety) = TEMPLATE_VARIETY_CHECK;
 message Template {
     string apikey = 1;
     string uripath = 2;
+    string apigeeproxy = 3;
 }

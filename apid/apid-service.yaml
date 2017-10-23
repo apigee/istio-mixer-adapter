@@ -1,3 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: apid
+  namespace: istio-system
+spec:
+  type: NodePort # todo: for testing only
+  selector:
+    app: apid
+  ports:
+  - name: http
+    protocol: TCP
+    port: 9000
+    targetPort: api-port
+---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -14,8 +29,10 @@ spec:
       - name: apid
         image: scottganyo/apid:latest
         ports:
-        - containerPort: 9000
-          protocol: TCP
+        - name: api-port
+          containerPort: 9000
+        - name: liveness-port
+          containerPort: 9000
         env:
         - name: apid_api_expvar_path
           value: /expvar
@@ -41,18 +58,28 @@ spec:
           value: ss9M17uMWj6D7u0d
         - name: apid_apigeesync_cluster_id
           value: 3557b885-aede-4f17-9169-b31ea8d4b5d0
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: apid
-  namespace: istio-system
-spec:
-  type: NodePort
-  selector:
-    app: apid
-  ports:
-  - name: http
-    protocol: TCP
-    port: 9000
-    targetPort: 9000
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: liveness-port
+          initialDelaySeconds: 1
+          periodSeconds: 2
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: liveness-port
+          initialDelaySeconds: 1
+          periodSeconds: 2
+#---
+#apiVersion: config.istio.io/v1alpha2
+#kind: EgressRule
+#metadata:
+#  name: apigee-egress-rule
+#spec:
+#  destination:
+#    service: https://hybrid-eap.apigee.com/edgex
+#  ports:
+#    - port: 80
+#      protocol: http
+#    - port: 443
+#      protocol: https

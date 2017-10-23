@@ -8,5 +8,6 @@ import "google/protobuf/descriptor.proto";
 
 message Params {
     string apid_base = 1;
-    string org_name = 2;
+    string org_name  = 2;
+    string env_name  = 3;
 }

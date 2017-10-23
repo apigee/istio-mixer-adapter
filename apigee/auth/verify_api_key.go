@@ -9,18 +9,10 @@ import (
 	"path"
 )
 
-func VerifyAPIKey(apidBase, orgName, apiKey, uriPath string) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {
+func VerifyAPIKey(apidBase string, verifyRequestBody VerifyApiKeyRequest) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {
 	parsed, _ := url.Parse(apidBase) // already validated
 	parsed.Path = path.Join(parsed.Path, "/verifiers/apikey")
 	apidUrl := parsed.String()
-
-	verifyRequestBody := VerifyApiKeyRequest{
-		Action:           "verify",
-		Key:              apiKey,
-		OrganizationName: orgName,
-		UriPath:          uriPath,
-		// todo: ApiProxyName?
-	}
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(verifyRequestBody)

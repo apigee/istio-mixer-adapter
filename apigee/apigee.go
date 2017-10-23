@@ -56,6 +56,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	return &handler{
 		apidBase:    b.adapterConfig.ApidBase,
 		orgName:     b.adapterConfig.OrgName,
+		envName:     b.adapterConfig.EnvName,
 		env:         env,
 	}, nil
 }
@@ -93,6 +94,7 @@ func (*builder) SetQuotaTypes(map[string]*quota.Type)       {}
 type handler struct {
 	apidBase    string
 	orgName     string
+	envName     string
 	env         adapter.Env
 }
 
@@ -129,6 +131,12 @@ func (h *handler) annotateWithAuthFields(logEntry *logentry.Instance) {
 		delete(logEntry.Variables, "apikey")
 	}
 
+	proxy := ""
+	if v := logEntry.Variables["apigeeproxy"]; v != nil {
+		proxy = v.(string)
+		delete(logEntry.Variables, "apigeeproxy")
+	}
+
 	path := "/"
 	if v := logEntry.Variables["request_uri"]; v != nil {
 		path = v.(string)
@@ -137,7 +145,17 @@ func (h *handler) annotateWithAuthFields(logEntry *logentry.Instance) {
 		}
 	}
 
-	success, fail, err := auth.VerifyAPIKey(h.apidBase, h.orgName, apiKey, path)
+	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+		Action:           "verify",
+		Key:              apiKey,
+		OrganizationName: h.orgName,
+		UriPath:          path,
+		ApiProxyName:	  proxy,
+		EnvironmentName:  h.envName,
+		ValidateAgainstApiProxiesAndEnvs: true,
+	}
+
+	success, fail, err := auth.VerifyAPIKey(h.apidBase, verifyApiKeyRequest)
 	if err != nil {
 		fmt.Printf("annotateWithAuthFields error: %v\n", err)
 		return
@@ -151,12 +169,6 @@ func (h *handler) annotateWithAuthFields(logEntry *logentry.Instance) {
 	app := ""
 	if len(success.Developer.Apps) > 0 {
 		app = success.Developer.Apps[0]
-	}
-
-	// todo: verify
-	proxy := ""
-	if len(success.ApiProduct.Apiproxies) > 0 {
-		proxy = success.ApiProduct.Apiproxies[0]
 	}
 
 	logEntry.Variables["apiproxy"] = proxy
@@ -178,7 +190,17 @@ func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter
 func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	fmt.Printf("HandleAuth: %v\n", inst)
 
-	success, fail, err := auth.VerifyAPIKey(h.apidBase, h.orgName, inst.Apikey, inst.Uripath)
+	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+		Action:           "verify",
+		Key:              inst.Apikey,
+		OrganizationName: h.orgName,
+		UriPath:          inst.Uripath,
+		ApiProxyName:	  inst.Apigeeproxy,
+		EnvironmentName:  h.envName,
+		ValidateAgainstApiProxiesAndEnvs: true,
+	}
+
+	success, fail, err := auth.VerifyAPIKey(h.apidBase, verifyApiKeyRequest)
 	if err != nil {
 		fmt.Printf("apid err: %v\n", err)
 		return adapter.CheckResult{
