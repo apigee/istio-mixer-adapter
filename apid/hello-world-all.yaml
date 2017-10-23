@@ -1,28 +1,28 @@
-### Helloworld Proxy def ###
+### Definition for Apigee Proxy "helloworld" ###
 
 # instance configuration for template 'auth'
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
 metadata:
- name: helloworld-proxy
- namespace: istio-config-default
+ name: helloworld
+ namespace: istio-system
 spec:
  apikey: request.headers["apikey"] | ""
  uripath: request.path | "/"
- apigeeproxy: "helloworld"
+ apigeeproxy: '"helloworld"'
 ---
 # instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
 kind: logentry
 metadata:
-  name: helloworld-proxy
-  namespace: istio-config-default
+  name: helloworld
+  namespace: istio-system
 spec:
   severity: '"Default"'
   timestamp: request.time
   variables:
     apikey: request.headers["apikey"] | "" # HACK
-    apigeeproxy: "helloworld"
+    apigeeproxy: '"helloworld"'
     response_status_code: response.code | 0
     client_ip: source.ip | ip("0.0.0.0")
     request_verb: request.method | ""
@@ -40,11 +40,11 @@ apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
  name: helloworld-proxy
- namespace: istio-config-default
+ namespace: istio-system
 spec:
  match: "true"
  actions:
- - handler: apigee_handler.apigee
+ - handler: apigee-handler.apigee
    instances:
-   - helloworld-proxy.auth
-   - helloworld-proxy.logentry
+   - helloworld.auth
+   - helloworld.logentry
