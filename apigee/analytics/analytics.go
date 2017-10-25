@@ -23,10 +23,10 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 		record,
 	}
 
-	// convert times to ints
+	// convert times to ms ints
 	for k, v := range record {
 		if t, ok := v.(time.Time); ok {
-			record[k] = t.Unix()
+			record[k] = t.UnixNano() / (int64(time.Millisecond)/int64(time.Nanosecond))
 		}
 	}
 
