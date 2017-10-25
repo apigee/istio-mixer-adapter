@@ -76,6 +76,8 @@ You should see "OK" if the API key is valid. If not, there's probably an issue w
 
 You should see "OK" if the API key is valid. If not, there's probably an issue with configuration.
 
+(Note: There's an Istio bug: If you don't specify an apikey at all no check will be done.) 
+
 #### send an analytics record
 
 Note: You'll likely want to adjust the timestamps.
