@@ -2,23 +2,23 @@
 apiVersion: "config.istio.io/v1alpha2"
 kind: apigee
 metadata:
- name: apigee-handler
- namespace: istio-system
+  name: apigee-handler
+  namespace: istio-system
 spec:
- apid_base: http://192.168.64.25:31897
- org_name: edgex01
- env_name: test
+  apid_base: http://192.168.64.25:31897
+  org_name: edgex01
+  env_name: test
 ---
 # instance configuration for template 'auth'
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
 metadata:
- name: helloworld
- namespace: istio-system
+  name: helloworld
+  namespace: istio-system
 spec:
- apikey: request.headers["apikey"] | ""
- uripath: request.path | "/"
- apigeeproxy: '"helloworld"'
+  apikey: request.headers["apikey"] | ""
+  uripath: request.path | "/"
+  apigeeproxy: '"helloworld"'
 ---
 # instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
@@ -48,12 +48,12 @@ spec:
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
- name: helloworld
- namespace: istio-system
+  name: helloworld
+  namespace: istio-system
 spec:
- match: "true"
- actions:
- - handler: apigee-handler.apigee
-   instances:
-   - helloworld.auth
-   - helloworld.logentry
+  match: "true"
+  actions:
+  - handler: apigee-handler.apigee
+    instances:
+    - helloworld.auth
+    - helloworld.logentry

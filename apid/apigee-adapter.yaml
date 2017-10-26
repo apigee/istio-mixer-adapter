@@ -1,4 +1,5 @@
-# 1. Define Kubernetes CRDs
+# Define Kubernetes CRDs
+# No custom configuration necessary
 ---
 # define adapter 'apigee'
 kind: CustomResourceDefinition
@@ -33,15 +34,3 @@ spec:
     singular: auth
   scope: Namespaced
   version: v1alpha2
-
----
-# 2. Create apigee handler for edgex01 / test
-apiVersion: "config.istio.io/v1alpha2"
-kind: apigee
-metadata:
-  name: apigee-handler
-  namespace: istio-system
-spec:
-  apid_base: http://apid:9000
-  org_name: edgex01
-  env_name: test

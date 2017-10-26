@@ -1,0 +1,15 @@
+# Create apigee handler for Apigee
+# Configuration:
+#   apid_base must be pointed to a configured apid url
+#   org_name and env_name set the Apigee environment
+#     (the cluster apid is a member of must support that env)
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: apigee
+metadata:
+  name: apigee-handler
+  namespace: istio-system
+spec:
+  apid_base: http://apid:9000
+  org_name: edgex01
+  env_name: test

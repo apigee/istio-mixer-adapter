@@ -1,17 +1,26 @@
+# Create apid bridge for Apigee
+# Configuration:
+#   Apigee organization must be enabled for hybrid and a cluster must be created on Edge UI
+#   All the *_server_base env values must equal the Apigee base url
+#   The destination/service in the egress must match as well
+#   The apid_apigeesync_consumer_key, apid_apigeesync_consumer_secret, and apid_apigeesync_cluster_id values
+#     must match the values given for the cluster you created on Edge UI.
+#   You may uncomment the `type: Nodeport` to have an ingress.
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: apid
   namespace: istio-system
 spec:
-  type: NodePort # todo: for testing only
+#  type: NodePort # for testing only
   selector:
     app: apid
   ports:
   - name: http
     protocol: TCP
     port: 9000
-    targetPort: api-port
+    targetPort: http-api
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
@@ -29,9 +38,9 @@ spec:
       - name: apid
         image: scottganyo/apid:latest
         ports:
-        - name: api-port
+        - name: http-api
           containerPort: 9000
-        - name: liveness-port
+        - name: http-mgmt
           containerPort: 9000
         env:
         - name: apid_api_expvar_path
@@ -61,25 +70,23 @@ spec:
         readinessProbe:
           httpGet:
             path: /ready
-            port: liveness-port
+            port: http-mgmt
           initialDelaySeconds: 1
           periodSeconds: 2
         livenessProbe:
           httpGet:
             path: /health
-            port: liveness-port
+            port: http-mgmt
           initialDelaySeconds: 1
           periodSeconds: 2
-#---
-#apiVersion: config.istio.io/v1alpha2
-#kind: EgressRule
-#metadata:
-#  name: apigee-egress-rule
-#spec:
-#  destination:
-#    service: https://hybrid-eap.apigee.com/edgex
-#  ports:
-#    - port: 80
-#      protocol: http
-#    - port: 443
-#      protocol: https
+---
+apiVersion: config.istio.io/v1alpha2
+kind: EgressRule
+metadata:
+  name: apigee-egress-rule
+spec:
+  destination:
+    service: https://hybrid-eap.apigee.com/edgex
+  ports:
+    - port: 443
+      protocol: https

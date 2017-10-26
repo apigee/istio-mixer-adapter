@@ -22,7 +22,7 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    size = "medium",
+    size = "small",
     srcs = [
         "apigee_test.go"
     ],
@@ -31,17 +31,17 @@ go_test(
         "//testdata"
     ],
     deps = [
-        "@io_istio_api//:mixer/v1",  # keep
+        "//apigee/analytics:go_default_library",
+        "//apigee/auth:go_default_library",
+        "//apigee/config:go_default_library",
+        "//template/auth:go_default_library",
+        "//apigee/testapigeeadapter:go_default_library",        
+        "@io_istio_api//:mixer/v1",
         "@org_golang_x_net//context:go_default_library",
         "@com_github_istio_mixer//template:go_default_library",
         "@com_github_istio_mixer//test/testenv:go_default_library",
         "@com_github_istio_mixer//pkg/adapter:go_default_library",
         "@com_github_istio_mixer//pkg/template:go_default_library",
-
-        "//apigee/analytics:go_default_library",
-        "//apigee/auth:go_default_library",
-        "//apigee/config:go_default_library",
-        "//template/auth:go_default_library",
         "@com_github_gogo_protobuf//types:go_default_library",
         "@com_github_googleapis_googleapis//:google/rpc",
         "@com_github_istio_mixer//template/logentry:go_default_library",

@@ -1,3 +1,5 @@
+# Builds a minimal apid docker image based on Alpine
+
 FROM golang:1.9 as builder
 RUN go get -u github.com/Masterminds/glide/...
 RUN git clone https://github.com/apid/apid.git /go/src/github.com/apid/apid

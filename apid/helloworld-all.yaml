@@ -1,5 +1,9 @@
-### Definition for Apigee Proxy "helloworld" ###
-
+# Defines templates and a rule that connects to Apigee "helloworld" Proxy
+# Configuration
+#   apigeeproxy values must equal the name of a proxy you created on Apigee
+#   The apikey value defines where to get the apikey - default is `apikey` header
+#   The default rule below matches any Istio-enabled services
+---
 # instance configuration for template 'auth'
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
@@ -35,7 +39,7 @@ spec:
     client_sent_end_timestamp: response.time
   monitoredResourceType: '"UNSPECIFIED"'
 ---
-# rule to dispatch to handler 'apigee'
+# rule to dispatch to handler 'apigee-handler'
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:

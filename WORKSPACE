@@ -46,13 +46,6 @@ go_repository(
 
 
 go_repository(
-    name = "com_github_guptasu_remoteTemplate",
-    commit = "33725d84580eece93300f2ae80dfaf234fba6527",
-    importpath = "github.com/guptasu/remote-template",
-)
-
-
-go_repository(
     name = "com_github_spf13_pflag",
     commit = "9ff6c6923cfffbcd502984b8e0c80539a94968b7",  # Jan 30, 2017 (no releases)
     importpath = "github.com/spf13/pflag",

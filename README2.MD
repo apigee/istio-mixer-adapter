@@ -65,19 +65,23 @@ Edit <istio_dir>/install/kubernetes/istio.yaml (~line 273) to switch to custom M
 
     cd istio-mixer-adapter/apid
     kubectl apply -f apid-service.yaml
-    kubectl apply -f adapter-config.yaml
+    kubectl apply -f apigee-adapter.yaml
+    kubectl apply -f apigee-handler.yaml
 
-### Install Helloworld service (with Istio)
+### Install Istio-managed services
 
     kubectl apply -f <(istioctl kube-inject -f helloworld-service.yaml)
     helloworld=$(minikube service helloworld --url)
+
+    kubectl apply -f <(istioctl kube-inject -f httpbin-service.yaml)
+    httpbin=$(minikube service httpbin--url)
     
 Try it.
     
-    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJx" $helloworld/hello
+    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $helloworld/hello
     curl -H "apikey: badkey" $helloworld/hello
     
-Both should succeed.
+Both should succeed as we haven't applied any rules yet.
 
 ### Apply Apigee apikey & Analytics rule
 
@@ -87,7 +91,7 @@ Both should succeed.
     
 Try it.
     
-    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJx" $helloworld/hello
+    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $helloworld/hello
     curl -H "apikey: badkey" $helloworld/hello
 
 The 2nd call should now fail.
