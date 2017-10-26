@@ -7,5 +7,21 @@ go_library(
         "verify_api_key_structs.go",
     ],
     visibility = ["//visibility:public"],
-    deps = [],
+    deps = [
+        "@com_github_istio_mixer//pkg/adapter:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    size="small",
+    srcs = [
+        "verify_api_key_test.go",
+    ],
+    importpath = "github.com/istio-mixer-adapter/apigee/auth",
+    library = ":go_default_library",
+    deps = [
+        "//apigee/testutil:go_default_library",
+        "@com_github_istio_mixer//pkg/adapter:go_default_library",
+    ],
 )

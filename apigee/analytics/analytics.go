@@ -8,11 +8,20 @@ import (
 	"net/url"
 	"path"
 	"time"
+	"istio.io/mixer/pkg/adapter"
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 )
 
-func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]interface{}) error {
+func SendAnalyticsRecord(env adapter.Env, apidBase, orgName, envName string, record map[string]interface{}) error {
+	log := env.Logger()
 
-	fmt.Println("SendAnalyticsRecord")
+	log.Infof("SendAnalyticsRecord\n")
+
+	if apidBase == "" || orgName == "" || envName == "" {
+		return fmt.Errorf("apidBase, orgName, envName are required")
+	}
+
+	annotateWithAuthFields(env, apidBase, orgName, envName, record)
 
 	parsed, _ := url.Parse(apidBase) // already validated
 	parsed.Path = path.Join(parsed.Path, "/analytics")
@@ -26,7 +35,7 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 	// convert times to ms ints
 	for k, v := range record {
 		if t, ok := v.(time.Time); ok {
-			record[k] = t.UnixNano() / (int64(time.Millisecond)/int64(time.Nanosecond))
+			record[k] = t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 		}
 	}
 
@@ -47,7 +56,7 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	fmt.Printf("Sending to apid (%s): %s\n", apidUrl, body)
+	log.Infof("Sending to apid (%s): %s\n", apidUrl, body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -62,54 +71,73 @@ func SendAnalyticsRecord(apidBase, orgName, envName string, record map[string]in
 
 	switch resp.StatusCode {
 	case 200:
-		fmt.Println("analytics accepted")
+		log.Infof("analytics accepted\n")
 		return nil
 	default:
 		var errorResponse ErrorResponse
 		if err = json.Unmarshal(respBody, &errorResponse); err != nil {
 			return err
 		}
-		fmt.Printf("analytics not sent. reason: %s, code: %s",
+		log.Errorf("analytics not sent. reason: %s, code: %s\n",
 			errorResponse.Reason, errorResponse.ErrorCode)
 		return fmt.Errorf("analytics not sent. reason: %s, code: %s",
 			errorResponse.Reason, errorResponse.ErrorCode)
 	}
 }
 
+
+func annotateWithAuthFields(env adapter.Env, apidBase, orgName, envName string, record map[string]interface{}) {
+	log := env.Logger()
+
+	// todo: hack - perform authentication here as Istio is not able to pass auth context
+	apiKey := ""
+	if v := record["apikey"]; v != nil {
+		apiKey = v.(string)
+		delete(record, "apikey")
+	}
+
+	proxy := ""
+	if v := record["apigeeproxy"]; v != nil {
+		proxy = v.(string)
+		delete(record, "apigeeproxy")
+	}
+
+	path := "/"
+	if v := record["request_uri"]; v != nil {
+		path = v.(string)
+		if path == "" {
+			path = "/"
+		}
+	}
+
+	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+		Key:              apiKey,
+		OrganizationName: orgName,
+		UriPath:          path,
+		ApiProxyName:	  proxy,
+		EnvironmentName:  envName,
+	}
+
+	success, fail, err := auth.VerifyAPIKey(env, apidBase, verifyApiKeyRequest)
+	if err != nil {
+		log.Warningf("annotateWithAuthFields error: %v\n", err)
+		return
+	}
+	if fail != nil {
+		log.Warningf("annotateWithAuthFields fail: %v\n", fail.ResponseMessage)
+		return
+	}
+
+	record["apiproxy"] = proxy
+	record["apiRevision"] = "" // todo: is this necessary? available?
+	record["developerEmail"] = success.Developer.Email
+	record["developerApp"] = success.App.Name
+	record["accessToken"] = success.ClientId.ClientSecret
+	record["clientID"] = success.ClientId.ClientId
+	record["apiProduct"] = success.ApiProduct.Name
+}
+
 type ErrorResponse struct {
 	ErrorCode string `json:"errorCode"`
 	Reason    string `json:"reason"`
 }
-
-/*
-type Request struct {
-	Organization string   `json:"organization"`
-	Environment  string   `json:"environment"`
-	Records      []Record `json:"records"`
-}
-
-type Record struct {
-	ClientReceivedStartTimestamp int64  `json:"client_received_start_timestamp"`
-	ClientReceivedEndTimestamp   int64  `json:"client_received_end_timestamp"`
-	ClientSentStartTimestamp     int64  `json:"client_sent_start_timestamp"`
-	ClientSentEndTimestamp       int64  `json:"client_sent_end_timestamp"`
-	TargetReceivedStartTimestamp int64  `json:"target_received_start_timestamp,omitempty"`
-	TargetReceivedEndTimestamp   int64  `json:"target_received_end_timestamp,omitempty"`
-	TargetSentStartTimestamp     int64  `json:"target_sent_start_timestamp,omitempty"`
-	TargetSentEndTimestamp       int64  `json:"target_sent_end_timestamp,omitempty"`
-	RecordType                   string `json:"recordType"`
-	APIProxy                     string `json:"apiproxy"`
-	RequestURI                   string `json:"request_uri"`
-	RequestPath                  string `json:"request_path"`
-	RequestVerb                  string `json:"request_verb"`
-	ClientIP                     string `json:"client_ip,omitempty"`
-	UserAgent                    string `json:"useragent"`
-	APIProxyRevision             int    `json:"apiproxy_revision"`
-	ResponseStatusCode           int    `json:"response_status_code"`
-	DeveloperEmail               string `json:"developer_email,omitempty"`
-	DeveloperApp                 string `json:"developer_app,omitempty"`
-	AccessToken                  string `json:"access_token,omitempty"`
-	ClientID                     string `json:"client_id,omitempty"`
-	APIProduct                   string `json:"api_product,omitempty"`
-}
-*/

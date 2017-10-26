@@ -1,4 +1,4 @@
-package apigee
+package apigee // import "github.com/apigee/istio-mixer-adapter/apigee"
 
 import (
 	"context"
@@ -80,14 +80,9 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 	return ce
 }
 
-func (*builder) SetAuthTypes(t map[string]*authT.Type)    {
-	fmt.Printf("SetAuthTypes: %v\n", t)
-}
-
-func (*builder) SetLogEntryTypes(t map[string]*logentry.Type) {
-	fmt.Printf("SetLogEntryTypes: %v\n", t)
-}
-func (*builder) SetQuotaTypes(map[string]*quota.Type)       {}
+func (*builder) SetAuthTypes(t map[string]*authT.Type) {}
+func (*builder) SetLogEntryTypes(t map[string]*logentry.Type) {}
+func (*builder) SetQuotaTypes(map[string]*quota.Type) {}
 
 ////////////////// Handler //////////////////////////
 
@@ -108,76 +103,18 @@ var _ logentry.Handler = (*handler)(nil)
 func (h *handler) Close() error { return nil }
 
 func (h *handler) HandleLogEntry(ctx context.Context, logEntries []*logentry.Instance) error {
-	fmt.Println("HandleLogEntry")
+
+	log := h.env.Logger()
+	log.Infof("HandleLogEntry\n")
 
 	for _, logEntry := range logEntries {
 
-		h.annotateWithAuthFields(logEntry)
-
-		err := analytics.SendAnalyticsRecord(h.apidBase, h.orgName, "test", logEntry.Variables)
+		err := analytics.SendAnalyticsRecord(h.env, h.apidBase, h.orgName, h.envName, logEntry.Variables)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func (h *handler) annotateWithAuthFields(logEntry *logentry.Instance) {
-
-	// todo: hack - perform authentication here as Istio is not able to pass auth context
-	apiKey := ""
-	if v := logEntry.Variables["apikey"]; v != nil {
-		apiKey = v.(string)
-		delete(logEntry.Variables, "apikey")
-	}
-
-	proxy := ""
-	if v := logEntry.Variables["apigeeproxy"]; v != nil {
-		proxy = v.(string)
-		delete(logEntry.Variables, "apigeeproxy")
-	}
-
-	path := "/"
-	if v := logEntry.Variables["request_uri"]; v != nil {
-		path = v.(string)
-		if path == "" {
-			path = "/"
-		}
-	}
-
-	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
-		Action:           "verify",
-		Key:              apiKey,
-		OrganizationName: h.orgName,
-		UriPath:          path,
-		ApiProxyName:	  proxy,
-		EnvironmentName:  h.envName,
-		ValidateAgainstApiProxiesAndEnvs: true,
-	}
-
-	success, fail, err := auth.VerifyAPIKey(h.apidBase, verifyApiKeyRequest)
-	if err != nil {
-		fmt.Printf("annotateWithAuthFields error: %v\n", err)
-		return
-	}
-	if fail != nil {
-		fmt.Printf("annotateWithAuthFields fail: %v\n", fail.ResponseMessage)
-		return
-	}
-
-	// todo: verify
-	app := ""
-	if len(success.Developer.Apps) > 0 {
-		app = success.Developer.Apps[0]
-	}
-
-	logEntry.Variables["apiproxy"] = proxy
-	logEntry.Variables["apiRevision"] = "" // todo: is this available?
-	logEntry.Variables["developerEmail"] = success.Developer.Email
-	logEntry.Variables["developerApp"] = app
-	logEntry.Variables["accessToken"] = success.ClientId.ClientSecret
-	logEntry.Variables["clientID"] = success.ClientId.ClientId
-	logEntry.Variables["apiProduct"] = success.ApiProduct.Name
 }
 
 func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
@@ -188,21 +125,20 @@ func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter
 }
 
 func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	fmt.Printf("HandleAuth: %v\n", inst)
+	log := h.env.Logger()
+	log.Infof("HandleAuth: %v\n", inst)
 
 	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
-		Action:           "verify",
 		Key:              inst.Apikey,
 		OrganizationName: h.orgName,
 		UriPath:          inst.Uripath,
 		ApiProxyName:	  inst.Apigeeproxy,
 		EnvironmentName:  h.envName,
-		ValidateAgainstApiProxiesAndEnvs: true,
 	}
 
-	success, fail, err := auth.VerifyAPIKey(h.apidBase, verifyApiKeyRequest)
+	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
 	if err != nil {
-		fmt.Printf("apid err: %v\n", err)
+		log.Errorf("apid err: %v\n", err)
 		return adapter.CheckResult{
 			Status: rpc.Status{
 				Code:    int32(rpc.PERMISSION_DENIED),
@@ -212,13 +148,13 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 	}
 
 	if success != nil {
-		fmt.Println("auth success!")
+		log.Infof("auth success!\n")
 		return adapter.CheckResult{
 			Status: rpc.Status{Code: int32(rpc.OK)},
 		}, nil
 	}
 
-	fmt.Printf("auth fail: %v\n", fail.ResponseMessage)
+	log.Infof("auth fail: %v\n", fail.ResponseMessage)
 	return adapter.CheckResult{
 		Status: rpc.Status{
 			Code:    int32(rpc.PERMISSION_DENIED),
