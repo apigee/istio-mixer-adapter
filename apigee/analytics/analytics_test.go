@@ -83,7 +83,7 @@ func TestAnalyticsSubmit(t *testing.T) {
 			}
 
 			w.WriteHeader(200)
-		})
+		})(w, r)
 	}))
 	defer ts.Close()
 

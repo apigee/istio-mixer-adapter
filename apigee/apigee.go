@@ -77,6 +77,10 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 		ce = ce.Append("org_name", fmt.Errorf("org_name is required"))
 	}
 
+	if b.adapterConfig.EnvName == "" {
+		ce = ce.Append("env_name", fmt.Errorf("env_name is required"))
+	}
+
 	return ce
 }
 

@@ -36,6 +36,7 @@ go_test(
         "//apigee/config:go_default_library",
         "//template/auth:go_default_library",
         "//apigee/testapigeeadapter:go_default_library",        
+        "//apigee/testutil:go_default_library",
         "@io_istio_api//:mixer/v1",
         "@org_golang_x_net//context:go_default_library",
         "@com_github_istio_mixer//template:go_default_library",
@@ -46,5 +47,6 @@ go_test(
         "@com_github_googleapis_googleapis//:google/rpc",
         "@com_github_istio_mixer//template/logentry:go_default_library",
         "@com_github_istio_mixer//template/quota:go_default_library",
+        "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )
