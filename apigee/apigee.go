@@ -29,9 +29,15 @@ func GetInfo() adapter.Info {
 			quota.TemplateName,
 			authT.TemplateName,
 		},
-		NewBuilder:    func() adapter.HandlerBuilder { return &builder{} },
-		DefaultConfig: &config.Params{},
+		NewBuilder: createBuilder,
+		DefaultConfig: &config.Params{
+			ApidBase: "http://apid:9000/",
+		},
 	}
+}
+
+var createBuilder = func() adapter.HandlerBuilder {
+	return &builder{}
 }
 
 ////////////////// Builder //////////////////////////
@@ -67,10 +73,11 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 	fmt.Printf("Validate: %v\n", b.adapterConfig)
 
 	if b.adapterConfig.ApidBase == "" {
-		b.adapterConfig.ApidBase = "http://apid:9000/"
+		ce = ce.Append("apid_base", fmt.Errorf("apid_base is required"))
 	}
+
 	if _, err := url.Parse(b.adapterConfig.ApidBase); err != nil {
-		ce = ce.Append("apid_base", err)
+		ce = ce.Append("apid_base", fmt.Errorf("apid_base must be a valid url: %v", err))
 	}
 
 	if b.adapterConfig.OrgName == "" {
