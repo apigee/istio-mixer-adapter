@@ -8,18 +8,18 @@
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
 metadata:
- name: helloworld
- namespace: istio-system
+  name: apigee
+  namespace: istio-system
 spec:
- apikey: request.headers["apikey"] | ""
- uripath: request.path | "/"
- apigeeproxy: '"helloworld"'
+  apikey: request.headers["apikey"] | ""
+  uripath: request.path | "/"
+  apigeeproxy: '"helloworld"'
 ---
 # instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
 kind: logentry
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
   severity: '"Default"'
@@ -43,12 +43,13 @@ spec:
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
- name: helloworld-proxy
- namespace: istio-system
+  name: apigee
+  namespace: istio-system
 spec:
- match: "true"
- actions:
- - handler: apigee-handler.apigee
-   instances:
-   - helloworld.auth
-   - helloworld.logentry
+  match: "true"
+  actions:
+  - handler: apigee-handler.apigee
+    instances:
+    - apigee.auth
+    - apigee.logentry
+---

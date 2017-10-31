@@ -1,6 +1,8 @@
 # Full build and run in Mixer
 
-## Build - Goobunto Linux
+## Build Custo Mixer
+
+Instructions are on Goobunto Linux.
 
 ### Install prerequisites
 
@@ -31,11 +33,16 @@
     ./gcloud_build.sh
 
 
-## Install Mixer - Minikube on OS X
+Instructions are on OS X using Minikube.
+
+## Install Istio on Minikube
 
 ### Start Minikube
 
     minikube start --vm-driver=xhyve
+    
+Note: To latest connect to minikub docker env in any terminal, execute:    
+    
     eval $(minikube docker-env)
 
 ### Install Istio
@@ -51,16 +58,35 @@ Edit <istio_dir>/install/kubernetes/istio.yaml (~line 273) to switch to custom M
         # image: gcr.io/istio-testing/mixer:0abf3496329789992df39f752a5af8e76686f2c7
         image: gcr.io/apigee-edgex-project/mixer:experiment
 
-### Pull your custom Mixer image into docker
-
-(Alternatively, you could set up Docker to work with Google Container Registry.)  
+### Pull your custom Mixer image into docker  
 
     gcloud docker -- pull gcr.io/apigee-edgex-project/mixer:experiment
+    
+You must do this before installing istio or you will have image pull errors in docker. 
+Alternatively, you could set up Docker to work with Google Container Registry.
      
-### Install Istio
+### Install Istio into Kubernetes
 
     kubectl apply -f install/kubernetes/istio.yaml
+
+## Set up Apigee
+
+### Install Istio-managed test services
+
+    kubectl apply -f <(istioctl kube-inject -f helloworld-service.yaml)
+    kubectl apply -f <(istioctl kube-inject -f httpbin-service.yaml)
+
+Assign the ingress URL to an env var for convenience 
+
+    ingress=$(minikube service istio-ingress --url -n istio-system | head -n1)
+    echo $ingress
     
+Try it.
+    
+    curl -H "apikey: badkey" $ingress/hello
+    
+It should succeed as we haven't installed Apigee yet.
+
 ### Install apid and configure Apigee mixer adapter  
 
     cd istio-mixer-adapter/apid
@@ -68,30 +94,23 @@ Edit <istio_dir>/install/kubernetes/istio.yaml (~line 273) to switch to custom M
     kubectl apply -f apigee-adapter.yaml
     kubectl apply -f apigee-handler.yaml
 
-### Install Istio-managed services
+Try a test call again if you'd like.
+    
+    curl -H "apikey: badkey" $ingress/hello
+    
+It should still succeed as we haven't applied any rules yet.
 
-    kubectl apply -f <(istioctl kube-inject -f helloworld-service.yaml)
-    helloworld=$(minikube service helloworld --url)
+### Apply Apigee apikey & analytics rule
 
-    kubectl apply -f <(istioctl kube-inject -f httpbin-service.yaml)
-    httpbin=$(minikube service httpbin--url)
+    kubectl apply -f apigee-rule.yaml
+    
+This rule applies apikey and analytics to all calls.
     
 Try it.
     
-    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $helloworld/hello
-    curl -H "apikey: badkey" $helloworld/hello
-    
-Both should succeed as we haven't applied any rules yet.
+    curl -H "apikey: badkey" $ingress/hello
+    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $ingress/hello
+    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $ingress/get
 
-### Apply Apigee apikey & Analytics rule
-
-    kubectl apply -f helloworld-all.yaml
-    
-(ToDo: currently matches *all* calls, restrict.)
-    
-Try it.
-    
-    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $helloworld/hello
-    curl -H "apikey: badkey" $helloworld/hello
-
-The 2nd call should now fail.
+The call with a bad apikey should now fail, the ones with a valid one succeed.
+The calls will show up in the edge analytics (edgex01 org, helloworld proxy).

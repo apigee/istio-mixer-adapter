@@ -1,5 +1,5 @@
 # Create an example target service
-# call http://ip:port/hello to trigger
+# GET http://ip:port/hello to trigger
 ---
 apiVersion: v1
 kind: Service
@@ -7,8 +7,9 @@ metadata:
   name: helloworld
   labels:
     app: helloworld
+    gateway: apigee
 spec:
-  type: NodePort
+#  type: NodePort
   ports:
   - port: 5000
     name: http

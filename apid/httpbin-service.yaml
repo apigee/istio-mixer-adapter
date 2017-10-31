@@ -1,5 +1,5 @@
 # Create an example target service
-# curl http://ip:port/get to trigger
+# GET http://ip:port/get to trigger
 ---
 apiVersion: v1
 kind: Service
@@ -8,7 +8,7 @@ metadata:
   labels:
     app: httpbin
 spec:
-  type: NodePort # open to clients
+#  type: NodePort
   ports:
   - name: http
     port: 8000
@@ -32,3 +32,19 @@ spec:
         name: httpbin
         ports:
         - containerPort: 8000
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: httpbin
+  annotations:
+    kubernetes.io/ingress.class: "istio"
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /.*
+        backend:
+          serviceName: httpbin
+          servicePort: 8000
+---

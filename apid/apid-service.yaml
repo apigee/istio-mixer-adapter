@@ -13,7 +13,7 @@ metadata:
   name: apid
   namespace: istio-system
 spec:
-#  type: NodePort # for testing only
+  type: NodePort # for testing only
   selector:
     app: apid
   ports:
@@ -90,3 +90,40 @@ spec:
   ports:
     - port: 443
       protocol: https
+#---
+#apiVersion: extensions/v1beta1
+#kind: Ingress
+#metadata:
+#  name: apid
+#  namespace: istio-system
+#  annotations:
+#    kubernetes.io/ingress.class: "istio"
+#spec:
+#  rules:
+#  - http:
+#      paths:
+#      - path: /apid/.*
+#        backend:
+#          serviceName: apid
+#          servicePort: 9000
+#---
+#apiVersion: config.istio.io/v1alpha2
+#kind: RouteRule
+#metadata:
+#  name: rewrite-apid
+#  namespace: istio-system
+#spec:
+#  destination:
+#    name: apid
+#    namespace: istio-system
+#  match:
+#    request:
+#      headers:
+#        uri:
+#          prefix: /apid
+#  rewrite:
+#    uri: /
+##  route:
+##  - labels:
+##      version: v1
+##    weight: 100
