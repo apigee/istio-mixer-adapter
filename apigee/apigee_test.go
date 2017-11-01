@@ -152,6 +152,18 @@ func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr 
 		h.t.Errorf("Unexpected value in HandleAuth. Expected: %v, got: %v", "xxx", inst.Apikey)
 	}
 
+	inst.Apikey = ""
+	cr, err = h.handler.HandleAuth(ctx, inst)
+	if err != nil {
+		h.t.Errorf("Failed unauthenticated call to HandleAuth: %v", err)
+	}
+	if cr.Status.Code != int32(rpc.UNAUTHENTICATED) {
+		h.t.Errorf("HandleAuth unauthenticated code incorrect: %v", cr.Status.Code)
+	}
+	if cr.Status.Message != "Unauthorized" {
+		h.t.Errorf("HandleAuth unauthenticated message incorrect: %v", cr.Status.Message)
+	}
+
 	inst.Apikey = "fail"
 	cr, err = h.handler.HandleAuth(ctx, inst)
 	if err != nil {
@@ -161,7 +173,7 @@ func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr 
 		h.t.Errorf("HandleAuth fail code incorrect: %v", cr.Status.Code)
 	}
 	if cr.Status.Message != "fail" {
-		h.t.Errorf("HandleAuth fail message incorrect: %v", cr.Status.Code)
+		h.t.Errorf("HandleAuth fail message incorrect: %v", cr.Status.Message)
 	}
 
 	inst.Apikey = "error"

@@ -139,6 +139,15 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 	log := h.env.Logger()
 	log.Infof("HandleAuth: %v\n", inst)
 
+	if inst.Apikey == "" {
+		return adapter.CheckResult{
+			Status: rpc.Status{
+				Code:    int32(rpc.UNAUTHENTICATED),
+				Message: "Unauthorized",
+			},
+		}, nil
+	}
+
 	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
 		Key:              inst.Apikey,
 		OrganizationName: h.orgName,
