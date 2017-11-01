@@ -39,13 +39,14 @@ spec:
     client_sent_end_timestamp: response.time
   monitoredResourceType: '"UNSPECIFIED"'
 ---
-# rule to dispatch to handler 'apigee-handler'
+# rule: dispatch to handler 'apigee-handler'
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
   name: apigee
   namespace: istio-system
 spec:
+#  match: destination.labels["gateway"]=="apigee"
   match: "true"
   actions:
   - handler: apigee-handler.apigee
@@ -53,3 +54,33 @@ spec:
     - apigee.auth
     - apigee.logentry
 ---
+
+# hack to workaround Mixer bug: deny all requests without apikey header
+apiVersion: "config.istio.io/v1alpha2"
+kind: denier
+metadata:
+  name: reject-missing-api-key
+  namespace: istio-system
+spec:
+  status:
+    code: 401
+    message: Unauthorized
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: checknothing
+metadata:
+  name: reject-missing-api-key
+  namespace: istio-system
+spec:
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: rule
+metadata:
+  name: reject-missing-api-key
+  namespace: istio-system
+spec:
+  match: (request.headers["apikey"] | "AREYOUKIDDINGME?") == "AREYOUKIDDINGME?"
+  actions:
+  - handler: reject-missing-api-key.denier
+    instances:
+    - reject-missing-api-key.checknothing
