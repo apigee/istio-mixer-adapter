@@ -11,7 +11,7 @@ metadata:
 spec:
 #  type: NodePort
   ports:
-  - port: 5000
+  - port: 80
     name: http
   selector:
     app: helloworld
@@ -19,24 +19,20 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: helloworld-v1
+  name: helloworld
 spec:
   replicas: 1
   template:
     metadata:
       labels:
         app: helloworld
-        version: v1
     spec:
       containers:
       - name: helloworld
-        image: istio/examples-helloworld-v1
-        resources:
-          requests:
-            cpu: "100m"
-        imagePullPolicy: IfNotPresent #Always
+        image: tutum/hello-world
+        imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 5000
+        - containerPort: 80
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -48,8 +44,8 @@ spec:
   rules:
   - http:
       paths:
-      - path: /hello
+      - path: /
         backend:
           serviceName: helloworld
-          servicePort: 5000
+          servicePort: 80
 ---
