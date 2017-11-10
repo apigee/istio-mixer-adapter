@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package analytics;
+
+import "mixer/v1/template/extensions.proto";
+import "google/protobuf/timestamp.proto";
+import "mixer/v1/config/descriptor/value_type.proto";
+
+option (istio.mixer.v1.template.template_variety) = TEMPLATE_VARIETY_REPORT;
+
+message Template {
+    int64 response_status_code = 1;
+    istio.mixer.v1.config.descriptor.ValueType client_ip = 2;  // todo: HACK for https://github.com/istio/old_mixer_repo/issues/1480
+    string request_verb = 3;
+    string request_uri = 4;
+    string request_path = 5;
+    string useragent = 6;
+    google.protobuf.Timestamp client_received_start_timestamp = 7;
+    google.protobuf.Timestamp client_received_end_timestamp = 8;
+    google.protobuf.Timestamp client_sent_start_timestamp = 9;
+    google.protobuf.Timestamp client_sent_end_timestamp = 10;
+    google.protobuf.Timestamp target_sent_start_timestamp = 11;
+    google.protobuf.Timestamp target_sent_end_timestamp = 12;
+    google.protobuf.Timestamp target_received_start_timestamp = 13;
+    google.protobuf.Timestamp target_received_end_timestamp = 14;
+
+    // auth hack... to be removed later
+    string apikey = 200;
+    string apigeeproxy = 201;
+    string apigeeproxy_revision = 202;
+}

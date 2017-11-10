@@ -11,6 +11,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	authT "github.com/apigee/istio-mixer-adapter/template/auth"
+	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/mixer/pkg/adapter"
 	"istio.io/mixer/template/logentry"
 	"istio.io/mixer/template/quota"
@@ -28,6 +29,7 @@ func GetInfo() adapter.Info {
 			logentry.TemplateName,
 			quota.TemplateName,
 			authT.TemplateName,
+			analyticsT.TemplateName,
 		},
 		NewBuilder: createBuilder,
 		DefaultConfig: &config.Params{
@@ -51,6 +53,7 @@ var _ adapter.HandlerBuilder = (*builder)(nil)
 var _ authT.HandlerBuilder = (*builder)(nil)
 var _ logentry.HandlerBuilder = (*builder)(nil)
 var _ quota.HandlerBuilder = (*builder)(nil)
+var _ analyticsT.HandlerBuilder = (*builder)(nil)
 
 // adapter.HandlerBuilder
 func (b *builder) SetAdapterConfig(cfg adapter.Config) {
@@ -59,8 +62,14 @@ func (b *builder) SetAdapterConfig(cfg adapter.Config) {
 
 // adapter.HandlerBuilder
 func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handler, error) {
+
+	apidBase, err := url.Parse(b.adapterConfig.ApidBase)
+	if err != nil {
+		return nil, err
+	}
+
 	return &handler{
-		apidBase:    b.adapterConfig.ApidBase,
+		apidBase:    *apidBase,
 		orgName:     b.adapterConfig.OrgName,
 		envName:     b.adapterConfig.EnvName,
 		env:         env,
@@ -94,11 +103,12 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 func (*builder) SetAuthTypes(t map[string]*authT.Type) {}
 func (*builder) SetLogEntryTypes(t map[string]*logentry.Type) {}
 func (*builder) SetQuotaTypes(map[string]*quota.Type) {}
+func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
 
 ////////////////// Handler //////////////////////////
 
 type handler struct {
-	apidBase    string
+	apidBase    url.URL
 	orgName     string
 	envName     string
 	env         adapter.Env
@@ -109,22 +119,58 @@ var _ adapter.Handler = (*handler)(nil)
 var _ authT.Handler = (*handler)(nil)
 var _ quota.Handler = (*handler)(nil)
 var _ logentry.Handler = (*handler)(nil)
+var _ analyticsT.Handler = (*handler)(nil)
 
 // adapter.Handler
 func (h *handler) Close() error { return nil }
 
 func (h *handler) HandleLogEntry(ctx context.Context, logEntries []*logentry.Instance) error {
-
 	log := h.env.Logger()
-	log.Infof("HandleLogEntry\n")
-
 	for _, logEntry := range logEntries {
+		log.Infof("HandleLogEntry: %v\n", logEntry)
+	}
+	return nil
+}
 
-		err := analytics.SendAnalyticsRecord(h.env, h.apidBase, h.orgName, h.envName, logEntry.Variables)
-		if err != nil {
-			return err
+func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
+	log := h.env.Logger()
+
+	for _, inst := range instances {
+		log.Infof("HandleAnalytics: %v\n", inst)
+
+		record := &analytics.Record{
+			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
+			ClientSentEndTimestamp:       analytics.TimeToUnix(inst.ClientSentEndTimestamp),
+			TargetReceivedStartTimestamp: analytics.TimeToUnix(inst.TargetReceivedStartTimestamp),
+			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
+			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
+			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
+			APIProxy:                     inst.Apigeeproxy,
+			//APIProxyRevision:			  0, // todo: is this available?
+			RequestURI:                   inst.RequestUri,
+			RequestPath:                  inst.RequestPath,
+			RequestVerb:                  inst.RequestVerb,
+			ClientIP:                     inst.ClientIp.(string),
+			UserAgent:                    inst.Useragent,
+			ResponseStatusCode:           int(inst.ResponseStatusCode),
+		}
+
+		verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+			Key:              inst.Apikey,
+			OrganizationName: h.orgName,
+			UriPath:          inst.RequestPath,
+			ApiProxyName:	  inst.Apigeeproxy,
+			EnvironmentName:  h.envName,
+		}
+		// todo: ignoring fail & err results for now
+		success, _, _ := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
+		if success != nil {
+			return analytics.SendAnalyticsRecord(h.env, h.apidBase, success, record)
 		}
 	}
+
 	return nil
 }
 
@@ -155,6 +201,8 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 		ApiProxyName:	  inst.Apigeeproxy,
 		EnvironmentName:  h.envName,
 	}
+
+	//log.Errorf("sending: %v, %v", h.apidBase, verifyApiKeyRequest)
 
 	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
 	if err != nil {

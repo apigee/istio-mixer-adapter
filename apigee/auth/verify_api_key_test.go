@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"encoding/json"
 	"github.com/apigee/istio-mixer-adapter/apigee/testutil"
+	"net/url"
 )
 
 func TestVerifyAPIKeyValid(t *testing.T) {
@@ -44,7 +45,11 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), ts.URL, verifyApiKeyRequest)
+	apidBase, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), *apidBase, verifyApiKeyRequest)
 
 	if err != nil {
 		t.Error(err)
@@ -76,7 +81,11 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), ts.URL, VerifyApiKeyRequest{})
+	apidBase, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), *apidBase, VerifyApiKeyRequest{})
 
 	if err != nil {
 		t.Error(err)
@@ -93,7 +102,9 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 
 func TestVerifyAPIKeyError(t *testing.T) {
 
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(),"http://localhost", VerifyApiKeyRequest{})
+	apidBase := url.URL{}
+
+	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), apidBase, VerifyApiKeyRequest{})
 
 	if err == nil {
 		t.Errorf("error should not be nil")

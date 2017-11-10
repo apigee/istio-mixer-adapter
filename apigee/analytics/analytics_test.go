@@ -7,146 +7,131 @@ import (
 	"encoding/json"
 	"time"
 	"github.com/apigee/istio-mixer-adapter/apigee/testutil"
+	"net/url"
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"strings"
 )
 
 func TestAnalyticsSubmit(t *testing.T) {
 
-	orgName := "orgName"
-	envName := "envName"
-	record := map[string]interface{}{}
-	record["access_token"] = "AccessToken"
 	startTime := time.Now()
-	record["client_received_start_timestamp"] = startTime
-
-	// Structs copied from apidAnalytics plugin...
-	type Record struct {
-		ClientReceivedStartTimestamp int64  `json:"client_received_start_timestamp"`
-		ClientReceivedEndTimestamp   int64  `json:"client_received_end_timestamp"`
-		ClientSentStartTimestamp     int64  `json:"client_sent_start_timestamp"`
-		ClientSentEndTimestamp       int64  `json:"client_sent_end_timestamp"`
-		TargetReceivedStartTimestamp int64  `json:"target_received_start_timestamp,omitempty"`
-		TargetReceivedEndTimestamp   int64  `json:"target_received_end_timestamp,omitempty"`
-		TargetSentStartTimestamp     int64  `json:"target_sent_start_timestamp,omitempty"`
-		TargetSentEndTimestamp       int64  `json:"target_sent_end_timestamp,omitempty"`
-		RecordType                   string `json:"recordType"`
-		APIProxy                     string `json:"apiproxy"`
-		RequestURI                   string `json:"request_uri"`
-		RequestPath                  string `json:"request_path"`
-		RequestVerb                  string `json:"request_verb"`
-		ClientIP                     string `json:"client_ip,omitempty"`
-		UserAgent                    string `json:"useragent"`
-		APIProxyRevision             int    `json:"apiproxy_revision"`
-		ResponseStatusCode           int    `json:"response_status_code"`
-		DeveloperEmail               string `json:"developer_email,omitempty"`
-		DeveloperApp                 string `json:"developer_app,omitempty"`
-		AccessToken                  string `json:"access_token,omitempty"`
-		ClientID                     string `json:"client_id,omitempty"`
-		APIProduct                   string `json:"api_product,omitempty"`
+	authResponse := &auth.VerifyApiKeySuccessResponse{
+		Organization: "orgName",
+		Environment: "envName",
+		ClientId: auth.ClientIdDetails{
+			ClientSecret: "AccessToken",
+		},
 	}
-	type Request struct {
-		Organization string   `json:"organization"`
-		Environment  string   `json:"environment"`
-		Records      []Record `json:"records"`
+	axRecord := &Record{
+		ClientReceivedStartTimestamp: TimeToUnix(startTime),
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		testutil.VerifyApiKeyOr(func(w http.ResponseWriter, r *http.Request) {
-
-			decoder := json.NewDecoder(r.Body)
-			var req Request
-			err := decoder.Decode(&req)
-			if err != nil {
-				t.Error(err)
-			}
-			defer r.Body.Close()
-
-			if req.Organization != orgName {
-				t.Errorf("bad orgName")
-			}
-			if req.Environment != envName {
-				t.Errorf("bad envName")
-			}
-			if len(req.Records) != 1 {
-				t.Errorf("records missing")
-				return
-			}
-
-			rec := req.Records[0]
-			if rec.AccessToken == "" {
-				t.Errorf("access_token missing")
-			}
-			msTime := startTime.UnixNano() / (int64(time.Millisecond)/int64(time.Nanosecond))
-			if rec.ClientReceivedStartTimestamp != msTime {
-				t.Errorf("client_received_start_timestamp expected: %v, got: %v",
-					msTime, rec.ClientReceivedStartTimestamp)
-			}
-
-			w.WriteHeader(200)
-		})(w, r)
-	}))
+	ts := makeTestServer(authResponse, axRecord, t)
 	defer ts.Close()
-
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), ts.URL, orgName, envName, record)
-
+	apidBase, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
 	if err != nil {
 		t.Error(err)
-		return
 	}
 }
 
 func TestBadApidBase(t *testing.T) {
 
-	apidBase := "notanurl"
-	orgName := "orgName"
-	envName := "envName"
-	record := map[string]interface{}{}
-
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, orgName, envName, record)
-
-	if err == nil {
-		t.Fail()
+	authResponse := &auth.VerifyApiKeySuccessResponse{
+		Organization: "orgName",
+		Environment: "envName",
+		ClientId: auth.ClientIdDetails{
+			ClientSecret: "AccessToken",
+		},
 	}
-}
-
-func TestMissingApidBase(t *testing.T) {
-
-	apidBase := ""
-	orgName := "orgName"
-	envName := "envName"
-	record := map[string]interface{}{}
-
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, orgName, envName, record)
-
+	axRecord := &Record{}
+	ts := makeTestServer(authResponse, axRecord, t)
+	defer ts.Close()
+	apidBase := url.URL{}
+	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, authResponse, axRecord)
 	if err == nil {
-		t.Fail()
+		t.Errorf("should get bad apid base error")
 	}
 }
 
 func TestMissingOrg(t *testing.T) {
 
-	apidBase := "http://localhost"
-	orgName := ""
-	envName := "envName"
-	record := map[string]interface{}{}
-
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, orgName, envName, record)
-
-	if err == nil {
-		t.Fail()
+	authResponse := &auth.VerifyApiKeySuccessResponse{
+		Organization: "",
+		Environment: "envName",
+		ClientId: auth.ClientIdDetails{
+			ClientSecret: "AccessToken",
+		},
+	}
+	axRecord := &Record{}
+	ts := makeTestServer(authResponse, axRecord, t)
+	defer ts.Close()
+	apidBase, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
+	if err == nil || !strings.Contains(err.Error(), "organization") {
+		t.Errorf("should get missing organization error, got: %s", err)
 	}
 }
 
 func TestMissingEnv(t *testing.T) {
 
-	apidBase := "http://localhost"
-	orgName := "orgName"
-	envName := ""
-	record := map[string]interface{}{}
-
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, orgName, envName, record)
-
-	if err == nil {
-		t.Fail()
+	authResponse := &auth.VerifyApiKeySuccessResponse{
+		Organization: "orgName",
+		Environment: "",
+		ClientId: auth.ClientIdDetails{
+			ClientSecret: "AccessToken",
+		},
 	}
+	axRecord := &Record{}
+	ts := makeTestServer(authResponse, axRecord, t)
+	defer ts.Close()
+	apidBase, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
+	if err == nil || !strings.Contains(err.Error(), "environment") {
+		t.Errorf("should get missing environment error, got: %s", err)
+	}
+}
+
+func makeTestServer(auth *auth.VerifyApiKeySuccessResponse, rec *Record, t *testing.T) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		decoder := json.NewDecoder(r.Body)
+		var axRequest Request
+		err := decoder.Decode(&axRequest)
+		if err != nil {
+			t.Error(err)
+		}
+		defer r.Body.Close()
+
+		if axRequest.Organization != auth.Organization {
+			t.Errorf("bad orgName")
+		}
+		if axRequest.Environment != auth.Environment {
+			t.Errorf("bad envName")
+		}
+		if len(axRequest.Records) != 1 {
+			t.Errorf("record missing")
+			return
+		}
+
+		axRecord := axRequest.Records[0]
+		if axRecord.AccessToken == "" {
+			t.Errorf("access_token missing")
+		}
+		if axRecord.ClientReceivedStartTimestamp != rec.ClientReceivedStartTimestamp {
+			t.Errorf("client_received_start_timestamp expected: %v, got: %v",
+				rec.ClientReceivedStartTimestamp, axRecord.ClientReceivedStartTimestamp)
+		}
+
+		w.WriteHeader(200)
+	}))
+
 }

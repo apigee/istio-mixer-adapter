@@ -7,48 +7,48 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"time"
+	//"time"
 	"istio.io/mixer/pkg/adapter"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"time"
 )
 
-func SendAnalyticsRecord(env adapter.Env, apidBase, orgName, envName string, record map[string]interface{}) error {
+const apidPath = "/analytics"
+const axRecordType = "APIAnalytics"
+
+func TimeToUnix(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
+func SendAnalyticsRecord(env adapter.Env, apidBase url.URL, auth *auth.VerifyApiKeySuccessResponse, record *Record) error {
 	log := env.Logger()
 
-	log.Infof("SendAnalyticsRecord\n")
-
-	if apidBase == "" || orgName == "" || envName == "" {
-		return fmt.Errorf("apidBase, orgName, envName are required")
+	if auth.Organization == "" || auth.Environment == "" {
+		return fmt.Errorf("organization and environment are required in auth: %v", auth)
 	}
 
-	annotateWithAuthFields(env, apidBase, orgName, envName, record)
+	record.RecordType = axRecordType
 
-	parsed, _ := url.Parse(apidBase) // already validated
-	parsed.Path = path.Join(parsed.Path, "/analytics")
-	apidUrl := parsed.String()
+	// populate auth context
+	record.DeveloperEmail = auth.Developer.Email
+	record.DeveloperApp = auth.App.Name
+	record.AccessToken = auth.ClientId.ClientSecret
+	record.ClientID = auth.ClientId.ClientId
+	record.APIProduct = auth.ApiProduct.Name
 
-	record["recordType"] = "APIAnalytics"
-	records := []map[string]interface{}{
-		record,
-	}
+	apidBase.Path = path.Join(apidBase.Path, apidPath)
+	apidBaseString := apidBase.String()
 
-	// convert times to ms ints
-	for k, v := range record {
-		if t, ok := v.(time.Time); ok {
-			record[k] = t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
-		}
-	}
-
-	request := map[string]interface{}{
-		"organization": orgName,
-		"environment":  envName,
-		"records":      records,
+	request := Request{
+		Organization: auth.Organization,
+		Environment: auth.Environment,
+		Records: []Record{ *record },
 	}
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(request)
 
-	req, err := http.NewRequest(http.MethodPost, apidUrl, body)
+	req, err := http.NewRequest(http.MethodPost, apidBaseString, body)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func SendAnalyticsRecord(env adapter.Env, apidBase, orgName, envName string, rec
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	log.Infof("Sending to apid (%s): %s\n", apidUrl, body)
+	log.Infof("Sending to apid (%s): %s\n", apidBaseString, body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -83,58 +83,6 @@ func SendAnalyticsRecord(env adapter.Env, apidBase, orgName, envName string, rec
 		return fmt.Errorf("analytics not sent. reason: %s, code: %s",
 			errorResponse.Reason, errorResponse.ErrorCode)
 	}
-}
-
-
-func annotateWithAuthFields(env adapter.Env, apidBase, orgName, envName string, record map[string]interface{}) {
-	log := env.Logger()
-
-	// todo: hack - perform authentication here as Istio is not able to pass auth context
-	apiKey := ""
-	if v := record["apikey"]; v != nil {
-		apiKey = v.(string)
-		delete(record, "apikey")
-	}
-
-	proxy := ""
-	if v := record["apigeeproxy"]; v != nil {
-		proxy = v.(string)
-		delete(record, "apigeeproxy")
-	}
-
-	path := "/"
-	if v := record["request_uri"]; v != nil {
-		path = v.(string)
-		if path == "" {
-			path = "/"
-		}
-	}
-
-	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
-		Key:              apiKey,
-		OrganizationName: orgName,
-		UriPath:          path,
-		ApiProxyName:	  proxy,
-		EnvironmentName:  envName,
-	}
-
-	success, fail, err := auth.VerifyAPIKey(env, apidBase, verifyApiKeyRequest)
-	if err != nil {
-		log.Warningf("annotateWithAuthFields error: %v\n", err)
-		return
-	}
-	if fail != nil {
-		log.Warningf("annotateWithAuthFields fail: %v\n", fail.ResponseMessage)
-		return
-	}
-
-	record["apiproxy"] = proxy
-	record["apiRevision"] = "" // todo: is this necessary? available?
-	record["developerEmail"] = success.Developer.Email
-	record["developerApp"] = success.App.Name
-	record["accessToken"] = success.ClientId.ClientSecret
-	record["clientID"] = success.ClientId.ClientId
-	record["apiProduct"] = success.ApiProduct.Name
 }
 
 type ErrorResponse struct {

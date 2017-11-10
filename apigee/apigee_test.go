@@ -250,6 +250,9 @@ func writeConfig(t *testing.T, ts *httptest.Server, configDir string) {
 	}
 }
 
+//
+// Keep in sync with testdata/operatorconfig/config.yaml
+//
 var configYaml = `
 # handler configuration for adapter 'apigee'
 apiVersion: "config.istio.io/v1alpha2"
@@ -275,18 +278,28 @@ spec:
 ---
 # instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
-kind: logentry
+kind: analytics
 metadata:
   name: helloworld
   namespace: istio-system
 spec:
-  severity: '"Default"'
-  timestamp: request.time
-  variables:
-    apikey: request.headers["apikey"] | "" # HACK
-    apigeeproxy: '"helloworld"'
-    client_received_start_timestamp: request.time
-  monitoredResourceType: '"UNSPECIFIED"'
+  apikey: request.headers["apikey"] | "" # HACK
+  apigeeproxy: '"helloworld"' # HACK
+  apigeeproxy_revision: 0 # HACK
+  response_status_code: response.code | 0
+  client_ip: source.ip | ip("0.0.0.0")
+  request_verb: request.method | ""
+  request_uri: request.path | ""
+  request_path: request.path | ""
+  useragent: request.useragent | ""
+  client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
+  client_received_end_timestamp: request.time
+  target_sent_start_timestamp: request.time
+  target_sent_end_timestamp: request.time
+  target_received_start_timestamp: response.time
+  target_received_end_timestamp: response.time
+  client_sent_start_timestamp: response.time
+  client_sent_end_timestamp: response.time
 ---
 # rule to dispatch to handler 'apigee'
 apiVersion: "config.istio.io/v1alpha2"
@@ -300,6 +313,6 @@ spec:
   - handler: apigee-handler.apigee
     instances:
     - helloworld.auth
-    - helloworld.logentry
+    - helloworld.analytics
 
 `

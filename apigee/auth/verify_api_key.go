@@ -10,21 +10,20 @@ import (
 	"istio.io/mixer/pkg/adapter"
 )
 
-func VerifyAPIKey(env adapter.Env, apidBase string, verifyRequest VerifyApiKeyRequest) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {
+func VerifyAPIKey(env adapter.Env, apidBase url.URL, verifyRequest VerifyApiKeyRequest) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {
 	log := env.Logger()
 
 	// clients don't need to set
 	verifyRequest.Action = "verify"
 	verifyRequest.ValidateAgainstApiProxiesAndEnvs = true
 
-	parsed, _ := url.Parse(apidBase) // already validated
-	parsed.Path = path.Join(parsed.Path, "/verifiers/apikey")
-	apidUrl := parsed.String()
+	apidBase.Path = path.Join(apidBase.Path, "/verifiers/apikey")
+	apidBaseString := apidBase.String()
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(verifyRequest)
 
-	req, err := http.NewRequest(http.MethodPost, apidUrl, body)
+	req, err := http.NewRequest(http.MethodPost, apidBaseString, body)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -32,7 +31,7 @@ func VerifyAPIKey(env adapter.Env, apidBase string, verifyRequest VerifyApiKeyRe
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	log.Infof("Sending to apid (%s): %s\n", apidUrl, body)
+	log.Infof("Sending to apid (%s): %s\n", apidBaseString, body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)

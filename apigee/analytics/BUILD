@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "analytics.go",
+        "analytics_structs.go",
     ],
     visibility = ["//visibility:public"],
     deps = [
