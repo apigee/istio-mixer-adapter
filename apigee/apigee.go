@@ -148,7 +148,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
 			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
 			APIProxy:                     inst.Apigeeproxy,
-			//APIProxyRevision:			  0, // todo: is this available?
+			APIProxyRevision:			  int(inst.ApigeeproxyRevision), // todo: is this available?
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,

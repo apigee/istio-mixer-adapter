@@ -27,5 +27,5 @@ message Template {
     // auth hack... to be removed later
     string apikey = 200;
     string apigeeproxy = 201;
-    string apigeeproxy_revision = 202;
+    int64 apigeeproxy_revision = 202;
 }
