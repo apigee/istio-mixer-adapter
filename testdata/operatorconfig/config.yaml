@@ -23,7 +23,7 @@ spec:
   uripath: request.path | "/"
   apigeeproxy: '"helloworld"'
 ---
-# instance configuration for template 'logentry'
+# instance configuration for template 'analytics'
 apiVersion: "config.istio.io/v1alpha2"
 kind: analytics
 metadata:

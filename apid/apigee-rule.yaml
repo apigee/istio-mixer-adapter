@@ -15,29 +15,30 @@ spec:
   uripath: request.path | "/"
   apigeeproxy: '"helloworld"'
 ---
-# instance configuration for template 'logentry'
+# instance configuration for template 'analytics'
 apiVersion: "config.istio.io/v1alpha2"
-kind: logentry
+kind: analytics
 metadata:
   name: apigee
   namespace: istio-system
 spec:
-  severity: '"Default"'
-  timestamp: request.time
-  variables:
-    apikey: request.headers["apikey"] | "" # HACK
-    apigeeproxy: '"helloworld"'
-    response_status_code: response.code | 0
-    client_ip: source.ip | ip("0.0.0.0")
-    request_verb: request.method | ""
-    request_uri: request.path | ""
-    request_path: request.path | ""
-    useragent: request.useragent | ""
-    client_received_start_timestamp: request.time
-    client_received_end_timestamp: request.time
-    client_sent_start_timestamp: response.time
-    client_sent_end_timestamp: response.time
-  monitoredResourceType: '"UNSPECIFIED"'
+  apikey: request.headers["apikey"] | "" # HACK
+  apigeeproxy: '"helloworld"' # HACK
+  apigeeproxy_revision: 0 # HACK
+  response_status_code: response.code | 0
+  client_ip: source.ip | ip("0.0.0.0")
+  request_verb: request.method | ""
+  request_uri: request.path | ""
+  request_path: request.path | ""
+  useragent: request.useragent | ""
+  client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
+  client_received_end_timestamp: request.time
+  target_sent_start_timestamp: request.time
+  target_sent_end_timestamp: request.time
+  target_received_start_timestamp: response.time
+  target_received_end_timestamp: response.time
+  client_sent_start_timestamp: response.time
+  client_sent_end_timestamp: response.time
 ---
 # rule: dispatch to handler 'apigee-handler'
 apiVersion: "config.istio.io/v1alpha2"
@@ -51,7 +52,7 @@ spec:
   - handler: apigee-handler.apigee
     instances:
     - apigee.auth
-    - apigee.logentry
+    - apigee.analytics
 ---
 
 # hack to workaround Mixer bug: deny all requests without apikey header

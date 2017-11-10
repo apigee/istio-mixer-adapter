@@ -79,6 +79,7 @@ To avoid errors in the Mixer log, add zipkin:
 
 ### Install Istio-managed test services
 
+    cd <istio-mixer-adapter>/apid
     kubectl apply -f helloworld-service.yaml
     kubectl apply -f httpbin-service.yaml
 
@@ -95,7 +96,6 @@ It should succeed as we haven't installed Apigee yet.
 
 ### Install apid and configure Apigee mixer adapter  
 
-    cd <istio-mixer-adapter>/apid
     kubectl apply -f apid-service.yaml
     kubectl apply -f apigee-adapter.yaml
     kubectl apply -f apigee-handler.yaml
