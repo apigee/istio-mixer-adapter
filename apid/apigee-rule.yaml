@@ -46,8 +46,7 @@ metadata:
   name: apigee
   namespace: istio-system
 spec:
-#  match: destination.labels["gateway"]=="apigee"
-  match: "true"
+  match: destination.labels["gateway"]=="apigee"
   actions:
   - handler: apigee-handler.apigee
     instances:

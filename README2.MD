@@ -35,7 +35,7 @@ Mixer build instructions are for Goobunto Linux.
 
 ## Install
 
-Instructions are on OS X using Minikube.
+Instructions are on OS X using Minikube w/ xhyve driver.
 
 ### Install Istio
 

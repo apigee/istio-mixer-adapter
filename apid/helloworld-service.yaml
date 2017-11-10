@@ -7,7 +7,6 @@ metadata:
   name: helloworld
   labels:
     app: helloworld
-    gateway: apigee
 spec:
 #  type: NodePort
   ports:
@@ -26,6 +25,7 @@ spec:
     metadata:
       labels:
         app: helloworld
+        gateway: apigee
     spec:
       containers:
       - name: helloworld
