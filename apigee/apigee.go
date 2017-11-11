@@ -139,6 +139,15 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	for _, inst := range instances {
 		log.Infof("HandleAnalytics: %v\n", inst)
 
+		clientIP := ""
+		rawIP := inst.ClientIp.([]uint8)
+		if len(rawIP) == net.IPv4len || len(rawIP) == net.IPv6len {
+			ip := net.IP(rawIP)
+			if !ip.IsUnspecified() {
+				clientIP = ip.String()
+			}
+		}
+
 		record := &analytics.Record{
 			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
 			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
@@ -153,7 +162,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,
-			ClientIP:                     inst.ClientIp.(net.IP).String(),
+			ClientIP:                     clientIP,
 			UserAgent:                    inst.Useragent,
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 		}

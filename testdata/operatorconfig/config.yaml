@@ -32,11 +32,11 @@ metadata:
 spec:
   apikey: request.headers["apikey"] | "" # HACK
   apigeeproxy: '"helloworld"' # HACK
-  apigeeproxy_revision: "0" # HACK
-  response_status_code: response.code | 0
+  apigeeproxy_revision: request.size | 0 # HACK
+  response_status_code: "0"
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
-  request_uri: request.path | ""
+  request_uri: request.path | "" # TODO - fix
   request_path: request.path | ""
   useragent: request.useragent | ""
   client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
