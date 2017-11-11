@@ -285,7 +285,7 @@ metadata:
 spec:
   apikey: request.headers["apikey"] | "" # HACK
   apigeeproxy: '"helloworld"' # HACK
-  apigeeproxy_revision: 0 # HACK
+  apigeeproxy_revision: "0"" # HACK
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
