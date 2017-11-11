@@ -177,6 +177,8 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		// todo: ignoring fail & err results for now
 		success, _, _ := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
 		if success != nil {
+			// todo: org isn't being returned by apid, why?
+			success.Organization = h.orgName
 			return analytics.SendAnalyticsRecord(h.env, h.apidBase, success, record)
 		}
 	}
