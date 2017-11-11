@@ -15,6 +15,7 @@ import (
 	"istio.io/mixer/pkg/adapter"
 	"istio.io/mixer/template/logentry"
 	"istio.io/mixer/template/quota"
+	"net"
 )
 
 ////////////////// GetInfo //////////////////////////
@@ -152,7 +153,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,
-			ClientIP:                     inst.ClientIp.(string),
+			ClientIP:                     inst.ClientIp.(net.IP).String(),
 			UserAgent:                    inst.Useragent,
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 		}
