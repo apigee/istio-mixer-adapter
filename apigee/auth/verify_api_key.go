@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"istio.io/mixer/pkg/adapter"
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
 func VerifyAPIKey(env adapter.Env, apidBase url.URL, verifyRequest VerifyApiKeyRequest) (*VerifyApiKeySuccessResponse, *ErrorResponse, error) {

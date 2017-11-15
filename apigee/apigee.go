@@ -12,9 +12,9 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	authT "github.com/apigee/istio-mixer-adapter/template/auth"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
-	"istio.io/mixer/pkg/adapter"
-	"istio.io/mixer/template/logentry"
-	"istio.io/mixer/template/quota"
+	"istio.io/istio/mixer/pkg/adapter"
+	"istio.io/istio/mixer/template/logentry"
+	"istio.io/istio/mixer/template/quota"
 	"net"
 )
 
@@ -24,7 +24,7 @@ import (
 func GetInfo() adapter.Info {
 	return adapter.Info{
 		Name:        "apigee",
-		Impl:        "istio.io/mixer/adapter/apigee",
+		Impl:        "istio.io/istio/mixer/adapter/apigee",
 		Description: "Apigee adapter",
 		SupportedTemplates: []string{
 			logentry.TemplateName,

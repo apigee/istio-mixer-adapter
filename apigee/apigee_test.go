@@ -9,10 +9,10 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee/testapigeeadapter"
 	mixerapi "istio.io/api/mixer/v1"
-	"istio.io/mixer/pkg/adapter"
-	pkgTmpl "istio.io/mixer/pkg/template"
-	"istio.io/mixer/template"
-	"istio.io/mixer/test/testenv"
+	"istio.io/istio/mixer/pkg/adapter"
+	pkgTmpl "istio.io/istio/mixer/pkg/template"
+	"istio.io/istio/mixer/template"
+	"istio.io/istio/mixer/test/testenv"
 	"os"
 	"io/ioutil"
 	"github.com/apigee/istio-mixer-adapter/apigee/testutil"
@@ -25,7 +25,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	authT "github.com/apigee/istio-mixer-adapter/template/auth"
 	rpc "github.com/googleapis/googleapis/google/rpc"
-	"istio.io/mixer/template/logentry"
+	"istio.io/istio/mixer/template/logentry"
 )
 
 // todo: can we run multiple Mixer environment tests?

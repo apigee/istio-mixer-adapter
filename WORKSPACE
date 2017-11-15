@@ -16,18 +16,18 @@ proto_register_toolchains()
 load("@io_bazel_rules_go//go:def.bzl", "go_repository")
 
 go_repository(
-   name = "com_github_istio_mixer",
-   commit = "0abf3496329789992df39f752a5af8e76686f2c7",
-   importpath = "istio.io/mixer",
+   name = "io_istio_istio",
+   commit = "58a96fc2bc1e2d2fa0dac2423aa461b25ac3ed10",
+   importpath = "istio.io/istio",
 )
 
-load("@com_github_istio_mixer//:adapter_author_deps.bzl", "mixer_adapter_repositories")
+load("@io_istio_istio//mixer:adapter_author_deps.bzl", "mixer_adapter_repositories")
 
-load("@com_github_istio_mixer//:istio_api.bzl", "go_istio_api_repositories")
+load("@io_istio_istio//mixer:istio_api.bzl", "go_istio_api_repositories")
 
-load("@com_github_istio_mixer//:googleapis.bzl", "go_googleapis_repositories")
+load("@io_istio_istio//mixer:googleapis.bzl", "go_googleapis_repositories")
 
-load("@com_github_istio_mixer//:x_tools_imports.bzl", "go_x_tools_imports_repositories")
+load("@io_istio_istio//mixer:x_tools_imports.bzl", "go_x_tools_imports_repositories")
 
 mixer_adapter_repositories()
 

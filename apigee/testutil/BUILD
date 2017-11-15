@@ -9,6 +9,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//apigee/auth:go_default_library",
-        "@com_github_istio_mixer//pkg/adapter:go_default_library",
+        "@io_istio_istio//mixer/pkg/adapter:go_default_library",
     ],
 )
