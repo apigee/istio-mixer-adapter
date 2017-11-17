@@ -8,7 +8,7 @@ metadata:
   name: apigee-handler
   namespace: istio-system
 spec:
-  apid_base: http://192.168.64.36:30580
+  apid_base: http://192.168.64.43:30059
   org_name: edgex01
   env_name: test
   proxy_name: helloworld
@@ -17,17 +17,29 @@ spec:
 apiVersion: "config.istio.io/v1alpha2"
 kind: auth
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
   apikey: request.headers["apikey"] | ""
   uripath: request.path | "/"
 ---
+apiVersion: "config.istio.io/v1alpha2"
+kind: quota
+metadata:
+  name: apigee
+  namespace: istio-system
+spec:
+  dimensions:
+    source: source.labels["app"] | source.service | "unknown"
+    sourceVersion: source.labels["version"] | "unknown"
+    destination: destination.labels["app"] | destination.service | "unknown"
+    destinationVersion: destination.labels["version"] | "unknown"
+---
 # instance configuration for template 'analytics'
 apiVersion: "config.istio.io/v1alpha2"
 kind: analytics
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
   apikey: request.headers["apikey"] | "" # HACK
@@ -50,12 +62,13 @@ spec:
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
-  name: helloworld
+  name: apigee-rule
   namespace: istio-system
 spec:
   match: "true"
   actions:
   - handler: apigee-handler.apigee
     instances:
-    - helloworld.auth
-    - helloworld.analytics
+    - apigee.auth
+    - apigee.quota
+    - apigee.analytics

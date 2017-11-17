@@ -18,6 +18,7 @@ go_library(
         "@io_istio_istio//mixer/pkg/adapter:go_default_library",
         "@io_istio_istio//mixer/template/logentry:go_default_library",
         "@io_istio_istio//mixer/template/quota:go_default_library",
+        "@io_istio_istio//mixer/pkg/status:go_default_library",
     ],
 )
 
@@ -49,6 +50,7 @@ go_test(
         "@com_github_googleapis_googleapis//:google/rpc",
         "@io_istio_istio//mixer/template/logentry:go_default_library",
         "@io_istio_istio//mixer/template/quota:go_default_library",
+        "@io_istio_istio//mixer/pkg/status:go_default_library",
         "@in_gopkg_yaml_v2//:go_default_library",
     ],
 )

@@ -16,6 +16,7 @@ import (
 	"istio.io/istio/mixer/template/logentry"
 	"istio.io/istio/mixer/template/quota"
 	"net"
+	"istio.io/istio/mixer/pkg/status"
 )
 
 ////////////////// GetInfo //////////////////////////
@@ -191,9 +192,45 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return nil
 }
 
-func (*handler) HandleQuota(ctx context.Context, _ *quota.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
+func (h *handler) HandleQuota(ctx context.Context, inst *quota.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
+	log := h.env.Logger()
+	log.Infof("HandleQuota: %v args: %v\n", inst, args)
+
+	dim := inst.Dimensions
+	apiKey := dim["apikey"].(string)
+	requestPath := dim["requestPath"].(string)
+
+	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+		Key:              apiKey,
+		OrganizationName: h.orgName,
+		UriPath:          requestPath,
+		ApiProxyName:	  h.proxyName,
+		EnvironmentName:  h.envName,
+	}
+	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
+	if fail != nil || err != nil {
+		return adapter.QuotaResult{
+		}, err
+	}
+
+	// no quota, allow
+	if success.ApiProduct.QuotaLimit == "" {
+		return adapter.QuotaResult{
+			Amount:        args.QuotaAmount,
+		}, nil
+	}
+
+	// todo: apply quota
+	//success.ApiProduct.QuotaInterval // 1
+	//success.ApiProduct.QuotaLimit    // "5"
+	//success.ApiProduct.QuotaTimeunit // "MINUTE"
+	//args.BestEffort
+	//args.QuotaAmount
+	//args.DeduplicationID
+
 	return adapter.QuotaResult{
-		ValidDuration: 1000000000 * time.Second,
+		Status:        status.OK,
+		ValidDuration: time.Second,
 		Amount:        args.QuotaAmount,
 	}, nil
 }
