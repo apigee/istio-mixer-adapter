@@ -104,6 +104,7 @@ func TestConfig(t *testing.T) {
 			"apikey": "xxx",
 		},
 		"request.time": time.Now(),
+		"response.time": time.Now(),
 	}, args.ConfigIdentityAttribute, args.ConfigIdentityAttributeDomain)
 
 	// call check interface
@@ -264,6 +265,7 @@ spec:
   apid_base: {{.URL}}
   org_name: edgex01
   env_name: test
+  proxy_name: helloworld
 ---
 # instance configuration for template 'auth'
 apiVersion: "config.istio.io/v1alpha2"
@@ -274,7 +276,6 @@ metadata:
 spec:
   apikey: request.headers["apikey"] | ""
   uripath: request.path | "/"
-  apigeeproxy: '"helloworld"'
 ---
 # instance configuration for template 'logentry'
 apiVersion: "config.istio.io/v1alpha2"
@@ -284,8 +285,6 @@ metadata:
   namespace: istio-system
 spec:
   apikey: request.headers["apikey"] | "" # HACK
-  apigeeproxy: '"helloworld"' # HACK
-  apigeeproxy_revision: "0"" # HACK
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""

@@ -44,6 +44,7 @@ func VerifyApiKeyOr(target http.HandlerFunc) http.HandlerFunc {
 					Developer: auth.DeveloperDetails{
 						Id: "devId",
 					},
+					Environment: req.EnvironmentName,
 				}
 				if err := json.NewEncoder(w).Encode(verifyApiKeyResponse); err != nil {
 					log.Fatalf("VerifyApiKeyOr error encoding: %v", verifyApiKeyResponse)

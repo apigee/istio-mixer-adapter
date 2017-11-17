@@ -13,7 +13,6 @@ metadata:
 spec:
   apikey: request.headers["apikey"] | ""
   uripath: request.path | "/"
-  apigeeproxy: '"helloworld"'
 ---
 # instance configuration for template 'analytics'
 apiVersion: "config.istio.io/v1alpha2"
@@ -23,15 +22,14 @@ metadata:
   namespace: istio-system
 spec:
   apikey: request.headers["apikey"] | "" # HACK
-  apigeeproxy: '"helloworld"' # HACK
-  apigeeproxy_revision: "0" # HACK
+  apigeeproxy: destination.name || "unknown"
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
   request_uri: request.path | ""
   request_path: request.path | ""
   useragent: request.useragent | ""
-  client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
+  client_received_start_timestamp: request.time | timestamp("")
   client_received_end_timestamp: request.time
   target_sent_start_timestamp: request.time
   target_sent_end_timestamp: request.time

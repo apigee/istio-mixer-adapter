@@ -13,3 +13,4 @@ spec:
   apid_base: http://apid:9000
   org_name: edgex01
   env_name: test
+  proxy_name: helloworld

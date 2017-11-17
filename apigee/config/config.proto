@@ -7,7 +7,8 @@ option go_package="config";
 import "google/protobuf/descriptor.proto";
 
 message Params {
-    string apid_base = 1;
-    string org_name  = 2;
-    string env_name  = 3;
+    string apid_base   = 1;
+    string org_name    = 2;
+    string env_name    = 3;
+    string proxy_name  = 4;
 }

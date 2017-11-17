@@ -73,6 +73,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		apidBase:    *apidBase,
 		orgName:     b.adapterConfig.OrgName,
 		envName:     b.adapterConfig.EnvName,
+		proxyName:   b.adapterConfig.ProxyName,
 		env:         env,
 	}, nil
 }
@@ -98,6 +99,10 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 		ce = ce.Append("env_name", fmt.Errorf("env_name is required"))
 	}
 
+	if b.adapterConfig.ProxyName == "" {
+		ce = ce.Append("proxy_name", fmt.Errorf("proxy_name is required"))
+	}
+
 	return ce
 }
 
@@ -112,6 +117,7 @@ type handler struct {
 	apidBase    url.URL
 	orgName     string
 	envName     string
+	proxyName   string
 	env         adapter.Env
 }
 
@@ -157,8 +163,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
 			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
 			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
-			APIProxy:                     inst.Apigeeproxy,
-			APIProxyRevision:			  int(inst.ApigeeproxyRevision), // todo: is this available?
+			APIProxy:                     h.proxyName,
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,
@@ -171,7 +176,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			Key:              inst.Apikey,
 			OrganizationName: h.orgName,
 			UriPath:          inst.RequestPath,
-			ApiProxyName:	  inst.Apigeeproxy,
+			ApiProxyName:	  h.proxyName,
 			EnvironmentName:  h.envName,
 		}
 		// todo: ignoring fail & err results for now
@@ -210,7 +215,7 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 		Key:              inst.Apikey,
 		OrganizationName: h.orgName,
 		UriPath:          inst.Uripath,
-		ApiProxyName:	  inst.Apigeeproxy,
+		ApiProxyName:	  h.proxyName,
 		EnvironmentName:  h.envName,
 	}
 
