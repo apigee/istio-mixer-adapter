@@ -197,8 +197,15 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quota.Instance, args ad
 	log.Infof("HandleQuota: %v args: %v\n", inst, args)
 
 	dim := inst.Dimensions
-	apiKey := dim["apikey"].(string)
-	requestPath := dim["requestPath"].(string)
+	apiKey, ok := dim["apikey"].(string)
+	if !ok || apiKey == "" {
+		return adapter.QuotaResult{}, fmt.Errorf("apikey attribute required")
+	}
+	requestPath, ok := dim["uripath"].(string)
+	if !ok || requestPath == "" {
+		return adapter.QuotaResult{}, fmt.Errorf("uripath attribute required")
+	}
+	log.Infof("apiKey: %v, requestPath: %v", apiKey, requestPath)
 
 	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
 		Key:              apiKey,
@@ -209,8 +216,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quota.Instance, args ad
 	}
 	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
 	if fail != nil || err != nil {
-		return adapter.QuotaResult{
-		}, err
+		return adapter.QuotaResult{}, err
 	}
 
 	// no quota, allow
@@ -255,8 +261,6 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 		ApiProxyName:	  h.proxyName,
 		EnvironmentName:  h.envName,
 	}
-
-	//log.Errorf("sending: %v, %v", h.apidBase, verifyApiKeyRequest)
 
 	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
 	if err != nil {

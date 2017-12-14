@@ -1,0 +1,29 @@
+# Eclipse artifacts
+.project
+.pydevproject
+# Intellij
+*.iml
+.idea/
+# Visual Studio Code
+.vscode/
+# Bazel
+/bazel-*
+vendor
+*.descriptor_set
+# vi backups
+*.bak
+# python artifacts
+*.pyc
+# Vm setup generated files
+cluster.env
+kubedns
+# lint
+lintconfig.gen.json
+# dep
+Gopkg.lock
+# bazel
+bazel-bin
+bazel-genfiles
+bazel-istio-mixer-adapter
+bazel-out
+bazel-testlogs

@@ -23,9 +23,19 @@ func TestAnalyticsSubmit(t *testing.T) {
 		},
 	}
 	axRecord := &Record{
+		ResponseStatusCode: 201,
+		RequestVerb: "PATCH",
+		RequestPath: "/test",
+		UserAgent: "007",
 		ClientReceivedStartTimestamp: TimeToUnix(startTime),
+		ClientReceivedEndTimestamp: TimeToUnix(startTime),
+		ClientSentStartTimestamp: TimeToUnix(startTime),
+		ClientSentEndTimestamp: TimeToUnix(startTime),
+		TargetSentStartTimestamp: TimeToUnix(startTime),
+		TargetSentEndTimestamp: TimeToUnix(startTime),
+		TargetReceivedStartTimestamp: TimeToUnix(startTime),
+		TargetReceivedEndTimestamp: TimeToUnix(startTime),
 	}
-
 	ts := makeTestServer(authResponse, axRecord, t)
 	defer ts.Close()
 	apidBase, err := url.Parse(ts.URL)

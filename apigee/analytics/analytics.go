@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	//"time"
 	"istio.io/istio/mixer/pkg/adapter"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"time"

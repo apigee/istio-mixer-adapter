@@ -22,14 +22,14 @@ metadata:
   namespace: istio-system
 spec:
   apikey: request.headers["apikey"] | "" # HACK
-  apigeeproxy: destination.name || "unknown"
+  apigeeproxy: destination.name | "unknown"
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
-  request_uri: request.path | ""
+  request_uri: request.path | "" # todo: fix
   request_path: request.path | ""
   useragent: request.useragent | ""
-  client_received_start_timestamp: request.time | timestamp("")
+  client_received_start_timestamp: request.time
   client_received_end_timestamp: request.time
   target_sent_start_timestamp: request.time
   target_sent_end_timestamp: request.time
@@ -49,6 +49,8 @@ spec:
     sourceVersion: source.labels["version"] | "unknown"
     destination: destination.labels["app"] | destination.service | "unknown"
     destinationVersion: destination.labels["version"] | "unknown"
+    apikey: request.headers["apikey"] | ""
+    uripath: request.path | "/"
 ---
 # rule: dispatch to handler 'apigee-handler'
 apiVersion: "config.istio.io/v1alpha2"
