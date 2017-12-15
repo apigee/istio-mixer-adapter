@@ -53,9 +53,9 @@ To connect to minikube docker env in a terminal window, execute:
 
 ### Update Istio.yaml to use custom Mixer
 
-Edit <istio_dir>/install/kubernetes/istio.yaml (~line 273) to switch to custom Mixer:
+Edit <istio_dir>/install/kubernetes/istio-auth.yaml (~line 267) to switch to custom Mixer:
 
-        # image: gcr.io/istio-testing/mixer:0abf3496329789992df39f752a5af8e76686f2c7
+        # image: gcr.io/istio-testing/mixer:5253b6b574a98b209c0ef3d0d6e90c1b8d6a5c2a
         image: gcr.io/apigee-edgex-project/mixer:experiment
 
 ### Pull the custom Mixer image that includes Apigee adapter into docker  
@@ -71,10 +71,6 @@ You must also have gcloud installed and configured prior to this step.
     kubectl apply -f install/kubernetes/istio-auth.yaml
     kubectl apply -f install/kubernetes/istio-initializer.yaml
     
-To avoid errors in the Mixer log, add zipkin:
-    
-    kubectl apply -f install/kubernetes/addons/zipkin.yaml
-
 ## Set up Apigee
 
 ### Install Istio-managed test services
@@ -106,17 +102,19 @@ Try a test call again if you'd like.
     
 It should still succeed as we haven't applied any rules yet.
 
-### Apply Apigee apikey & analytics rule
+### Define Istio API and apply rule
 
+    kubectl apply -f api-spec.yaml
     kubectl apply -f apigee-rule.yaml
     
-This rule applies apikey and analytics to all calls.
+This rule applies apikey and analytics to all calls with label "gateway: apigee"
     
 Try it.
     
-    curl -H "apikey: badkey" $ingress
-    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $ingress
+    curl $ingress/get
+    curl -H "apikey: badkey" $ingress/get
     curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $ingress/get
+    curl -H "apikey: 4XxBlHNPEhEhiX23I305iayNfNdxPmGJ" $ingress
 
-The call with a bad apikey should now fail, the ones with a valid one succeed.
+The call with a no apikey or a bad apikey should now fail, the valid one should succeed.
 The calls will show up in the edge analytics (edgex01 org, helloworld proxy).

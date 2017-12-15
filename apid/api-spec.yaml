@@ -1,0 +1,45 @@
+# Define an Istio API
+apiVersion: config.istio.io/v1alpha2
+kind: HTTPAPISpec
+metadata:
+  creationTimestamp: null
+  name: apikey-spec
+  namespace: default
+spec:
+  apiKeys: # populate request.api_key from query param "apikey" or header "apikey"
+  - query: apikey
+  - header: apikey
+  attributes:
+    attributes:
+      api.service: # populate api.service
+        stringValue: apigee
+      api.version: # populate api.version
+        stringValue: v1
+      api.operation: # populate api.operation
+        stringValue: /
+  patterns:
+    # example: if method is GET and path matches /get, override api.operation to "/get"
+  - attributes:
+      attributes:
+        api.operation:
+          stringValue: /get
+    httpMethod: GET
+    uriTemplate: /get
+---
+# Bind the Istio API to services
+# (Tells Pilot which Proxies to send the spec to)
+apiVersion: config.istio.io/v1alpha2
+kind: HTTPAPISpecBinding
+metadata:
+  creationTimestamp: null
+  name: apikey-binding
+  namespace: default
+spec:
+  apiSpecs:
+  - name: apikey-spec
+    namespace: default
+  services:
+  - name: helloworld
+    namespace: default
+  - name: httpbin
+    namespace: default

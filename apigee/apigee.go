@@ -10,7 +10,6 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	authT "github.com/apigee/istio-mixer-adapter/template/auth"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/template/logentry"
@@ -31,7 +30,6 @@ func GetInfo() adapter.Info {
 		SupportedTemplates: []string{
 			logentry.TemplateName,
 			quota.TemplateName,
-			authT.TemplateName,
 			analyticsT.TemplateName,
 			apikey.TemplateName,
 		},
@@ -54,7 +52,6 @@ type builder struct {
 
 // force interface checks at compile time
 var _ adapter.HandlerBuilder = (*builder)(nil)
-var _ authT.HandlerBuilder = (*builder)(nil)
 var _ logentry.HandlerBuilder = (*builder)(nil)
 var _ quota.HandlerBuilder = (*builder)(nil)
 var _ analyticsT.HandlerBuilder = (*builder)(nil)
@@ -110,7 +107,6 @@ func (b *builder) Validate() (ce *adapter.ConfigErrors) {
 	return ce
 }
 
-func (*builder) SetAuthTypes(t map[string]*authT.Type) {}
 func (*builder) SetLogEntryTypes(t map[string]*logentry.Type) {}
 func (*builder) SetQuotaTypes(map[string]*quota.Type) {}
 func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
@@ -128,7 +124,6 @@ type handler struct {
 
 // force interface checks at compile time
 var _ adapter.Handler = (*handler)(nil)
-var _ authT.Handler = (*handler)(nil)
 var _ quota.Handler = (*handler)(nil)
 var _ logentry.Handler = (*handler)(nil)
 var _ analyticsT.Handler = (*handler)(nil)
@@ -243,54 +238,6 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quota.Instance, args ad
 		Status:        status.OK,
 		ValidDuration: time.Second,
 		Amount:        args.QuotaAmount,
-	}, nil
-}
-
-func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	log := h.env.Logger()
-	log.Infof("HandleAuth: %v\n", inst)
-
-	if inst.Apikey == "" {
-		return adapter.CheckResult{
-			Status: rpc.Status{
-				Code:    int32(rpc.UNAUTHENTICATED),
-				Message: "Unauthorized",
-			},
-		}, nil
-	}
-
-	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
-		Key:              inst.Apikey,
-		OrganizationName: h.orgName,
-		UriPath:          inst.Uripath,
-		ApiProxyName:	  h.proxyName,
-		EnvironmentName:  h.envName,
-	}
-
-	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
-	if err != nil {
-		log.Errorf("apid err: %v\n", err)
-		return adapter.CheckResult{
-			Status: rpc.Status{
-				Code:    int32(rpc.PERMISSION_DENIED),
-				Message: err.Error(),
-			},
-		}, err
-	}
-
-	if success != nil {
-		log.Infof("auth success!\n")
-		return adapter.CheckResult{
-			Status: rpc.Status{Code: int32(rpc.OK)},
-		}, nil
-	}
-
-	log.Infof("auth fail: %v\n", fail.ResponseMessage)
-	return adapter.CheckResult{
-		Status: rpc.Status{
-			Code:    int32(rpc.PERMISSION_DENIED),
-			Message: fail.ResponseMessage,
-		},
 	}, nil
 }
 

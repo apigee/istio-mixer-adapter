@@ -13,16 +13,20 @@ spec:
   env_name: test
   proxy_name: helloworld
 ---
-# instance configuration for template 'auth'
+# instance configuration for template 'apigee.apikey'
 apiVersion: "config.istio.io/v1alpha2"
-kind: auth
+kind: apikey
 metadata:
   name: apigee
   namespace: istio-system
 spec:
-  apikey: request.headers["apikey"] | ""
-  uripath: request.path | "/"
+  api: api.service | ""
+  api_version: api.version | ""
+  api_operation : api.operation
+  api_key : request.api_key
+  timestamp : request.time
 ---
+# instance configuration for template 'apigee.quota'
 apiVersion: "config.istio.io/v1alpha2"
 kind: quota
 metadata:
@@ -37,21 +41,21 @@ spec:
     apikey: request.headers["apikey"] | ""
     uripath: request.path | "/"
 ---
-# instance configuration for template 'analytics'
+# instance configuration for template 'apigee.analytics'
 apiVersion: "config.istio.io/v1alpha2"
 kind: analytics
 metadata:
   name: apigee
   namespace: istio-system
 spec:
-  apikey: request.headers["apikey"] | "" # HACK
+  apikey: request.api_key | ""
   response_status_code: "0"
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
   request_uri: request.path | "" # TODO - fix
   request_path: request.path | ""
   useragent: request.useragent | ""
-  client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
+  client_received_start_timestamp: request.time
   client_received_end_timestamp: request.time
   target_sent_start_timestamp: request.time
   target_sent_end_timestamp: request.time
@@ -71,6 +75,6 @@ spec:
   actions:
   - handler: apigee-handler.apigee
     instances:
-    - apigee.auth
+    - apigee.apikey
     - apigee.quota
     - apigee.analytics

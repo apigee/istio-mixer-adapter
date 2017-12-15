@@ -23,9 +23,9 @@ import (
 	"strconv"
 	"path"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
-	authT "github.com/apigee/istio-mixer-adapter/template/auth"
 	rpc "github.com/googleapis/googleapis/google/rpc"
 	"istio.io/istio/mixer/template/logentry"
+	"istio.io/istio/mixer/template/apikey"
 )
 
 // todo: can we run multiple Mixer environment tests?
@@ -147,14 +147,14 @@ type testHandler struct {
 	t *testing.T
 }
 
-func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr adapter.CheckResult, err error) {
+func (h *testHandler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (cr adapter.CheckResult, err error) {
 
-	if inst.Apikey != "xxx" {
-		h.t.Errorf("Unexpected value in HandleAuth. Expected: %v, got: %v", "xxx", inst.Apikey)
+	if inst.ApiKey != "xxx" {
+		h.t.Errorf("Unexpected value in HandleAuth. Expected: %v, got: %v", "xxx", inst.ApiKey)
 	}
 
-	inst.Apikey = ""
-	cr, err = h.handler.HandleAuth(ctx, inst)
+	inst.ApiKey = ""
+	cr, err = h.handler.HandleApiKey(ctx, inst)
 	if err != nil {
 		h.t.Errorf("Failed unauthenticated call to HandleAuth: %v", err)
 	}
@@ -165,7 +165,7 @@ func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr 
 		h.t.Errorf("HandleAuth unauthenticated message incorrect: %v", cr.Status.Message)
 	}
 
-	inst.Apikey = "fail"
+	inst.ApiKey = "fail"
 	cr, err = h.handler.HandleAuth(ctx, inst)
 	if err != nil {
 		h.t.Errorf("Failed fail call to HandleAuth: %v", err)
@@ -177,7 +177,7 @@ func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr 
 		h.t.Errorf("HandleAuth fail message incorrect: %v", cr.Status.Message)
 	}
 
-	inst.Apikey = "error"
+	inst.ApiKey = "error"
 	cr, err = h.handler.HandleAuth(ctx, inst)
 	if err == nil {
 		h.t.Error("HandleAuth error response missing error")
@@ -186,7 +186,7 @@ func (h *testHandler) HandleAuth(ctx context.Context, inst *authT.Instance) (cr 
 		h.t.Errorf("HandleAuth error code incorrect: %v", cr.Status.Code)
 	}
 
-	inst.Apikey = "success"
+	inst.ApiKey = "success"
 	cr, err = h.handler.HandleAuth(ctx, inst)
 	if err != nil {
 		h.t.Errorf("Failed success call to HandleAuth: %v", err)
@@ -267,31 +267,49 @@ spec:
   env_name: test
   proxy_name: helloworld
 ---
-# instance configuration for template 'auth'
+# instance configuration for template 'apigee.apikey'
 apiVersion: "config.istio.io/v1alpha2"
-kind: auth
+kind: apikey
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
-  apikey: request.headers["apikey"] | ""
-  uripath: request.path | "/"
+  api: api.service | ""
+  api_version: api.version | ""
+  api_operation : api.operation
+  api_key : request.api_key
+  timestamp : request.time
 ---
-# instance configuration for template 'logentry'
+# instance configuration for template 'apigee.quota'
+apiVersion: "config.istio.io/v1alpha2"
+kind: quota
+metadata:
+  name: apigee
+  namespace: istio-system
+spec:
+  dimensions:
+    source: source.labels["app"] | source.service | "unknown"
+    sourceVersion: source.labels["version"] | "unknown"
+    destination: destination.labels["app"] | destination.service | "unknown"
+    destinationVersion: destination.labels["version"] | "unknown"
+    apikey: request.headers["apikey"] | ""
+    uripath: request.path | "/"
+---
+# instance configuration for template 'apigee.analytics'
 apiVersion: "config.istio.io/v1alpha2"
 kind: analytics
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
-  apikey: request.headers["apikey"] | "" # HACK
+  apikey: request.api_key | ""
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
   request_uri: request.path | ""
   request_path: request.path | ""
   useragent: request.useragent | ""
-  client_received_start_timestamp: request.time # HACK - no ability to provide default ts values!
+  client_received_start_timestamp: request.time
   client_received_end_timestamp: request.time
   target_sent_start_timestamp: request.time
   target_sent_end_timestamp: request.time
@@ -304,14 +322,14 @@ spec:
 apiVersion: "config.istio.io/v1alpha2"
 kind: rule
 metadata:
-  name: helloworld
+  name: apigee
   namespace: istio-system
 spec:
   match: "true"
   actions:
   - handler: apigee-handler.apigee
     instances:
-    - helloworld.auth
-    - helloworld.analytics
-
+    - apigee.apikey
+    - apigee.analytics
+    - apigee.quota
 `

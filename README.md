@@ -88,4 +88,4 @@ Note: You'll likely want to adjust the timestamps.
         --timestamp_attributes="request.time=2017-01-01T01:00:00Z,response.time=2017-01-01T01:01:00Z"
 
 
-Analytics should show up in your org. (TODO: Not working.)
+Analytics should show up in your org.

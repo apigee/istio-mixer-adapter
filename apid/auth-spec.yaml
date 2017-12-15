@@ -1,0 +1,29 @@
+# Define an Istio Auth Policy
+apiVersion: config.istio.io/v1alpha2
+kind: EndUserAuthenticationPolicySpec
+metadata:
+  name: auth-spec
+  namespace: default
+spec:
+  jwts:
+  - issuer: accounts.google.com
+    audiences:
+    - 269356943445-7tujg7fu0f7pqurl8cs4ev61uvll01i3.apps.googleusercontent.com
+    jwks_uri: https://www.googleapis.com/oauth2/v3/certs
+---
+# Bind the Istio Auth Policy to services
+# (Tells Pilot which Proxies to send the spec to)
+apiVersion: config.istio.io/v1alpha2
+kind: EndUserAuthenticationPolicySpecBinding
+metadata:
+  name: auth-binding
+  namespace: default
+spec:
+  policies:
+  - name: auth-spec
+    namespace: default
+  services:
+  - name: helloworld
+    namespace: default
+  - name: httpbin
+    namespace: default
