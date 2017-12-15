@@ -17,6 +17,7 @@ import (
 	"istio.io/istio/mixer/template/quota"
 	"net"
 	"istio.io/istio/mixer/pkg/status"
+	"istio.io/istio/mixer/template/apikey"
 )
 
 ////////////////// GetInfo //////////////////////////
@@ -32,6 +33,7 @@ func GetInfo() adapter.Info {
 			quota.TemplateName,
 			authT.TemplateName,
 			analyticsT.TemplateName,
+			apikey.TemplateName,
 		},
 		NewBuilder: createBuilder,
 		DefaultConfig: &config.Params{
@@ -56,6 +58,7 @@ var _ authT.HandlerBuilder = (*builder)(nil)
 var _ logentry.HandlerBuilder = (*builder)(nil)
 var _ quota.HandlerBuilder = (*builder)(nil)
 var _ analyticsT.HandlerBuilder = (*builder)(nil)
+var _ apikey.HandlerBuilder = (*builder)(nil)
 
 // adapter.HandlerBuilder
 func (b *builder) SetAdapterConfig(cfg adapter.Config) {
@@ -111,6 +114,7 @@ func (*builder) SetAuthTypes(t map[string]*authT.Type) {}
 func (*builder) SetLogEntryTypes(t map[string]*logentry.Type) {}
 func (*builder) SetQuotaTypes(map[string]*quota.Type) {}
 func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
+func (*builder) SetApiKeyTypes(map[string]*apikey.Type) {}
 
 ////////////////// Handler //////////////////////////
 
@@ -128,6 +132,7 @@ var _ authT.Handler = (*handler)(nil)
 var _ quota.Handler = (*handler)(nil)
 var _ logentry.Handler = (*handler)(nil)
 var _ analyticsT.Handler = (*handler)(nil)
+var _ apikey.Handler = (*handler)(nil)
 
 // adapter.Handler
 func (h *handler) Close() error { return nil }
@@ -286,5 +291,44 @@ func (h *handler) HandleAuth(ctx context.Context, inst *authT.Instance) (adapter
 			Code:    int32(rpc.PERMISSION_DENIED),
 			Message: fail.ResponseMessage,
 		},
+	}, nil
+}
+
+func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adapter.CheckResult, error) {
+	log := h.env.Logger()
+	log.Infof("HandleApiKey: %v\n", inst)
+
+	if inst.ApiKey == "" {
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied("Unauthorized"),
+		}, nil
+	}
+
+	verifyApiKeyRequest := auth.VerifyApiKeyRequest{
+		Key:              inst.ApiKey,
+		OrganizationName: h.orgName,
+		UriPath:          inst.ApiOperation,
+		ApiProxyName:	  h.proxyName,
+		EnvironmentName:  h.envName,
+	}
+
+	success, fail, err := auth.VerifyAPIKey(h.env, h.apidBase, verifyApiKeyRequest)
+	if err != nil {
+		log.Errorf("apid err: %v\n", err)
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied(err.Error()),
+		}, err
+	}
+
+	if success != nil {
+		log.Infof("auth success!\n")
+		return adapter.CheckResult{
+			Status: status.New(rpc.OK),
+		}, nil
+	}
+
+	log.Infof("auth fail: %v\n", fail.ResponseMessage)
+	return adapter.CheckResult{
+		Status: status.WithPermissionDenied(fail.ResponseMessage),
 	}, nil
 }
