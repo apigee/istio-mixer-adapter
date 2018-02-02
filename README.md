@@ -1,8 +1,7 @@
 # Istio Apigee Adapter
 
-This workspace holds an apigee adapter for Istio. It can be tested by itself, but in order
-to really use it you need a build of the Istio mixer that pulls it in. Instructions for that
-are forthcoming.
+This workspace holds an Apigee adapter for Istio Mixer. It can be tested standalone as noted below.
+Instructions for building and running in Kubernetes are available here: [README-Kubernetes.MD]().
 
 ## Building
 
@@ -11,7 +10,7 @@ are forthcoming.
 
         bazel build //...
 
-(TODO: Not working. Standalone Bazel build fails because of odd relative references required by Mixer build.)   
+(TODO: Standalone Bazel build currently fails.)   
 
 ## Start APID
 
@@ -26,7 +25,7 @@ are forthcoming.
 * Edit apid/apid-service.yaml
 
     * Change `image: scottganyo/apid:latest` to point to `your-repo/apid`
-    * Change `apid_apigeesync_consumer_key`, `apid_apigeesync_consumer_secret`, and `apid_apigeesync_cluster_id` to match your cluster config
+    * Change `apid_apigeesync_consumer_key`, `apid_apigeesync_consumer_secret`, and `apid_apigeesync_cluster_id` to match your Apigee cluster config
  
 * Deploy apid to Kubernetes
 
@@ -74,9 +73,7 @@ You should see "OK" if the API key is valid. If not, there's probably an issue w
         --string_attributes="destination.service=svc.cluster.local,request.path="/"" \
         --stringmap_attributes="request.headers=apikey:BAD_KEY"
 
-You should see "OK" if the API key is valid. If not, there's probably an issue with configuration.
-
-(Note: There's an Istio bug: If you don't specify an apikey at all no check will be done.) 
+You should see "OK" if the API key is valid. If not, there's probably an issue with configuration. 
 
 #### send an analytics record
 
@@ -88,4 +85,4 @@ Note: You'll likely want to adjust the timestamps.
         --timestamp_attributes="request.time=2017-01-01T01:00:00Z,response.time=2017-01-01T01:01:00Z"
 
 
-Analytics should show up in your org.
+Analytics should show up in your org (may take several minutes depending on your account).
