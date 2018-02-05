@@ -3,14 +3,22 @@
 This workspace holds an Apigee adapter for Istio Mixer. It can be tested standalone as noted below.
 Instructions for building and running in Kubernetes are available here: [README-Kubernetes.MD]().
 
-## Building
+## Building and testing standalone
 
-1. Install [Bazel](https://bazel.build/)
-2. Build adapter
+1. Install dep
 
-        bazel build //...
+        [](https://github.com/golang/dep) 
 
-(TODO: Standalone Bazel build currently fails.)   
+2. Install dependencies
+
+        dep ensure 
+
+3. Generate protos, build adapter, and run tests
+
+        go generate ./...
+        go build ./...
+        go test ./...
+   
 
 ## Start APID
 

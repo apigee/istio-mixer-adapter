@@ -1,3 +1,7 @@
+// build the protos
+//go:generate $GOPATH/src/github.com/apigee/istio-mixer-adapter/bin/codegen.sh -f apigee/config/config.proto
+//go:generate $GOPATH/src/github.com/apigee/istio-mixer-adapter/bin/codegen.sh -t template/analytics/template.proto
+
 package apigee // import "github.com/apigee/istio-mixer-adapter/apigee"
 
 import (
@@ -6,7 +10,6 @@ import (
 	"net/url"
 	"time"
 
-	rpc "github.com/googleapis/googleapis/google/rpc"
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -270,7 +273,7 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 	if success != nil {
 		log.Infof("auth success!\n")
 		return adapter.CheckResult{
-			Status: status.New(rpc.OK),
+			Status: status.OK,
 		}, nil
 	}
 

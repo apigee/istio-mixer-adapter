@@ -1,4 +1,4 @@
-package auth // import "github.com/apigee/istio-mixer-adapter/apigee/auth"
+package auth
 
 import (
 	"bytes"

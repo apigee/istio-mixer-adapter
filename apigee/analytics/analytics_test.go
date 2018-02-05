@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"encoding/json"
 	"time"
-	"github.com/apigee/istio-mixer-adapter/apigee/testutil"
 	"net/url"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"strings"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
 func TestAnalyticsSubmit(t *testing.T) {
@@ -42,7 +42,7 @@ func TestAnalyticsSubmit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
+	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,7 +61,7 @@ func TestBadApidBase(t *testing.T) {
 	ts := makeTestServer(authResponse, axRecord, t)
 	defer ts.Close()
 	apidBase := url.URL{}
-	err := SendAnalyticsRecord(testutil.MakeMockEnv(), apidBase, authResponse, axRecord)
+	err := SendAnalyticsRecord(test.NewEnv(t), apidBase, authResponse, axRecord)
 	if err == nil {
 		t.Errorf("should get bad apid base error")
 	}
@@ -83,7 +83,7 @@ func TestMissingOrg(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
+	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
 	if err == nil || !strings.Contains(err.Error(), "organization") {
 		t.Errorf("should get missing organization error, got: %s", err)
 	}
@@ -105,7 +105,7 @@ func TestMissingEnv(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(testutil.MakeMockEnv(), *apidBase, authResponse, axRecord)
+	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
 	if err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Errorf("should get missing environment error, got: %s", err)
 	}

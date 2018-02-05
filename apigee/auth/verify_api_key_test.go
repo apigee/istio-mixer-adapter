@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"net/http"
 	"encoding/json"
-	"github.com/apigee/istio-mixer-adapter/apigee/testutil"
 	"net/url"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
 func TestVerifyAPIKeyValid(t *testing.T) {
@@ -49,7 +49,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), *apidBase, verifyApiKeyRequest)
+	success, fail, err := VerifyAPIKey(test.NewEnv(t), *apidBase, verifyApiKeyRequest)
 
 	if err != nil {
 		t.Error(err)
@@ -85,7 +85,7 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), *apidBase, VerifyApiKeyRequest{})
+	success, fail, err := VerifyAPIKey(test.NewEnv(t), *apidBase, VerifyApiKeyRequest{})
 
 	if err != nil {
 		t.Error(err)
@@ -104,7 +104,7 @@ func TestVerifyAPIKeyError(t *testing.T) {
 
 	apidBase := url.URL{}
 
-	success, fail, err := VerifyAPIKey(testutil.MakeMockEnv(), apidBase, VerifyApiKeyRequest{})
+	success, fail, err := VerifyAPIKey(test.NewEnv(t), apidBase, VerifyApiKeyRequest{})
 
 	if err == nil {
 		t.Errorf("error should not be nil")

@@ -4,13 +4,12 @@ package analytics;
 
 import "mixer/v1/template/standard_types.proto";
 import "mixer/v1/template/extensions.proto";
-import "mixer/v1/config/descriptor/value_type.proto";
 
 option (istio.mixer.v1.template.template_variety) = TEMPLATE_VARIETY_REPORT;
 
 message Template {
     int64 response_status_code = 1;
-    istio.mixer.v1.config.descriptor.ValueType client_ip = 2;  // todo: HACK for https://github.com/istio/old_mixer_repo/issues/1480
+    istio.mixer.v1.template.Value client_ip = 2;  // todo: HACK for https://github.com/istio/old_mixer_repo/issues/1480
     string request_verb = 3;
     string request_uri = 4;
     string request_path = 5;

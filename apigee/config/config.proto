@@ -4,7 +4,11 @@ package config;
 
 option go_package="config";
 
-import "google/protobuf/descriptor.proto";
+import "gogoproto/gogo.proto";
+
+option (gogoproto.goproto_getters_all) = false;
+option (gogoproto.equal_all) = false;
+option (gogoproto.gostring_all) = false;
 
 message Params {
     string apid_base   = 1;

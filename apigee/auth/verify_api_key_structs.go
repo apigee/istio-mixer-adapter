@@ -1,4 +1,4 @@
-package auth // import "github.com/apigee/istio-mixer-adapter/apigee/auth"
+package auth
 
 // copied from https://github.com/apid/apidVerifyApiKey/blob/master/verifyApiKeyStructs.go
 
