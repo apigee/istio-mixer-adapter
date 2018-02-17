@@ -8,21 +8,35 @@ import "mixer/v1/template/extensions.proto";
 option (istio.mixer.v1.template.template_variety) = TEMPLATE_VARIETY_REPORT;
 
 message Template {
-    int64 response_status_code = 1;
-    istio.mixer.v1.template.Value client_ip = 2;  // todo: HACK for https://github.com/istio/old_mixer_repo/issues/1480
-    string request_verb = 3;
-    string request_uri = 4;
-    string request_path = 5;
-    string useragent = 6;
-    istio.mixer.v1.template.TimeStamp client_received_start_timestamp = 7;
-    istio.mixer.v1.template.TimeStamp client_received_end_timestamp = 8;
-    istio.mixer.v1.template.TimeStamp client_sent_start_timestamp = 9;
-    istio.mixer.v1.template.TimeStamp client_sent_end_timestamp = 10;
-    istio.mixer.v1.template.TimeStamp target_sent_start_timestamp = 11;
-    istio.mixer.v1.template.TimeStamp target_sent_end_timestamp = 12;
-    istio.mixer.v1.template.TimeStamp target_received_start_timestamp = 13;
-    istio.mixer.v1.template.TimeStamp target_received_end_timestamp = 14;
+    string api_proxy = 1;
+    int64 response_status_code = 2;
+    istio.mixer.v1.template.Value client_ip = 3;  // todo: https://github.com/istio/old_mixer_repo/issues/1480
+    string request_verb = 4;
+    string request_uri = 5;
+    string request_path = 6;
+    string useragent = 7;
+    istio.mixer.v1.template.TimeStamp client_received_start_timestamp = 8;
+    istio.mixer.v1.template.TimeStamp client_received_end_timestamp = 9;
+    istio.mixer.v1.template.TimeStamp client_sent_start_timestamp = 10;
+    istio.mixer.v1.template.TimeStamp client_sent_end_timestamp = 11;
+    istio.mixer.v1.template.TimeStamp target_sent_start_timestamp = 12;
+    istio.mixer.v1.template.TimeStamp target_sent_end_timestamp = 13;
+    istio.mixer.v1.template.TimeStamp target_received_start_timestamp = 14;
+    istio.mixer.v1.template.TimeStamp target_received_end_timestamp = 15;
 
-    // auth hack... to be removed later
-    string apikey = 200;
+    // auth: if jwt is available (takes precidence over api_key)
+    map<string, string> api_claims = 200;
+
+    // auth: if jwt isn't available and apikey is
+    string api_key = 201;
 }
+
+// these get added in adapter from auth...
+// DeveloperEmail               string `json:"developer_email,omitempty"`
+// DeveloperApp                 string `json:"developer_app,omitempty"`
+// AccessToken                  string `json:"access_token,omitempty"`
+// ClientID                     string `json:"client_id,omitempty"`
+// APIProduct                   string `json:"api_product,omitempty"`
+
+// not used...
+// APIProxyRevision             int    `json:"apiproxy_revision"`

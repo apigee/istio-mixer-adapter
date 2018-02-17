@@ -34,10 +34,12 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Params struct {
-	ApidBase  string `protobuf:"bytes,1,opt,name=apid_base,json=apidBase,proto3" json:"apid_base,omitempty"`
-	OrgName   string `protobuf:"bytes,2,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
-	EnvName   string `protobuf:"bytes,3,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
-	ProxyName string `protobuf:"bytes,4,opt,name=proxy_name,json=proxyName,proto3" json:"proxy_name,omitempty"`
+	ApigeeBase   string `protobuf:"bytes,1,opt,name=apigee_base,json=apigeeBase,proto3" json:"apigee_base,omitempty"`
+	CustomerBase string `protobuf:"bytes,2,opt,name=customer_base,json=customerBase,proto3" json:"customer_base,omitempty"`
+	OrgName      string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	EnvName      string `protobuf:"bytes,4,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
+	Key          string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+	Secret       string `protobuf:"bytes,6,opt,name=secret,proto3" json:"secret,omitempty"`
 }
 
 func (m *Params) Reset()                    { *m = Params{} }
@@ -62,29 +64,41 @@ func (m *Params) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.ApidBase) > 0 {
+	if len(m.ApigeeBase) > 0 {
 		dAtA[i] = 0xa
 		i++
-		i = encodeVarintConfig(dAtA, i, uint64(len(m.ApidBase)))
-		i += copy(dAtA[i:], m.ApidBase)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.ApigeeBase)))
+		i += copy(dAtA[i:], m.ApigeeBase)
+	}
+	if len(m.CustomerBase) > 0 {
+		dAtA[i] = 0x12
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.CustomerBase)))
+		i += copy(dAtA[i:], m.CustomerBase)
 	}
 	if len(m.OrgName) > 0 {
-		dAtA[i] = 0x12
+		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintConfig(dAtA, i, uint64(len(m.OrgName)))
 		i += copy(dAtA[i:], m.OrgName)
 	}
 	if len(m.EnvName) > 0 {
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x22
 		i++
 		i = encodeVarintConfig(dAtA, i, uint64(len(m.EnvName)))
 		i += copy(dAtA[i:], m.EnvName)
 	}
-	if len(m.ProxyName) > 0 {
-		dAtA[i] = 0x22
+	if len(m.Key) > 0 {
+		dAtA[i] = 0x2a
 		i++
-		i = encodeVarintConfig(dAtA, i, uint64(len(m.ProxyName)))
-		i += copy(dAtA[i:], m.ProxyName)
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.Key)))
+		i += copy(dAtA[i:], m.Key)
+	}
+	if len(m.Secret) > 0 {
+		dAtA[i] = 0x32
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.Secret)))
+		i += copy(dAtA[i:], m.Secret)
 	}
 	return i, nil
 }
@@ -101,7 +115,11 @@ func encodeVarintConfig(dAtA []byte, offset int, v uint64) int {
 func (m *Params) Size() (n int) {
 	var l int
 	_ = l
-	l = len(m.ApidBase)
+	l = len(m.ApigeeBase)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	l = len(m.CustomerBase)
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
@@ -113,7 +131,11 @@ func (m *Params) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
-	l = len(m.ProxyName)
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	l = len(m.Secret)
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
@@ -138,10 +160,12 @@ func (this *Params) String() string {
 		return "nil"
 	}
 	s := strings.Join([]string{`&Params{`,
-		`ApidBase:` + fmt.Sprintf("%v", this.ApidBase) + `,`,
+		`ApigeeBase:` + fmt.Sprintf("%v", this.ApigeeBase) + `,`,
+		`CustomerBase:` + fmt.Sprintf("%v", this.CustomerBase) + `,`,
 		`OrgName:` + fmt.Sprintf("%v", this.OrgName) + `,`,
 		`EnvName:` + fmt.Sprintf("%v", this.EnvName) + `,`,
-		`ProxyName:` + fmt.Sprintf("%v", this.ProxyName) + `,`,
+		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
+		`Secret:` + fmt.Sprintf("%v", this.Secret) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -185,7 +209,7 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ApidBase", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ApigeeBase", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -210,9 +234,38 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ApidBase = string(dAtA[iNdEx:postIndex])
+			m.ApigeeBase = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field CustomerBase", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.CustomerBase = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field OrgName", wireType)
 			}
@@ -241,7 +294,7 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			}
 			m.OrgName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field EnvName", wireType)
 			}
@@ -270,9 +323,9 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			}
 			m.EnvName = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ProxyName", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -297,7 +350,36 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ProxyName = string(dAtA[iNdEx:postIndex])
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Secret", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Secret = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -428,19 +510,21 @@ var (
 func init() { proto.RegisterFile("apigee/config/config.proto", fileDescriptorConfig) }
 
 var fileDescriptorConfig = []byte{
-	// 216 bytes of a gzipped FileDescriptorProto
+	// 246 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x92, 0x4a, 0x2c, 0xc8, 0x4c,
 	0x4f, 0x4d, 0xd5, 0x4f, 0xce, 0xcf, 0x4b, 0xcb, 0x4c, 0x87, 0x52, 0x7a, 0x05, 0x45, 0xf9, 0x25,
 	0xf9, 0x42, 0x6c, 0x10, 0x9e, 0x94, 0x48, 0x7a, 0x7e, 0x7a, 0x3e, 0x58, 0x48, 0x1f, 0xc4, 0x82,
-	0xc8, 0x2a, 0x55, 0x71, 0xb1, 0x05, 0x24, 0x16, 0x25, 0xe6, 0x16, 0x0b, 0x49, 0x73, 0x71, 0x26,
-	0x16, 0x64, 0xa6, 0xc4, 0x27, 0x25, 0x16, 0xa7, 0x4a, 0x30, 0x2a, 0x30, 0x6a, 0x70, 0x06, 0x71,
-	0x80, 0x04, 0x9c, 0x12, 0x8b, 0x53, 0x85, 0x24, 0xb9, 0x38, 0xf2, 0x8b, 0xd2, 0xe3, 0xf3, 0x12,
-	0x73, 0x53, 0x25, 0x98, 0xc0, 0x72, 0xec, 0xf9, 0x45, 0xe9, 0x7e, 0x89, 0xb9, 0x60, 0xa9, 0xd4,
-	0xbc, 0x32, 0x88, 0x14, 0x33, 0x44, 0x2a, 0x35, 0xaf, 0x0c, 0x2c, 0x25, 0xcb, 0xc5, 0x55, 0x50,
-	0x94, 0x5f, 0x51, 0x09, 0x91, 0x64, 0x01, 0x4b, 0x72, 0x82, 0x45, 0x40, 0xd2, 0x4e, 0x16, 0x27,
-	0x1e, 0xca, 0x31, 0x5c, 0x78, 0x28, 0xc7, 0x70, 0xe3, 0xa1, 0x1c, 0xc3, 0x87, 0x87, 0x72, 0x0c,
-	0x0d, 0x8f, 0xe4, 0x18, 0x57, 0x3c, 0x92, 0x63, 0x38, 0xf1, 0x48, 0x8e, 0xf1, 0xc2, 0x23, 0x39,
-	0xc6, 0x07, 0x8f, 0xe4, 0x18, 0x5f, 0x3c, 0x92, 0x63, 0xf8, 0xf0, 0x48, 0x8e, 0x71, 0xc2, 0x63,
-	0x39, 0x86, 0x28, 0xa8, 0x5f, 0x92, 0xd8, 0xc0, 0x8e, 0x37, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff,
-	0x32, 0x05, 0xa0, 0x3e, 0xf8, 0x00, 0x00, 0x00,
+	0xc8, 0x2a, 0xad, 0x63, 0xe4, 0x62, 0x0b, 0x48, 0x2c, 0x4a, 0xcc, 0x2d, 0x16, 0x92, 0xe7, 0xe2,
+	0x86, 0x18, 0x13, 0x9f, 0x94, 0x58, 0x9c, 0x2a, 0xc1, 0xa8, 0xc0, 0xa8, 0xc1, 0x19, 0xc4, 0x05,
+	0x11, 0x72, 0x4a, 0x2c, 0x4e, 0x15, 0x52, 0xe6, 0xe2, 0x4d, 0x2e, 0x2d, 0x2e, 0xc9, 0xcf, 0x4d,
+	0x2d, 0x82, 0x28, 0x61, 0x02, 0x2b, 0xe1, 0x81, 0x09, 0x82, 0x15, 0x49, 0x72, 0x71, 0xe4, 0x17,
+	0xa5, 0xc7, 0xe7, 0x25, 0xe6, 0xa6, 0x4a, 0x30, 0x83, 0xe5, 0xd9, 0xf3, 0x8b, 0xd2, 0xfd, 0x12,
+	0x73, 0xc1, 0x52, 0xa9, 0x79, 0x65, 0x10, 0x29, 0x16, 0x88, 0x54, 0x6a, 0x5e, 0x19, 0x58, 0x4a,
+	0x80, 0x8b, 0x39, 0x3b, 0xb5, 0x52, 0x82, 0x15, 0x2c, 0x0a, 0x62, 0x0a, 0x89, 0x71, 0xb1, 0x15,
+	0xa7, 0x26, 0x17, 0xa5, 0x96, 0x48, 0xb0, 0x81, 0x05, 0xa1, 0x3c, 0x27, 0x8b, 0x13, 0x0f, 0xe5,
+	0x18, 0x2e, 0x3c, 0x94, 0x63, 0xb8, 0xf1, 0x50, 0x8e, 0xe1, 0xc3, 0x43, 0x39, 0x86, 0x86, 0x47,
+	0x72, 0x8c, 0x2b, 0x1e, 0xc9, 0x31, 0x9c, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83,
+	0x47, 0x72, 0x8c, 0x2f, 0x1e, 0xc9, 0x31, 0x7c, 0x78, 0x24, 0xc7, 0x38, 0xe1, 0xb1, 0x1c, 0x43,
+	0x14, 0x34, 0x00, 0x92, 0xd8, 0xc0, 0x3e, 0x36, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0x01, 0xdc,
+	0xa8, 0xab, 0x2d, 0x01, 0x00, 0x00,
 }

@@ -1,89 +1,111 @@
 package analytics
 
 import (
-	"testing"
-	"net/http/httptest"
-	"net/http"
 	"encoding/json"
-	"time"
-	"net/url"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"strings"
+	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestAnalyticsSubmit(t *testing.T) {
 
 	startTime := time.Now()
-	authResponse := &auth.VerifyApiKeySuccessResponse{
-		Organization: "orgName",
-		Environment: "envName",
-		ClientId: auth.ClientIdDetails{
-			ClientSecret: "AccessToken",
-		},
+	context := &TestContext{
+		orgName: "org",
+		envName: "env",
+		log:     test.NewEnv(t),
+	}
+	authContext := &auth.Context{
+		Context:        context,
+		DeveloperEmail: "email",
+		Application:    "app",
+		AccessToken:    "token",
+		ClientID:       "clientId",
 	}
 	axRecord := &Record{
-		ResponseStatusCode: 201,
-		RequestVerb: "PATCH",
-		RequestPath: "/test",
-		UserAgent: "007",
+		ResponseStatusCode:           201,
+		RequestVerb:                  "PATCH",
+		RequestPath:                  "/test",
+		UserAgent:                    "007",
 		ClientReceivedStartTimestamp: TimeToUnix(startTime),
-		ClientReceivedEndTimestamp: TimeToUnix(startTime),
-		ClientSentStartTimestamp: TimeToUnix(startTime),
-		ClientSentEndTimestamp: TimeToUnix(startTime),
-		TargetSentStartTimestamp: TimeToUnix(startTime),
-		TargetSentEndTimestamp: TimeToUnix(startTime),
+		ClientReceivedEndTimestamp:   TimeToUnix(startTime),
+		ClientSentStartTimestamp:     TimeToUnix(startTime),
+		ClientSentEndTimestamp:       TimeToUnix(startTime),
+		TargetSentStartTimestamp:     TimeToUnix(startTime),
+		TargetSentEndTimestamp:       TimeToUnix(startTime),
 		TargetReceivedStartTimestamp: TimeToUnix(startTime),
-		TargetReceivedEndTimestamp: TimeToUnix(startTime),
+		TargetReceivedEndTimestamp:   TimeToUnix(startTime),
 	}
-	ts := makeTestServer(authResponse, axRecord, t)
+	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	apidBase, err := url.Parse(ts.URL)
+	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
+	context.apigeeBase = *baseURL
+	context.customerBase = *baseURL
+	err = SendRecord(*authContext, axRecord)
 	if err != nil {
 		t.Error(err)
 	}
+	// todo: check record sent
 }
 
-func TestBadApidBase(t *testing.T) {
+func TestBadServerBase(t *testing.T) {
 
-	authResponse := &auth.VerifyApiKeySuccessResponse{
-		Organization: "orgName",
-		Environment: "envName",
-		ClientId: auth.ClientIdDetails{
-			ClientSecret: "AccessToken",
-		},
+	context := &TestContext{
+		orgName:      "org",
+		envName:      "env",
+		apigeeBase:   url.URL{},
+		customerBase: url.URL{},
+		log:          test.NewEnv(t),
+	}
+	authContext := &auth.Context{
+		Context:        context,
+		DeveloperEmail: "email",
+		Application:    "app",
+		AccessToken:    "token",
+		ClientID:       "clientId",
 	}
 	axRecord := &Record{}
-	ts := makeTestServer(authResponse, axRecord, t)
+	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	apidBase := url.URL{}
-	err := SendAnalyticsRecord(test.NewEnv(t), apidBase, authResponse, axRecord)
+	err := SendRecord(*authContext, axRecord)
 	if err == nil {
-		t.Errorf("should get bad apid base error")
+		t.Errorf("should get bad base error")
 	}
 }
 
 func TestMissingOrg(t *testing.T) {
 
-	authResponse := &auth.VerifyApiKeySuccessResponse{
-		Organization: "",
-		Environment: "envName",
-		ClientId: auth.ClientIdDetails{
-			ClientSecret: "AccessToken",
-		},
+	context := &TestContext{
+		orgName: "",
+		envName: "env",
+		log:     test.NewEnv(t),
+	}
+	authContext := &auth.Context{
+		Context:        context,
+		DeveloperEmail: "email",
+		Application:    "app",
+		AccessToken:    "token",
+		ClientID:       "clientId",
 	}
 	axRecord := &Record{}
-	ts := makeTestServer(authResponse, axRecord, t)
+	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	apidBase, err := url.Parse(ts.URL)
+	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
+	context.apigeeBase = *baseURL
+	context.customerBase = *baseURL
+	err = SendRecord(*authContext, axRecord)
 	if err == nil || !strings.Contains(err.Error(), "organization") {
 		t.Errorf("should get missing organization error, got: %s", err)
 	}
@@ -91,27 +113,34 @@ func TestMissingOrg(t *testing.T) {
 
 func TestMissingEnv(t *testing.T) {
 
-	authResponse := &auth.VerifyApiKeySuccessResponse{
-		Organization: "orgName",
-		Environment: "",
-		ClientId: auth.ClientIdDetails{
-			ClientSecret: "AccessToken",
-		},
+	context := &TestContext{
+		orgName: "org",
+		envName: "",
+		log:     test.NewEnv(t),
+	}
+	authContext := &auth.Context{
+		Context:        context,
+		DeveloperEmail: "email",
+		Application:    "app",
+		AccessToken:    "token",
+		ClientID:       "clientId",
 	}
 	axRecord := &Record{}
-	ts := makeTestServer(authResponse, axRecord, t)
+	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	apidBase, err := url.Parse(ts.URL)
+	baseURL, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = SendAnalyticsRecord(test.NewEnv(t), *apidBase, authResponse, axRecord)
+	context.apigeeBase = *baseURL
+	context.customerBase = *baseURL
+	err = SendRecord(*authContext, axRecord)
 	if err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Errorf("should get missing environment error, got: %s", err)
 	}
 }
 
-func makeTestServer(auth *auth.VerifyApiKeySuccessResponse, rec *Record, t *testing.T) *httptest.Server {
+func makeTestServer(auth *auth.Context, rec *Record, t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var axRequest Request
@@ -121,10 +150,10 @@ func makeTestServer(auth *auth.VerifyApiKeySuccessResponse, rec *Record, t *test
 		}
 		defer r.Body.Close()
 
-		if axRequest.Organization != auth.Organization {
+		if axRequest.Organization != auth.Organization() {
 			t.Errorf("bad orgName")
 		}
-		if axRequest.Environment != auth.Environment {
+		if axRequest.Environment != auth.Environment() {
 			t.Errorf("bad envName")
 		}
 		if len(axRequest.Records) != 1 {
@@ -144,4 +173,36 @@ func makeTestServer(auth *auth.VerifyApiKeySuccessResponse, rec *Record, t *test
 		w.WriteHeader(200)
 	}))
 
+}
+
+type TestContext struct {
+	apigeeBase   url.URL
+	customerBase url.URL
+	orgName      string
+	envName      string
+	key          string
+	secret       string
+	log          adapter.Logger
+}
+
+func (h *TestContext) Log() adapter.Logger {
+	return h.log
+}
+func (h *TestContext) ApigeeBase() url.URL {
+	return h.apigeeBase
+}
+func (h *TestContext) CustomerBase() url.URL {
+	return h.customerBase
+}
+func (h *TestContext) Organization() string {
+	return h.orgName
+}
+func (h *TestContext) Environment() string {
+	return h.envName
+}
+func (h *TestContext) Key() string {
+	return h.key
+}
+func (h *TestContext) Secret() string {
+	return h.secret
 }

@@ -6,9 +6,9 @@ metadata:
   name: apikey-spec
   namespace: default
 spec:
-  apiKeys: # populate request.api_key from query param "apikey" or header "apikey"
+  apiKeys: # populate request.api_key from query param "apikey" or header "x-apikey"
   - query: apikey
-  - header: apikey
+  - header: x-apikey
   attributes:
     attributes:
       api.service: # populate api.service

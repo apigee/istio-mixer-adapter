@@ -15,3 +15,8 @@ required = [
 [[override]]
   name = "github.com/gogo/protobuf"
   version = "=0.5"
+
+
+[[constraint]]
+  name = "github.com/dgrijalva/jwt-go"
+  version = "3.1.0"

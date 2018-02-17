@@ -21,6 +21,7 @@ import istio_mixer_v1_config_descriptor "istio.io/api/mixer/v1/config/descriptor
 
 import strings "strings"
 import reflect "reflect"
+import github_com_gogo_protobuf_sortkeys "github.com/gogo/protobuf/sortkeys"
 
 import io "io"
 
@@ -36,7 +37,7 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Type struct {
-	ClientIp istio_mixer_v1_config_descriptor.ValueType `protobuf:"varint,2,opt,name=client_ip,json=clientIp,proto3,enum=istio.mixer.v1.config.descriptor.ValueType" json:"client_ip,omitempty"`
+	ClientIp istio_mixer_v1_config_descriptor.ValueType `protobuf:"varint,3,opt,name=client_ip,json=clientIp,proto3,enum=istio.mixer.v1.config.descriptor.ValueType" json:"client_ip,omitempty"`
 }
 
 func (m *Type) Reset()                    { *m = Type{} }
@@ -51,26 +52,35 @@ func (m *Type) GetClientIp() istio_mixer_v1_config_descriptor.ValueType {
 }
 
 type InstanceParam struct {
-	ResponseStatusCode           string `protobuf:"bytes,1,opt,name=response_status_code,json=responseStatusCode,proto3" json:"response_status_code,omitempty"`
-	ClientIp                     string `protobuf:"bytes,2,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
-	RequestVerb                  string `protobuf:"bytes,3,opt,name=request_verb,json=requestVerb,proto3" json:"request_verb,omitempty"`
-	RequestUri                   string `protobuf:"bytes,4,opt,name=request_uri,json=requestUri,proto3" json:"request_uri,omitempty"`
-	RequestPath                  string `protobuf:"bytes,5,opt,name=request_path,json=requestPath,proto3" json:"request_path,omitempty"`
-	Useragent                    string `protobuf:"bytes,6,opt,name=useragent,proto3" json:"useragent,omitempty"`
-	ClientReceivedStartTimestamp string `protobuf:"bytes,7,opt,name=client_received_start_timestamp,json=clientReceivedStartTimestamp,proto3" json:"client_received_start_timestamp,omitempty"`
-	ClientReceivedEndTimestamp   string `protobuf:"bytes,8,opt,name=client_received_end_timestamp,json=clientReceivedEndTimestamp,proto3" json:"client_received_end_timestamp,omitempty"`
-	ClientSentStartTimestamp     string `protobuf:"bytes,9,opt,name=client_sent_start_timestamp,json=clientSentStartTimestamp,proto3" json:"client_sent_start_timestamp,omitempty"`
-	ClientSentEndTimestamp       string `protobuf:"bytes,10,opt,name=client_sent_end_timestamp,json=clientSentEndTimestamp,proto3" json:"client_sent_end_timestamp,omitempty"`
-	TargetSentStartTimestamp     string `protobuf:"bytes,11,opt,name=target_sent_start_timestamp,json=targetSentStartTimestamp,proto3" json:"target_sent_start_timestamp,omitempty"`
-	TargetSentEndTimestamp       string `protobuf:"bytes,12,opt,name=target_sent_end_timestamp,json=targetSentEndTimestamp,proto3" json:"target_sent_end_timestamp,omitempty"`
-	TargetReceivedStartTimestamp string `protobuf:"bytes,13,opt,name=target_received_start_timestamp,json=targetReceivedStartTimestamp,proto3" json:"target_received_start_timestamp,omitempty"`
-	TargetReceivedEndTimestamp   string `protobuf:"bytes,14,opt,name=target_received_end_timestamp,json=targetReceivedEndTimestamp,proto3" json:"target_received_end_timestamp,omitempty"`
-	Apikey                       string `protobuf:"bytes,200,opt,name=apikey,proto3" json:"apikey,omitempty"`
+	ApiProxy                     string            `protobuf:"bytes,1,opt,name=api_proxy,json=apiProxy,proto3" json:"api_proxy,omitempty"`
+	ResponseStatusCode           string            `protobuf:"bytes,2,opt,name=response_status_code,json=responseStatusCode,proto3" json:"response_status_code,omitempty"`
+	ClientIp                     string            `protobuf:"bytes,3,opt,name=client_ip,json=clientIp,proto3" json:"client_ip,omitempty"`
+	RequestVerb                  string            `protobuf:"bytes,4,opt,name=request_verb,json=requestVerb,proto3" json:"request_verb,omitempty"`
+	RequestUri                   string            `protobuf:"bytes,5,opt,name=request_uri,json=requestUri,proto3" json:"request_uri,omitempty"`
+	RequestPath                  string            `protobuf:"bytes,6,opt,name=request_path,json=requestPath,proto3" json:"request_path,omitempty"`
+	Useragent                    string            `protobuf:"bytes,7,opt,name=useragent,proto3" json:"useragent,omitempty"`
+	ClientReceivedStartTimestamp string            `protobuf:"bytes,8,opt,name=client_received_start_timestamp,json=clientReceivedStartTimestamp,proto3" json:"client_received_start_timestamp,omitempty"`
+	ClientReceivedEndTimestamp   string            `protobuf:"bytes,9,opt,name=client_received_end_timestamp,json=clientReceivedEndTimestamp,proto3" json:"client_received_end_timestamp,omitempty"`
+	ClientSentStartTimestamp     string            `protobuf:"bytes,10,opt,name=client_sent_start_timestamp,json=clientSentStartTimestamp,proto3" json:"client_sent_start_timestamp,omitempty"`
+	ClientSentEndTimestamp       string            `protobuf:"bytes,11,opt,name=client_sent_end_timestamp,json=clientSentEndTimestamp,proto3" json:"client_sent_end_timestamp,omitempty"`
+	TargetSentStartTimestamp     string            `protobuf:"bytes,12,opt,name=target_sent_start_timestamp,json=targetSentStartTimestamp,proto3" json:"target_sent_start_timestamp,omitempty"`
+	TargetSentEndTimestamp       string            `protobuf:"bytes,13,opt,name=target_sent_end_timestamp,json=targetSentEndTimestamp,proto3" json:"target_sent_end_timestamp,omitempty"`
+	TargetReceivedStartTimestamp string            `protobuf:"bytes,14,opt,name=target_received_start_timestamp,json=targetReceivedStartTimestamp,proto3" json:"target_received_start_timestamp,omitempty"`
+	TargetReceivedEndTimestamp   string            `protobuf:"bytes,15,opt,name=target_received_end_timestamp,json=targetReceivedEndTimestamp,proto3" json:"target_received_end_timestamp,omitempty"`
+	ApiClaims                    map[string]string `protobuf:"bytes,200,rep,name=api_claims,json=apiClaims" json:"api_claims,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	ApiKey                       string            `protobuf:"bytes,201,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
 }
 
 func (m *InstanceParam) Reset()                    { *m = InstanceParam{} }
 func (*InstanceParam) ProtoMessage()               {}
 func (*InstanceParam) Descriptor() ([]byte, []int) { return fileDescriptorTemplateInstance, []int{1} }
+
+func (m *InstanceParam) GetApiProxy() string {
+	if m != nil {
+		return m.ApiProxy
+	}
+	return ""
+}
 
 func (m *InstanceParam) GetResponseStatusCode() string {
 	if m != nil {
@@ -170,9 +180,16 @@ func (m *InstanceParam) GetTargetReceivedEndTimestamp() string {
 	return ""
 }
 
-func (m *InstanceParam) GetApikey() string {
+func (m *InstanceParam) GetApiClaims() map[string]string {
 	if m != nil {
-		return m.Apikey
+		return m.ApiClaims
+	}
+	return nil
+}
+
+func (m *InstanceParam) GetApiKey() string {
+	if m != nil {
+		return m.ApiKey
 	}
 	return ""
 }
@@ -236,6 +253,9 @@ func (this *InstanceParam) Equal(that interface{}) bool {
 	} else if this == nil {
 		return false
 	}
+	if this.ApiProxy != that1.ApiProxy {
+		return false
+	}
 	if this.ResponseStatusCode != that1.ResponseStatusCode {
 		return false
 	}
@@ -278,7 +298,15 @@ func (this *InstanceParam) Equal(that interface{}) bool {
 	if this.TargetReceivedEndTimestamp != that1.TargetReceivedEndTimestamp {
 		return false
 	}
-	if this.Apikey != that1.Apikey {
+	if len(this.ApiClaims) != len(that1.ApiClaims) {
+		return false
+	}
+	for i := range this.ApiClaims {
+		if this.ApiClaims[i] != that1.ApiClaims[i] {
+			return false
+		}
+	}
+	if this.ApiKey != that1.ApiKey {
 		return false
 	}
 	return true
@@ -297,8 +325,9 @@ func (this *InstanceParam) GoString() string {
 	if this == nil {
 		return "nil"
 	}
-	s := make([]string, 0, 19)
+	s := make([]string, 0, 21)
 	s = append(s, "&analytics.InstanceParam{")
+	s = append(s, "ApiProxy: "+fmt.Sprintf("%#v", this.ApiProxy)+",\n")
 	s = append(s, "ResponseStatusCode: "+fmt.Sprintf("%#v", this.ResponseStatusCode)+",\n")
 	s = append(s, "ClientIp: "+fmt.Sprintf("%#v", this.ClientIp)+",\n")
 	s = append(s, "RequestVerb: "+fmt.Sprintf("%#v", this.RequestVerb)+",\n")
@@ -313,7 +342,20 @@ func (this *InstanceParam) GoString() string {
 	s = append(s, "TargetSentEndTimestamp: "+fmt.Sprintf("%#v", this.TargetSentEndTimestamp)+",\n")
 	s = append(s, "TargetReceivedStartTimestamp: "+fmt.Sprintf("%#v", this.TargetReceivedStartTimestamp)+",\n")
 	s = append(s, "TargetReceivedEndTimestamp: "+fmt.Sprintf("%#v", this.TargetReceivedEndTimestamp)+",\n")
-	s = append(s, "Apikey: "+fmt.Sprintf("%#v", this.Apikey)+",\n")
+	keysForApiClaims := make([]string, 0, len(this.ApiClaims))
+	for k, _ := range this.ApiClaims {
+		keysForApiClaims = append(keysForApiClaims, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForApiClaims)
+	mapStringForApiClaims := "map[string]string{"
+	for _, k := range keysForApiClaims {
+		mapStringForApiClaims += fmt.Sprintf("%#v: %#v,", k, this.ApiClaims[k])
+	}
+	mapStringForApiClaims += "}"
+	if this.ApiClaims != nil {
+		s = append(s, "ApiClaims: "+mapStringForApiClaims+",\n")
+	}
+	s = append(s, "ApiKey: "+fmt.Sprintf("%#v", this.ApiKey)+",\n")
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
@@ -341,7 +383,7 @@ func (m *Type) MarshalTo(dAtA []byte) (int, error) {
 	var l int
 	_ = l
 	if m.ClientIp != 0 {
-		dAtA[i] = 0x10
+		dAtA[i] = 0x18
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(m.ClientIp))
 	}
@@ -363,97 +405,122 @@ func (m *InstanceParam) MarshalTo(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
-	if len(m.ResponseStatusCode) > 0 {
+	if len(m.ApiProxy) > 0 {
 		dAtA[i] = 0xa
+		i++
+		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ApiProxy)))
+		i += copy(dAtA[i:], m.ApiProxy)
+	}
+	if len(m.ResponseStatusCode) > 0 {
+		dAtA[i] = 0x12
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ResponseStatusCode)))
 		i += copy(dAtA[i:], m.ResponseStatusCode)
 	}
 	if len(m.ClientIp) > 0 {
-		dAtA[i] = 0x12
+		dAtA[i] = 0x1a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ClientIp)))
 		i += copy(dAtA[i:], m.ClientIp)
 	}
 	if len(m.RequestVerb) > 0 {
-		dAtA[i] = 0x1a
+		dAtA[i] = 0x22
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.RequestVerb)))
 		i += copy(dAtA[i:], m.RequestVerb)
 	}
 	if len(m.RequestUri) > 0 {
-		dAtA[i] = 0x22
+		dAtA[i] = 0x2a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.RequestUri)))
 		i += copy(dAtA[i:], m.RequestUri)
 	}
 	if len(m.RequestPath) > 0 {
-		dAtA[i] = 0x2a
+		dAtA[i] = 0x32
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.RequestPath)))
 		i += copy(dAtA[i:], m.RequestPath)
 	}
 	if len(m.Useragent) > 0 {
-		dAtA[i] = 0x32
+		dAtA[i] = 0x3a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.Useragent)))
 		i += copy(dAtA[i:], m.Useragent)
 	}
 	if len(m.ClientReceivedStartTimestamp) > 0 {
-		dAtA[i] = 0x3a
+		dAtA[i] = 0x42
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ClientReceivedStartTimestamp)))
 		i += copy(dAtA[i:], m.ClientReceivedStartTimestamp)
 	}
 	if len(m.ClientReceivedEndTimestamp) > 0 {
-		dAtA[i] = 0x42
+		dAtA[i] = 0x4a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ClientReceivedEndTimestamp)))
 		i += copy(dAtA[i:], m.ClientReceivedEndTimestamp)
 	}
 	if len(m.ClientSentStartTimestamp) > 0 {
-		dAtA[i] = 0x4a
+		dAtA[i] = 0x52
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ClientSentStartTimestamp)))
 		i += copy(dAtA[i:], m.ClientSentStartTimestamp)
 	}
 	if len(m.ClientSentEndTimestamp) > 0 {
-		dAtA[i] = 0x52
+		dAtA[i] = 0x5a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ClientSentEndTimestamp)))
 		i += copy(dAtA[i:], m.ClientSentEndTimestamp)
 	}
 	if len(m.TargetSentStartTimestamp) > 0 {
-		dAtA[i] = 0x5a
+		dAtA[i] = 0x62
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.TargetSentStartTimestamp)))
 		i += copy(dAtA[i:], m.TargetSentStartTimestamp)
 	}
 	if len(m.TargetSentEndTimestamp) > 0 {
-		dAtA[i] = 0x62
+		dAtA[i] = 0x6a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.TargetSentEndTimestamp)))
 		i += copy(dAtA[i:], m.TargetSentEndTimestamp)
 	}
 	if len(m.TargetReceivedStartTimestamp) > 0 {
-		dAtA[i] = 0x6a
+		dAtA[i] = 0x72
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.TargetReceivedStartTimestamp)))
 		i += copy(dAtA[i:], m.TargetReceivedStartTimestamp)
 	}
 	if len(m.TargetReceivedEndTimestamp) > 0 {
-		dAtA[i] = 0x72
+		dAtA[i] = 0x7a
 		i++
 		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.TargetReceivedEndTimestamp)))
 		i += copy(dAtA[i:], m.TargetReceivedEndTimestamp)
 	}
-	if len(m.Apikey) > 0 {
-		dAtA[i] = 0xc2
+	if len(m.ApiClaims) > 0 {
+		for k, _ := range m.ApiClaims {
+			dAtA[i] = 0xc2
+			i++
+			dAtA[i] = 0xc
+			i++
+			v := m.ApiClaims[k]
+			mapSize := 1 + len(k) + sovTemplateInstance(uint64(len(k))) + 1 + len(v) + sovTemplateInstance(uint64(len(v)))
+			i = encodeVarintTemplateInstance(dAtA, i, uint64(mapSize))
+			dAtA[i] = 0xa
+			i++
+			i = encodeVarintTemplateInstance(dAtA, i, uint64(len(k)))
+			i += copy(dAtA[i:], k)
+			dAtA[i] = 0x12
+			i++
+			i = encodeVarintTemplateInstance(dAtA, i, uint64(len(v)))
+			i += copy(dAtA[i:], v)
+		}
+	}
+	if len(m.ApiKey) > 0 {
+		dAtA[i] = 0xca
 		i++
 		dAtA[i] = 0xc
 		i++
-		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.Apikey)))
-		i += copy(dAtA[i:], m.Apikey)
+		i = encodeVarintTemplateInstance(dAtA, i, uint64(len(m.ApiKey)))
+		i += copy(dAtA[i:], m.ApiKey)
 	}
 	return i, nil
 }
@@ -479,6 +546,10 @@ func (m *Type) Size() (n int) {
 func (m *InstanceParam) Size() (n int) {
 	var l int
 	_ = l
+	l = len(m.ApiProxy)
+	if l > 0 {
+		n += 1 + l + sovTemplateInstance(uint64(l))
+	}
 	l = len(m.ResponseStatusCode)
 	if l > 0 {
 		n += 1 + l + sovTemplateInstance(uint64(l))
@@ -535,7 +606,15 @@ func (m *InstanceParam) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovTemplateInstance(uint64(l))
 	}
-	l = len(m.Apikey)
+	if len(m.ApiClaims) > 0 {
+		for k, v := range m.ApiClaims {
+			_ = k
+			_ = v
+			mapEntrySize := 1 + len(k) + sovTemplateInstance(uint64(len(k))) + 1 + len(v) + sovTemplateInstance(uint64(len(v)))
+			n += mapEntrySize + 2 + sovTemplateInstance(uint64(mapEntrySize))
+		}
+	}
+	l = len(m.ApiKey)
 	if l > 0 {
 		n += 2 + l + sovTemplateInstance(uint64(l))
 	}
@@ -569,7 +648,18 @@ func (this *InstanceParam) String() string {
 	if this == nil {
 		return "nil"
 	}
+	keysForApiClaims := make([]string, 0, len(this.ApiClaims))
+	for k, _ := range this.ApiClaims {
+		keysForApiClaims = append(keysForApiClaims, k)
+	}
+	github_com_gogo_protobuf_sortkeys.Strings(keysForApiClaims)
+	mapStringForApiClaims := "map[string]string{"
+	for _, k := range keysForApiClaims {
+		mapStringForApiClaims += fmt.Sprintf("%v: %v,", k, this.ApiClaims[k])
+	}
+	mapStringForApiClaims += "}"
 	s := strings.Join([]string{`&InstanceParam{`,
+		`ApiProxy:` + fmt.Sprintf("%v", this.ApiProxy) + `,`,
 		`ResponseStatusCode:` + fmt.Sprintf("%v", this.ResponseStatusCode) + `,`,
 		`ClientIp:` + fmt.Sprintf("%v", this.ClientIp) + `,`,
 		`RequestVerb:` + fmt.Sprintf("%v", this.RequestVerb) + `,`,
@@ -584,7 +674,8 @@ func (this *InstanceParam) String() string {
 		`TargetSentEndTimestamp:` + fmt.Sprintf("%v", this.TargetSentEndTimestamp) + `,`,
 		`TargetReceivedStartTimestamp:` + fmt.Sprintf("%v", this.TargetReceivedStartTimestamp) + `,`,
 		`TargetReceivedEndTimestamp:` + fmt.Sprintf("%v", this.TargetReceivedEndTimestamp) + `,`,
-		`Apikey:` + fmt.Sprintf("%v", this.Apikey) + `,`,
+		`ApiClaims:` + mapStringForApiClaims + `,`,
+		`ApiKey:` + fmt.Sprintf("%v", this.ApiKey) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -626,7 +717,7 @@ func (m *Type) Unmarshal(dAtA []byte) error {
 			return fmt.Errorf("proto: Type: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 2:
+		case 3:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientIp", wireType)
 			}
@@ -697,6 +788,35 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ApiProxy", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTemplateInstance
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthTemplateInstance
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ApiProxy = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ResponseStatusCode", wireType)
 			}
 			var stringLen uint64
@@ -724,7 +844,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ResponseStatusCode = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 2:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientIp", wireType)
 			}
@@ -753,7 +873,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ClientIp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 3:
+		case 4:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RequestVerb", wireType)
 			}
@@ -782,7 +902,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.RequestVerb = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 4:
+		case 5:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RequestUri", wireType)
 			}
@@ -811,7 +931,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.RequestUri = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 5:
+		case 6:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field RequestPath", wireType)
 			}
@@ -840,7 +960,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.RequestPath = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 6:
+		case 7:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Useragent", wireType)
 			}
@@ -869,7 +989,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.Useragent = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 7:
+		case 8:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientReceivedStartTimestamp", wireType)
 			}
@@ -898,7 +1018,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ClientReceivedStartTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 8:
+		case 9:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientReceivedEndTimestamp", wireType)
 			}
@@ -927,7 +1047,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ClientReceivedEndTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 9:
+		case 10:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientSentStartTimestamp", wireType)
 			}
@@ -956,7 +1076,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ClientSentStartTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 10:
+		case 11:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field ClientSentEndTimestamp", wireType)
 			}
@@ -985,7 +1105,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.ClientSentEndTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 11:
+		case 12:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TargetSentStartTimestamp", wireType)
 			}
@@ -1014,7 +1134,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.TargetSentStartTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 12:
+		case 13:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TargetSentEndTimestamp", wireType)
 			}
@@ -1043,7 +1163,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.TargetSentEndTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 13:
+		case 14:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TargetReceivedStartTimestamp", wireType)
 			}
@@ -1072,7 +1192,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			}
 			m.TargetReceivedStartTimestamp = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
-		case 14:
+		case 15:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field TargetReceivedEndTimestamp", wireType)
 			}
@@ -1103,7 +1223,125 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 200:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Apikey", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field ApiClaims", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowTemplateInstance
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthTemplateInstance
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.ApiClaims == nil {
+				m.ApiClaims = make(map[string]string)
+			}
+			var mapkey string
+			var mapvalue string
+			for iNdEx < postIndex {
+				entryPreIndex := iNdEx
+				var wire uint64
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowTemplateInstance
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					wire |= (uint64(b) & 0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				fieldNum := int32(wire >> 3)
+				if fieldNum == 1 {
+					var stringLenmapkey uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowTemplateInstance
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapkey |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapkey := int(stringLenmapkey)
+					if intStringLenmapkey < 0 {
+						return ErrInvalidLengthTemplateInstance
+					}
+					postStringIndexmapkey := iNdEx + intStringLenmapkey
+					if postStringIndexmapkey > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapkey = string(dAtA[iNdEx:postStringIndexmapkey])
+					iNdEx = postStringIndexmapkey
+				} else if fieldNum == 2 {
+					var stringLenmapvalue uint64
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowTemplateInstance
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						stringLenmapvalue |= (uint64(b) & 0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					intStringLenmapvalue := int(stringLenmapvalue)
+					if intStringLenmapvalue < 0 {
+						return ErrInvalidLengthTemplateInstance
+					}
+					postStringIndexmapvalue := iNdEx + intStringLenmapvalue
+					if postStringIndexmapvalue > l {
+						return io.ErrUnexpectedEOF
+					}
+					mapvalue = string(dAtA[iNdEx:postStringIndexmapvalue])
+					iNdEx = postStringIndexmapvalue
+				} else {
+					iNdEx = entryPreIndex
+					skippy, err := skipTemplateInstance(dAtA[iNdEx:])
+					if err != nil {
+						return err
+					}
+					if skippy < 0 {
+						return ErrInvalidLengthTemplateInstance
+					}
+					if (iNdEx + skippy) > postIndex {
+						return io.ErrUnexpectedEOF
+					}
+					iNdEx += skippy
+				}
+			}
+			m.ApiClaims[mapkey] = mapvalue
+			iNdEx = postIndex
+		case 201:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ApiKey", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1128,7 +1366,7 @@ func (m *InstanceParam) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Apikey = string(dAtA[iNdEx:postIndex])
+			m.ApiKey = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -1261,38 +1499,44 @@ func init() {
 }
 
 var fileDescriptorTemplateInstance = []byte{
-	// 522 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x93, 0x3f, 0x6f, 0xd3, 0x40,
-	0x18, 0xc6, 0x73, 0xa5, 0x84, 0xfa, 0xfa, 0x67, 0x38, 0x21, 0x30, 0x69, 0xb9, 0x94, 0x4c, 0x15,
-	0x95, 0x6c, 0x5a, 0x26, 0x06, 0x06, 0x40, 0x91, 0xe8, 0x16, 0x25, 0xa5, 0xab, 0x75, 0xb1, 0x5f,
-	0xd2, 0x13, 0xc9, 0xf9, 0xb8, 0xbb, 0x44, 0xcd, 0xc6, 0xc0, 0x07, 0x40, 0xe2, 0x4b, 0xf0, 0x51,
-	0x3a, 0x56, 0x4c, 0x8c, 0xc4, 0x30, 0x30, 0x76, 0x64, 0x44, 0xb9, 0x73, 0xe2, 0xd8, 0x22, 0x83,
-	0x2d, 0xdd, 0xfb, 0x3e, 0xcf, 0xef, 0x79, 0xef, 0x95, 0x8d, 0x9f, 0x1a, 0x18, 0xc9, 0x21, 0x33,
-	0x10, 0x32, 0xc1, 0x86, 0x53, 0xc3, 0x63, 0x1d, 0x2e, 0x4a, 0x11, 0x17, 0xda, 0x30, 0x11, 0x43,
-	0x20, 0x55, 0x6a, 0x52, 0xe2, 0x2d, 0x25, 0x8d, 0xd6, 0x88, 0x5f, 0x81, 0x0a, 0x27, 0x27, 0x4b,
-	0x71, 0x08, 0x57, 0x06, 0x84, 0xe6, 0xa9, 0xd0, 0x4e, 0xde, 0x38, 0x5e, 0x6a, 0xe2, 0x54, 0xbc,
-	0xe7, 0x83, 0x30, 0x01, 0x1d, 0x2b, 0x2e, 0x4d, 0xaa, 0xc2, 0x09, 0x1b, 0x8e, 0x21, 0x32, 0x53,
-	0x99, 0xb3, 0x5b, 0x1d, 0xbc, 0x79, 0x3e, 0x95, 0x40, 0xde, 0x62, 0x2f, 0x1e, 0x72, 0x10, 0x26,
-	0xe2, 0xd2, 0xdf, 0x38, 0x44, 0x47, 0x7b, 0xa7, 0xc7, 0x01, 0xd7, 0x86, 0xa7, 0x81, 0xc5, 0x05,
-	0x93, 0x93, 0xc0, 0xe1, 0x82, 0x02, 0x17, 0x5c, 0xcc, 0x71, 0x73, 0x7f, 0x77, 0xcb, 0xb9, 0xcf,
-	0x64, 0xeb, 0x73, 0x1d, 0xef, 0x9e, 0xe5, 0x17, 0xe8, 0x30, 0xc5, 0x46, 0xe4, 0x19, 0xbe, 0xaf,
-	0x40, 0xcb, 0x54, 0x68, 0x88, 0xb4, 0x61, 0x66, 0xac, 0xa3, 0x38, 0x4d, 0xc0, 0x47, 0x87, 0xe8,
-	0xc8, 0xeb, 0x92, 0x45, 0xaf, 0x67, 0x5b, 0x6f, 0xd2, 0x04, 0xc8, 0x7e, 0x75, 0x1a, 0xaf, 0x08,
-	0x20, 0x4f, 0xf0, 0x8e, 0x82, 0x8f, 0x63, 0xd0, 0x26, 0x9a, 0x80, 0xea, 0xfb, 0x77, 0x6c, 0x7f,
-	0x3b, 0xaf, 0x5d, 0x80, 0xea, 0x93, 0x26, 0x5e, 0x1c, 0xa3, 0xb1, 0xe2, 0xfe, 0xa6, 0x55, 0xe0,
-	0xbc, 0xf4, 0x4e, 0xf1, 0x55, 0x86, 0x64, 0xe6, 0xd2, 0xbf, 0x5b, 0x62, 0x74, 0x98, 0xb9, 0x24,
-	0x07, 0xd8, 0x1b, 0x6b, 0x50, 0x6c, 0x00, 0xc2, 0xf8, 0x75, 0xdb, 0x2f, 0x0a, 0xa4, 0x8d, 0x9b,
-	0xf9, 0x84, 0x0a, 0x62, 0xe0, 0x13, 0x48, 0xe6, 0x57, 0x53, 0x26, 0x32, 0x7c, 0x04, 0xda, 0xb0,
-	0x91, 0xf4, 0xef, 0x59, 0xcf, 0x81, 0x93, 0x75, 0x73, 0x55, 0x6f, 0x2e, 0x3a, 0x5f, 0x68, 0xc8,
-	0x2b, 0xfc, 0xb8, 0x8a, 0x01, 0x91, 0xac, 0x40, 0xb6, 0x2c, 0xa4, 0x51, 0x86, 0xb4, 0x45, 0x52,
-	0x20, 0x5e, 0xe2, 0xfd, 0x1c, 0xa1, 0xed, 0xab, 0x32, 0x85, 0x67, 0x01, 0xbe, 0x93, 0xf4, 0xe6,
-	0x4f, 0x79, 0x82, 0x17, 0xf8, 0xd1, 0xaa, 0xbd, 0x9c, 0x8e, 0xad, 0xf9, 0x41, 0x61, 0xae, 0x26,
-	0x1b, 0xa6, 0x06, 0xb0, 0x26, 0x79, 0xdb, 0x25, 0x3b, 0xc9, 0xff, 0x93, 0x57, 0xed, 0xe5, 0xe4,
-	0x1d, 0x97, 0x5c, 0x98, 0x4b, 0xc9, 0x6d, 0xdc, 0xcc, 0xad, 0x6b, 0xb7, 0xbf, 0xeb, 0xb6, 0xef,
-	0x64, 0xeb, 0xb7, 0x5f, 0xc5, 0x94, 0xa7, 0xd8, 0x73, 0xdb, 0x2f, 0x43, 0x4a, 0x93, 0x3c, 0xc4,
-	0x75, 0x26, 0xf9, 0x07, 0x98, 0xfa, 0xd7, 0xee, 0x73, 0xce, 0x8f, 0xaf, 0x4f, 0x6f, 0x66, 0xb4,
-	0xf6, 0x63, 0x46, 0x6b, 0xb7, 0x33, 0x8a, 0x3e, 0x65, 0x14, 0x7d, 0xcb, 0x28, 0xba, 0xce, 0x28,
-	0xba, 0xc9, 0x28, 0xfa, 0x99, 0x51, 0xf4, 0x27, 0xa3, 0xb5, 0xdb, 0x8c, 0xa2, 0x2f, 0xbf, 0x68,
-	0xed, 0xef, 0xf7, 0xdf, 0x5f, 0x37, 0x50, 0xbf, 0x6e, 0xff, 0xc9, 0xe7, 0xff, 0x02, 0x00, 0x00,
-	0xff, 0xff, 0x42, 0xce, 0xf7, 0x81, 0x1d, 0x04, 0x00, 0x00,
+	// 612 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x74, 0x94, 0xcb, 0x6e, 0x13, 0x31,
+	0x14, 0x86, 0xe3, 0xde, 0xc7, 0xbd, 0x80, 0xac, 0x0a, 0x0d, 0x69, 0x99, 0x96, 0x6e, 0xa8, 0xa8,
+	0x34, 0xa1, 0x65, 0x03, 0x08, 0x16, 0xa5, 0x8a, 0xa0, 0x62, 0x13, 0xa5, 0xa5, 0xdb, 0x91, 0x3b,
+	0x39, 0xb4, 0x16, 0x89, 0xc7, 0xd8, 0x4e, 0xd4, 0xd9, 0xf1, 0x08, 0x48, 0xbc, 0x04, 0xbc, 0x49,
+	0xd9, 0x55, 0xac, 0x58, 0xd2, 0x81, 0x05, 0xcb, 0x2e, 0x59, 0x22, 0xdb, 0x93, 0x8b, 0x23, 0xb2,
+	0x48, 0x14, 0xfb, 0xfc, 0xff, 0xf7, 0x9f, 0x39, 0xca, 0x19, 0xfc, 0x50, 0x43, 0x47, 0xb4, 0xa9,
+	0x86, 0x1a, 0xe5, 0xb4, 0x9d, 0x6b, 0x96, 0xaa, 0x5a, 0xff, 0x2a, 0x61, 0x5c, 0x69, 0xca, 0x53,
+	0x88, 0x85, 0xcc, 0x74, 0x46, 0x82, 0x81, 0xa4, 0xba, 0xd5, 0x61, 0x17, 0x20, 0x6b, 0xbd, 0xdd,
+	0x81, 0xb8, 0x06, 0x17, 0x1a, 0xb8, 0x62, 0x19, 0x57, 0x4e, 0x5e, 0xdd, 0x19, 0x68, 0xd2, 0x8c,
+	0xbf, 0x63, 0x67, 0xb5, 0x16, 0xa8, 0x54, 0x32, 0xa1, 0x33, 0x59, 0xeb, 0xd1, 0x76, 0x17, 0x12,
+	0x9d, 0x8b, 0x92, 0xbd, 0xd5, 0xc0, 0x33, 0xc7, 0xb9, 0x00, 0xf2, 0x1a, 0x07, 0x69, 0x9b, 0x01,
+	0xd7, 0x09, 0x13, 0xe1, 0xf4, 0x26, 0xda, 0x5e, 0xd9, 0xdb, 0x89, 0x99, 0xd2, 0x2c, 0x8b, 0x2d,
+	0x2e, 0xee, 0xed, 0xc6, 0x0e, 0x17, 0x0f, 0x71, 0xf1, 0x89, 0xc1, 0x19, 0x7f, 0x73, 0xc1, 0xb9,
+	0x0f, 0xc5, 0xd6, 0xd7, 0x79, 0xbc, 0x7c, 0x58, 0x3e, 0x40, 0x83, 0x4a, 0xda, 0x21, 0x6b, 0x38,
+	0xa0, 0x82, 0x25, 0x42, 0x66, 0x17, 0x79, 0x88, 0x36, 0xd1, 0x76, 0xd0, 0x5c, 0xa0, 0x82, 0x35,
+	0xcc, 0x99, 0x3c, 0xc2, 0xab, 0x12, 0x94, 0xc8, 0xb8, 0x82, 0x44, 0x69, 0xaa, 0xbb, 0x2a, 0x49,
+	0xb3, 0x16, 0x84, 0x53, 0x56, 0x47, 0xfa, 0xb5, 0x23, 0x5b, 0x3a, 0xc8, 0x5a, 0x60, 0x70, 0x7e,
+	0xab, 0xc1, 0x30, 0x9d, 0xdc, 0xc7, 0x4b, 0x12, 0x3e, 0x74, 0x41, 0xe9, 0xa4, 0x07, 0xf2, 0x34,
+	0x9c, 0xb1, 0xf5, 0xc5, 0xf2, 0xee, 0x04, 0xe4, 0x29, 0xd9, 0xc0, 0xfd, 0x63, 0xd2, 0x95, 0x2c,
+	0x9c, 0xb5, 0x0a, 0x5c, 0x5e, 0xbd, 0x95, 0x6c, 0x94, 0x21, 0xa8, 0x3e, 0x0f, 0xe7, 0x3c, 0x46,
+	0x83, 0xea, 0x73, 0xb2, 0x8e, 0x83, 0xae, 0x02, 0x49, 0xcf, 0x80, 0xeb, 0x70, 0xde, 0xd6, 0x87,
+	0x17, 0xa4, 0x8e, 0x37, 0xca, 0x0e, 0x25, 0xa4, 0xc0, 0x7a, 0xd0, 0x32, 0x8f, 0x26, 0x75, 0xa2,
+	0x59, 0x07, 0x94, 0xa6, 0x1d, 0x11, 0x2e, 0x58, 0xcf, 0xba, 0x93, 0x35, 0x4b, 0xd5, 0x91, 0x11,
+	0x1d, 0xf7, 0x35, 0x64, 0x1f, 0xdf, 0x1b, 0xc7, 0x00, 0x6f, 0x8d, 0x40, 0x02, 0x0b, 0xa9, 0xfa,
+	0x90, 0x3a, 0x6f, 0x0d, 0x11, 0x2f, 0xf0, 0x5a, 0x89, 0x50, 0xf6, 0x6b, 0xac, 0x0b, 0x6c, 0x01,
+	0xa1, 0x93, 0x1c, 0x99, 0x8f, 0xdf, 0xc1, 0x53, 0x7c, 0x77, 0xd4, 0xee, 0xa7, 0x2f, 0x5a, 0xf3,
+	0x9d, 0xa1, 0x79, 0x3c, 0x59, 0x53, 0x79, 0x06, 0x13, 0x92, 0x97, 0x5c, 0xb2, 0x93, 0xfc, 0x3f,
+	0x79, 0xd4, 0xee, 0x27, 0x2f, 0xbb, 0xe4, 0xa1, 0xd9, 0x4b, 0xae, 0xe3, 0x8d, 0xd2, 0x3a, 0x71,
+	0xfa, 0x2b, 0x6e, 0xfa, 0x4e, 0x36, 0x79, 0xfa, 0xe3, 0x18, 0xbf, 0x8b, 0x5b, 0x6e, 0xfa, 0x3e,
+	0xc4, 0xeb, 0xe4, 0x15, 0xc6, 0xe6, 0x8f, 0x9f, 0xb6, 0x29, 0xeb, 0xa8, 0xf0, 0x12, 0x6d, 0x4e,
+	0x6f, 0x2f, 0xee, 0x3d, 0x88, 0x07, 0xeb, 0x1c, 0x7b, 0x7b, 0x12, 0xef, 0x0b, 0x76, 0x60, 0xa5,
+	0x75, 0xae, 0x65, 0xde, 0x34, 0x4b, 0xe3, 0xce, 0x24, 0xc4, 0xf3, 0x06, 0xf4, 0x1e, 0xf2, 0xf0,
+	0x9b, 0x5b, 0xa0, 0x39, 0x2a, 0xd8, 0x1b, 0xc8, 0xab, 0xcf, 0xf1, 0x8a, 0x6f, 0x23, 0xb7, 0xf1,
+	0xb4, 0xd1, 0x39, 0x99, 0xf9, 0x49, 0x56, 0xf1, 0xac, 0xdd, 0xfb, 0x72, 0xa7, 0xdc, 0xe1, 0xd9,
+	0xd4, 0x13, 0xf4, 0x72, 0xef, 0xea, 0x3a, 0xaa, 0xfc, 0xb8, 0x8e, 0x2a, 0x37, 0xd7, 0x11, 0xfa,
+	0x58, 0x44, 0xe8, 0x4b, 0x11, 0xa1, 0xcb, 0x22, 0x42, 0x57, 0x45, 0x84, 0x7e, 0x16, 0x11, 0xfa,
+	0x53, 0x44, 0x95, 0x9b, 0x22, 0x42, 0x9f, 0x7e, 0x45, 0x95, 0xbf, 0xdf, 0x7f, 0x7f, 0x9e, 0x42,
+	0xa7, 0x73, 0xf6, 0xc5, 0xf1, 0xf8, 0x5f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe6, 0xae, 0x33, 0x0b,
+	0xc2, 0x04, 0x00, 0x00,
 }

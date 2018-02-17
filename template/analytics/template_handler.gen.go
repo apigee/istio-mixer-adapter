@@ -31,6 +31,8 @@ type Instance struct {
 	// Name of the instance as specified in configuration.
 	Name string
 
+	ApiProxy string
+
 	ResponseStatusCode int64
 
 	ClientIp interface{}
@@ -59,8 +61,11 @@ type Instance struct {
 
 	TargetReceivedEndTimestamp time.Time
 
-	// auth hack... to be removed later
-	Apikey string
+	// auth: if jwt is available (takes precidence over api_key)
+	ApiClaims map[string]string
+
+	// auth: if jwt isn't available and apikey is
+	ApiKey string
 }
 
 // HandlerBuilder must be implemented by adapters if they want to

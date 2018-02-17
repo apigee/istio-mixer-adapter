@@ -1,53 +1,55 @@
-package analytics // import "github.com/apigee/istio-mixer-adapter/apigee/analytics"
+package analytics
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
-	"path"
-	"istio.io/istio/mixer/pkg/adapter"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"net/http"
 	"time"
+	"path"
 )
 
-const apidPath = "/analytics"
-const axRecordType = "APIAnalytics"
+const (
+	axPath       = "/axpublisher/organization/%s/environment/%s"
+	axRecordType = "APIAnalytics"
+)
 
 func TimeToUnix(t time.Time) int64 {
 	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-func SendAnalyticsRecord(env adapter.Env, apidBase url.URL, auth *auth.VerifyApiKeySuccessResponse, record *Record) error {
-	log := env.Logger()
-
-	if auth.Organization == "" || auth.Environment == "" {
+func SendRecord(auth auth.Context, record *Record) error {
+	if auth.Organization() == "" || auth.Environment() == "" {
 		return fmt.Errorf("organization and environment are required in auth: %v", auth)
 	}
 
 	record.RecordType = axRecordType
 
-	// populate auth context
-	record.DeveloperEmail = auth.Developer.Email
-	record.DeveloperApp = auth.App.Name
-	record.AccessToken = auth.ClientId.ClientSecret
-	record.ClientID = auth.ClientId.ClientId
-	record.APIProduct = auth.ApiProduct.Name
+	// populate from auth context
+	record.DeveloperEmail = auth.DeveloperEmail
+	record.DeveloperApp = auth.Application
+	record.AccessToken = auth.AccessToken
+	record.ClientID = auth.ClientID
 
-	apidBase.Path = path.Join(apidBase.Path, apidPath)
-	apidBaseString := apidBase.String()
+	// todo: seriously?
+	if len(auth.APIProducts) > 0 {
+		record.APIProduct = auth.APIProducts[0]
+	}
+
+	axURL := auth.ApigeeBase()
+	axURL.Path = path.Join(axURL.Path, fmt.Sprintf(axPath, auth.Organization(), auth.Environment()))
 
 	request := Request{
-		Organization: auth.Organization,
-		Environment: auth.Environment,
-		Records: []Record{ *record },
+		Organization: auth.Organization(),
+		Environment:  auth.Environment(),
+		Records:      []Record{*record},
 	}
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(request)
 
-	req, err := http.NewRequest(http.MethodPost, apidBaseString, body)
+	req, err := http.NewRequest(http.MethodPost, axURL.String(), body)
 	if err != nil {
 		return err
 	}
@@ -55,7 +57,7 @@ func SendAnalyticsRecord(env adapter.Env, apidBase url.URL, auth *auth.VerifyApi
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	log.Infof("Sending to apid (%s): %s\n", apidBaseString, body)
+	auth.Log().Infof("Sending to (%s): %s\n", axURL.String(), body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -70,14 +72,14 @@ func SendAnalyticsRecord(env adapter.Env, apidBase url.URL, auth *auth.VerifyApi
 
 	switch resp.StatusCode {
 	case 200:
-		log.Infof("analytics accepted\n")
+		auth.Log().Infof("analytics accepted\n")
 		return nil
 	default:
 		var errorResponse ErrorResponse
 		if err = json.Unmarshal(respBody, &errorResponse); err != nil {
 			return err
 		}
-		log.Errorf("analytics not sent. reason: %s, code: %s\n",
+		auth.Log().Errorf("analytics not sent. reason: %s, code: %s\n",
 			errorResponse.Reason, errorResponse.ErrorCode)
 		return fmt.Errorf("analytics not sent. reason: %s, code: %s",
 			errorResponse.Reason, errorResponse.ErrorCode)

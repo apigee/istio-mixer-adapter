@@ -11,8 +11,10 @@ option (gogoproto.equal_all) = false;
 option (gogoproto.gostring_all) = false;
 
 message Params {
-    string apid_base   = 1;
-    string org_name    = 2;
-    string env_name    = 3;
-    string proxy_name  = 4;
+    string apigee_base   = 1;
+    string customer_base = 2;
+    string org_name      = 3;
+    string env_name      = 4;
+    string key           = 5;
+    string secret        = 6;
 }
