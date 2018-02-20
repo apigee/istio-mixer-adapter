@@ -8,6 +8,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter"
+	"istio.io/istio/mixer/pkg/adapter/test"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -81,6 +82,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	ctx := &TestContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
+		log:          test.NewEnv(t),
 	}
 
 	claims, err := VerifyAPIKey(ctx, apiKey)
@@ -115,6 +117,7 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	ctx := &TestContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
+		log:          test.NewEnv(t),
 	}
 	success, err := VerifyAPIKey(ctx, "badKey")
 
@@ -130,8 +133,9 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 func TestVerifyAPIKeyError(t *testing.T) {
 
 	ctx := &TestContext{
-		apigeeBase: url.URL{},
+		apigeeBase:   url.URL{},
 		customerBase: url.URL{},
+		log:          test.NewEnv(t),
 	}
 	success, err := VerifyAPIKey(ctx, "badKey")
 
