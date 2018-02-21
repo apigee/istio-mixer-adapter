@@ -28,7 +28,7 @@ func TestAnalyticsSubmit(t *testing.T) {
 		AccessToken:    "token",
 		ClientID:       "clientId",
 	}
-	axRecord := &Record{
+	axRecord := Record{
 		ResponseStatusCode:           201,
 		RequestVerb:                  "PATCH",
 		RequestPath:                  "/test",
@@ -50,7 +50,7 @@ func TestAnalyticsSubmit(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecord(*authContext, axRecord)
+	err = SendRecords(authContext, []Record{axRecord})
 	if err != nil {
 		t.Error(err)
 	}
@@ -73,10 +73,10 @@ func TestBadServerBase(t *testing.T) {
 		AccessToken:    "token",
 		ClientID:       "clientId",
 	}
-	axRecord := &Record{}
+	axRecord := Record{}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	err := SendRecord(*authContext, axRecord)
+	err := SendRecords(authContext, []Record{axRecord})
 	if err == nil {
 		t.Errorf("should get bad base error")
 	}
@@ -96,7 +96,7 @@ func TestMissingOrg(t *testing.T) {
 		AccessToken:    "token",
 		ClientID:       "clientId",
 	}
-	axRecord := &Record{}
+	axRecord := Record{}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
 	baseURL, err := url.Parse(ts.URL)
@@ -105,7 +105,7 @@ func TestMissingOrg(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecord(*authContext, axRecord)
+	err = SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "organization") {
 		t.Errorf("should get missing organization error, got: %s", err)
 	}
@@ -125,7 +125,7 @@ func TestMissingEnv(t *testing.T) {
 		AccessToken:    "token",
 		ClientID:       "clientId",
 	}
-	axRecord := &Record{}
+	axRecord := Record{}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
 	baseURL, err := url.Parse(ts.URL)
@@ -134,13 +134,13 @@ func TestMissingEnv(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecord(*authContext, axRecord)
+	err = SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Errorf("should get missing environment error, got: %s", err)
 	}
 }
 
-func makeTestServer(auth *auth.Context, rec *Record, t *testing.T) *httptest.Server {
+func makeTestServer(auth *auth.Context, rec Record, t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
 		var axRequest Request
@@ -149,6 +149,8 @@ func makeTestServer(auth *auth.Context, rec *Record, t *testing.T) *httptest.Ser
 			t.Error(err)
 		}
 		defer r.Body.Close()
+
+		auth.Context.Log().Errorf("axRequest: %#v", axRequest)
 
 		if axRequest.Organization != auth.Organization() {
 			t.Errorf("bad orgName")

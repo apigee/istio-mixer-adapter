@@ -7,7 +7,6 @@ package apigee
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/url"
 	"strings"
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
@@ -182,23 +181,16 @@ func (h *handler) HandleLogEntry(ctx context.Context, logEntries []*logentry.Ins
 }
 
 // identify if auth available, call apid
+// important: This assumes that the Auth is the same for all records!
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
 
-	// todo: naive impl, optimize
+	var authContext *auth.Context
+	var records []analytics.Record
 
 	for _, inst := range instances {
 		h.log.Infof("HandleAnalytics: %v\n", inst)
 
-		clientIP := ""
-		rawIP := inst.ClientIp.([]uint8)
-		if len(rawIP) == net.IPv4len || len(rawIP) == net.IPv6len {
-			ip := net.IP(rawIP)
-			if !ip.IsUnspecified() {
-				clientIP = ip.String()
-			}
-		}
-
-		record := &analytics.Record{
+		record := analytics.Record{
 			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
 			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
 			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
@@ -211,7 +203,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,
-			ClientIP:                     clientIP,
+			ClientIP:                     inst.ClientIp.String(),
 			UserAgent:                    inst.Useragent,
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 		}
@@ -222,15 +214,18 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			claims[k] = v
 		}
 
-		authContext, err := auth.Authenticate(h, inst.ApiKey, claims)
-		if err != nil {
-			return err
+		if authContext == nil {
+			ac, err := auth.Authenticate(h, inst.ApiKey, claims)
+			if err != nil {
+				return err
+			}
+			authContext = &ac
 		}
 
-		return analytics.SendRecord(authContext, record)
+		records = append(records, record)
 	}
 
-	return nil
+	return analytics.SendRecords(authContext, records)
 }
 
 var productNameToDetails map[string]auth.ApiProductDetails

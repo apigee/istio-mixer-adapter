@@ -10,7 +10,7 @@ option (istio.mixer.v1.template.template_variety) = TEMPLATE_VARIETY_REPORT;
 message Template {
     string api_proxy = 1;
     int64 response_status_code = 2;
-    istio.mixer.v1.template.Value client_ip = 3;  // todo: https://github.com/istio/old_mixer_repo/issues/1480
+    istio.mixer.v1.template.IPAddress client_ip = 3;
     string request_verb = 4;
     string request_uri = 5;
     string request_path = 6;
@@ -24,7 +24,7 @@ message Template {
     istio.mixer.v1.template.TimeStamp target_received_start_timestamp = 14;
     istio.mixer.v1.template.TimeStamp target_received_end_timestamp = 15;
 
-    // auth: if jwt is available (takes precidence over api_key)
+    // auth: if jwt is available (takes precedence over api_key)
     map<string, string> api_claims = 200;
 
     // auth: if jwt isn't available and apikey is

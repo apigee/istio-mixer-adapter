@@ -30,3 +30,8 @@ type Request struct {
 	Environment  string   `json:"environment"`
 	Records      []Record `json:"records"`
 }
+
+type Response struct {
+	Accepted int `json:"accepted"`
+	Rejected int `json:"rejected"`
+}

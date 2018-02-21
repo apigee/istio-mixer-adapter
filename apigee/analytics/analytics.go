@@ -19,22 +19,27 @@ func TimeToUnix(t time.Time) int64 {
 	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-func SendRecord(auth auth.Context, record *Record) error {
+// todo: select best APIProduct based on path, otherwise arbitrary
+func SendRecords(auth *auth.Context, records []Record) error {
+	if auth == nil || len(records) == 0{
+		return nil
+	}
 	if auth.Organization() == "" || auth.Environment() == "" {
 		return fmt.Errorf("organization and environment are required in auth: %v", auth)
 	}
 
-	record.RecordType = axRecordType
+	for i := range records {
+		records[i].RecordType = axRecordType
 
-	// populate from auth context
-	record.DeveloperEmail = auth.DeveloperEmail
-	record.DeveloperApp = auth.Application
-	record.AccessToken = auth.AccessToken
-	record.ClientID = auth.ClientID
+		// populate from auth context
+		records[i].DeveloperEmail = auth.DeveloperEmail
+		records[i].DeveloperApp = auth.Application
+		records[i].AccessToken = auth.AccessToken
+		records[i].ClientID = auth.ClientID
 
-	// todo: seriously?
-	if len(auth.APIProducts) > 0 {
-		record.APIProduct = auth.APIProducts[0]
+		if len(auth.APIProducts) > 0 {
+			records[i].APIProduct = auth.APIProducts[0]
+		}
 	}
 
 	axURL := auth.ApigeeBase()
@@ -43,7 +48,7 @@ func SendRecord(auth auth.Context, record *Record) error {
 	request := Request{
 		Organization: auth.Organization(),
 		Environment:  auth.Environment(),
-		Records:      []Record{*record},
+		Records:      records,
 	}
 
 	body := new(bytes.Buffer)
@@ -54,10 +59,11 @@ func SendRecord(auth auth.Context, record *Record) error {
 		return err
 	}
 
+	req.SetBasicAuth(auth.Key(), auth.Secret())
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	auth.Log().Infof("Sending to (%s): %s\n", axURL.String(), body)
+	auth.Log().Infof("Sending to (%s): %s", axURL.String(), body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -72,11 +78,12 @@ func SendRecord(auth auth.Context, record *Record) error {
 
 	switch resp.StatusCode {
 	case 200:
-		auth.Log().Infof("analytics accepted\n")
+		auth.Log().Infof("analytics accepted: %v", string(respBody))
 		return nil
 	default:
 		var errorResponse ErrorResponse
 		if err = json.Unmarshal(respBody, &errorResponse); err != nil {
+			auth.Log().Infof("analytics unmarshal error: %d, body: %v", resp.StatusCode, string(respBody))
 			return err
 		}
 		auth.Log().Errorf("analytics not sent. reason: %s, code: %s\n",

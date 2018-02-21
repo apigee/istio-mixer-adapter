@@ -18,6 +18,7 @@ package analytics
 
 import (
 	"context"
+	"net"
 	"time"
 
 	"istio.io/istio/mixer/pkg/adapter"
@@ -35,7 +36,7 @@ type Instance struct {
 
 	ResponseStatusCode int64
 
-	ClientIp interface{}
+	ClientIp net.IP
 
 	RequestVerb string
 
@@ -61,7 +62,7 @@ type Instance struct {
 
 	TargetReceivedEndTimestamp time.Time
 
-	// auth: if jwt is available (takes precidence over api_key)
+	// auth: if jwt is available (takes precedence over api_key)
 	ApiClaims map[string]string
 
 	// auth: if jwt isn't available and apikey is
