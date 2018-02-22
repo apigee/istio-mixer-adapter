@@ -27,3 +27,5 @@ bazel-genfiles
 bazel-istio-mixer-adapter
 bazel-out
 bazel-testlogs
+# proto gen
+bin/protoc-*
