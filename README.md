@@ -7,16 +7,26 @@ Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
 
 ## Building and testing standalone
 
-1. Install protoc and dep
+1. Install protoc and dep prerequisites:
 
         [](https://developers.google.com/protocol-buffers/docs/downloads) 
         [](https://github.com/golang/dep)
 
-2. Install Go dependencies
+2. clone Istio and get deps:
 
+        export ISTIO=$GOPATH/src/istio.io/istio
+        mkdir -p $ISTIO
+        cd $ISTIO
+        git clone https://github.com/istio/istio
+        cd istio
+        make build
+
+3. Install adapter dependencies
+
+        cd $GOPATH/src/github.com/apigee/istio-mixer-adapter
         dep ensure 
 
-3. Generate protos, build adapter, and run tests
+4. Generate protos, build adapter, and run tests
 
         go generate ./...
         go build ./...
@@ -26,37 +36,31 @@ Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
 
 ### Build mixer with apigee-mixer-adapter (local copy)
 
-1. clone istio:
-
-        export ISTIO=$GOPATH/src/istio.io
-        mkdir -p $ISTIO
-        cd $ISTIO
-        git clone https://github.com/istio/istio
-        cd istio
-        dep ensure
-
-2. install dependencies:
+1. install dependencies:
 
         go get github.com/lestrrat/go-jwx
         go get github.com/lestrrat/go-pdebug
 
-3. put deps and apigee in mixer vendor dir:
+2. put deps and apigee in mixer vendor dir:
 
         ln -s $GOPATH/src/github.com/lestrrat $ISTIO/istio/vendor/github.com/lestrrat
         ln -s $GOPATH/src/github.com/apigee $ISTIO/istio/vendor/github.com/apigee
-        mv $ISTIO/istio/vendor/github.com/apigee/vendor $ISTIO/istio/vendor/github.com/apigee/vendor.bak
+        ln -s $ISTIO/istio/vendor/github.com/apigee/istio-mixer-adapter $GOPATH/src/github.com/apigee/istio-mixer-adapter
+        mv $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor.bak
 
-4. patch mixer/adapter/inventory.yaml add:
+3. patch $ISTIO/istio/mixer/adapter/inventory.yaml add:
 
         apigee: "github.com/apigee/istio-mixer-adapter/apigee"
 
-5. patch mixer/template/inventory.yaml, add:
+4. patch $ISTIO/istio/mixer/template/inventory.yaml, add:
 
         ../../../../github.com/apigee/istio-mixer-adapter/template/analytics/template_proto.descriptor_set: "github.com/apigee/istio-mixer-adapter/template/analytics"
 
-6. generate templates and make mixer:
+5. generate templates and make mixer:
         
-        go generate ./...
+        cd $ISTIO/istio
+        go generate mixer/adapter/doc.go
+        go generate mixer/template/doc.go
         make mixs
 
 ### Configure mixer
