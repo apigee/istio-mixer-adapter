@@ -59,14 +59,14 @@ spec:
   jwts:
   - issuer: https://theganyo1-eval-test.apigee.net/istio-auth/token
     audiences:
-    - istio
+    - microgateway
     jwks_uri: https://theganyo1-eval-test.apigee.net/istio-auth/jwkPublicKeys
 ---
 # Bind Istio Auth Policy to services
 apiVersion: config.istio.io/v1alpha2
 kind: EndUserAuthenticationPolicySpecBinding
 metadata:
-  name: auth-binding
+  name: auth
   namespace: default
 spec:
   policies:
@@ -127,8 +127,15 @@ metadata:
   name: apigee
   namespace: istio-system
 spec:
-  api_key: request.api_key | request.headers["x-api-key"] | "" # apikey auth
-  api_claims: request.auth.claims | "" # jwt auth
+  api_key: request.api_key | request.headers["x-api-key"] | ""
+  api_claims: # from jwt
+    api_product_list: request.auth.claims["api_product_list"] | ""
+    audience: request.auth.claims["audience"] | ""
+    access_token: request.auth.claims["access_token"] | ""
+    client_id: request.auth.claims["client_id"] | ""
+    application_name: request.auth.claims["application_name"] | ""
+    scopes: request.auth.claims["scopes"] | ""
+    exp: request.auth.claims["exp"] | ""
   api_proxy: api.service | destination.service | ""
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
@@ -136,14 +143,14 @@ spec:
   request_uri: request.path | ""
   request_path: request.path | ""
   useragent: request.useragent | ""
-  client_received_start_timestamp: request.time | timestampNow()
-  client_received_end_timestamp: request.time | timestampNow()
-  target_sent_start_timestamp: request.time | timestampNow()
-  target_sent_end_timestamp: request.time | timestampNow()
-  target_received_start_timestamp: response.time | timestampNow()
-  target_received_end_timestamp: response.time | timestampNow()
-  client_sent_start_timestamp: response.time | timestampNow()
-  client_sent_end_timestamp: response.time | timestampNow()
+  client_received_start_timestamp: request.time
+  client_received_end_timestamp: request.time
+  target_sent_start_timestamp: request.time
+  target_sent_end_timestamp: request.time
+  target_received_start_timestamp: response.time
+  target_received_end_timestamp: response.time
+  client_sent_start_timestamp: response.time
+  client_sent_end_timestamp: response.time
 ---
 # rule to dispatch to handler 'apigee'
 apiVersion: config.istio.io/v1alpha2
@@ -159,3 +166,4 @@ spec:
     - apigee.apikey
     - apigee.quota
     - apigee.analytics
+    - apigee.auth

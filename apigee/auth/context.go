@@ -25,26 +25,13 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 
 	a.Log().Infof("setClaims: %v", claims)
 
-	if claims["audience"] == nil {
+	if claims["client_id"] == nil {
 		return nil
 	}
 
-	/* values as they are from Edge proxy:
-	audience:microgateway
-	nbf:1.518826022e+09
-	application_name:EdgeMicroTestApp
-	exp:1.518826322e+09
-	api_product_list:[EdgeMicroTestProduct IstioProduct]
-	jti:71ce75e7-598e-4b99-8ae2-eeac9d59a231
-	iss:http://theganyo1-eval-test.apigee.net/edgemicro-auth/verifyApiKey
-	access_token:<nil>
-	client_id:yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H
-	iat:1.518826022e+09
-	*/
-
 	products, err := parseArrayOfStrings(claims["api_product_list"])
 	if err != nil {
-		return fmt.Errorf("unable to interpret scopes: %v", claims["api_product_list"])
+		return fmt.Errorf("unable to interpret api_product_list: %v", claims["api_product_list"])
 	}
 
 	scopes, err := parseArrayOfStrings(claims["scopes"])

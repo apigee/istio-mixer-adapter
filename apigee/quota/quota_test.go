@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 	"istio.io/istio/mixer/pkg/adapter/test"
+	"github.com/apigee/istio-mixer-adapter/apigee/product"
 )
 
 func TestQuota(t *testing.T) {
@@ -44,7 +45,7 @@ func TestQuota(t *testing.T) {
 		ClientID:       "clientId",
 	}
 
-	product := auth.ApiProductDetails{
+	p := product.Details{
 		QuotaLimit: "1",
 		QuotaInterval: 1,
 		QuotaTimeUnit: "second",
@@ -56,7 +57,7 @@ func TestQuota(t *testing.T) {
 		BestEffort: true,
 	}
 
-	result, err := Apply(*authContext, product, args)
+	result, err := Apply(*authContext, p, args)
 	if err != nil {
 		t.Errorf("error should be nil")
 	}

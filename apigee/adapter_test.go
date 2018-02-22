@@ -8,8 +8,8 @@ import (
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/apikey"
-	"istio.io/istio/mixer/template/logentry"
 	"istio.io/istio/mixer/template/quota"
+	"istio.io/istio/mixer/template/authorization"
 	"testing"
 
 	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
@@ -35,7 +35,6 @@ func TestValidateBuild(t *testing.T) {
 	// invoke the empty set methods for coverage
 	b.SetAnalyticsTypes(map[string]*analytics.Type{})
 	b.SetApiKeyTypes(map[string]*apikey.Type{})
-	b.SetLogEntryTypes(map[string]*logentry.Type{})
 	b.SetQuotaTypes(map[string]*quota.Type{})
 
 	// check build
@@ -46,10 +45,9 @@ func TestValidateBuild(t *testing.T) {
 
 func TestHandleAnalytics(t *testing.T) {
 	ctx := context.Background()
-	testEnv := test.NewEnv(t)
 
 	h := &handler{
-		log: testEnv.Logger(),
+		env: test.NewEnv(t),
 	}
 
 	err := h.HandleAnalytics(ctx, nil)
@@ -64,10 +62,9 @@ func TestHandleAnalytics(t *testing.T) {
 
 func TestHandleApiKey(t *testing.T) {
 	ctx := context.Background()
-	testEnv := test.NewEnv(t)
 
 	h := &handler{
-		log: testEnv.Logger(),
+		env: test.NewEnv(t),
 	}
 
 	inst := &apikey.Instance{}
@@ -88,17 +85,22 @@ func TestHandleApiKey(t *testing.T) {
 	}
 }
 
-func TestHandleLogEntry(t *testing.T) {
+func TestHandleAuthorization(t *testing.T) {
 	ctx := context.Background()
-	testEnv := test.NewEnv(t)
 
 	h := &handler{
-		log: testEnv.Logger(),
+		env: test.NewEnv(t),
 	}
 
-	err := h.HandleLogEntry(ctx, nil)
+	inst := &authorization.Instance{}
+
+	got, err := h.HandleAuthorization(ctx, inst)
 	if err != nil {
-		t.Errorf("HandleLogEntry(ctx, nil) resulted in an unexpected error: %v", err)
+		t.Errorf("HandleAuthorization(ctx, nil) resulted in an unexpected error: %v", err)
+	}
+
+	if got.Status.Code != int32(rpc.PERMISSION_DENIED) {
+		t.Errorf("HandleAuthorization(ctx, nil) => %#v, want %#v", got.Status, status.OK)
 	}
 
 	if err := h.Close(); err != nil {
@@ -108,10 +110,9 @@ func TestHandleLogEntry(t *testing.T) {
 
 func TestHandleQuota(t *testing.T) {
 	ctx := context.Background()
-	testEnv := test.NewEnv(t)
 
 	h := &handler{
-		log: testEnv.Logger(),
+		env: test.NewEnv(t),
 	}
 
 	inst := &quota.Instance{
@@ -133,3 +134,13 @@ func TestHandleQuota(t *testing.T) {
 		t.Errorf("Close() returned an unexpected error")
 	}
 }
+
+//func TestResolveProducts(t *testing.T) {
+//
+//	ac := auth.Context{}
+//	api := ""
+//	path := ""
+//	var got []auth.ApiProductDetails
+//
+//	got = resolveProducts(ac, api, path)
+//}

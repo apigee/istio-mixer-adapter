@@ -7,18 +7,18 @@ package apigee
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"strings"
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
+	"github.com/apigee/istio-mixer-adapter/apigee/product"
 	"github.com/apigee/istio-mixer-adapter/apigee/quota"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
-	quotaT "istio.io/istio/mixer/template/quota"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/apikey"
-	"istio.io/istio/mixer/template/logentry"
+	authT "istio.io/istio/mixer/template/authorization"
+	quotaT "istio.io/istio/mixer/template/quota"
+	"net/url"
 )
 
 type (
@@ -27,7 +27,7 @@ type (
 	}
 
 	handler struct {
-		log          adapter.Logger
+		env          adapter.Env
 		apigeeBase   url.URL
 		customerBase url.URL
 		orgName      string
@@ -37,10 +37,10 @@ type (
 	}
 )
 
-// Have handler implement Context
+// make handler implement Context...
 
 func (h *handler) Log() adapter.Logger {
-	return h.log
+	return h.env.Logger()
 }
 func (h *handler) ApigeeBase() url.URL {
 	return h.apigeeBase
@@ -65,17 +65,17 @@ func (h *handler) Secret() string {
 var (
 	// Builder
 	_ adapter.HandlerBuilder    = &builder{}
-	_ logentry.HandlerBuilder   = &builder{}
 	_ quotaT.HandlerBuilder     = &builder{}
 	_ analyticsT.HandlerBuilder = &builder{}
 	_ apikey.HandlerBuilder     = &builder{}
+	_ authT.HandlerBuilder      = &builder{}
 
 	// Handler
 	_ adapter.Handler    = &handler{}
 	_ quotaT.Handler     = &handler{}
-	_ logentry.Handler   = &handler{}
 	_ analyticsT.Handler = &handler{}
 	_ apikey.Handler     = &handler{}
+	_ authT.Handler      = &handler{}
 )
 
 ////////////////// GetInfo //////////////////////////
@@ -87,10 +87,10 @@ func GetInfo() adapter.Info {
 		Impl:        "istio.io/istio/mixer/adapter/apigee",
 		Description: "Apigee adapter",
 		SupportedTemplates: []string{
-			logentry.TemplateName,
-			quotaT.TemplateName,
 			analyticsT.TemplateName,
 			apikey.TemplateName,
+			authT.TemplateName,
+			quotaT.TemplateName,
 		},
 		DefaultConfig: &config.Params{},
 		NewBuilder:    func() adapter.HandlerBuilder { return &builder{} },
@@ -117,15 +117,19 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	return &handler{
-		log:          env.Logger(),
+	h := &handler{
+		env:          env,
 		apigeeBase:   *apigeeBase,
 		customerBase: *customerBase,
 		orgName:      b.adapterConfig.OrgName,
 		envName:      b.adapterConfig.EnvName,
 		key:          b.adapterConfig.Key,
 		secret:       b.adapterConfig.Secret,
-	}, nil
+	}
+
+	product.Start(h.CustomerBase(), h.Log(), env)
+
+	return h, nil
 }
 
 // Implements adapter.HandlerBuilder
@@ -162,25 +166,19 @@ func (b *builder) Validate() (errs *adapter.ConfigErrors) {
 	return errs
 }
 
-func (*builder) SetLogEntryTypes(t map[string]*logentry.Type)  {}
-func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
 func (*builder) SetApiKeyTypes(map[string]*apikey.Type)        {}
+func (*builder) SetAuthorizationTypes(map[string]*authT.Type)  {}
+func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 
 ////////////////// adapter.Handler //////////////////////////
 
 // Implements adapter.Handler
-func (h *handler) Close() error { return nil }
-
-func (h *handler) HandleLogEntry(ctx context.Context, logEntries []*logentry.Instance) error {
-	// stubbed if we want to support
-	//for _, logEntry := range logEntries {
-	//	h.log.Infof("HandleLogEntry: %v\n", logEntry)
-	//}
+func (h *handler) Close() error {
+	product.Stop()
 	return nil
 }
 
-// identify if auth available, call apid
 // important: This assumes that the Auth is the same for all records!
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
 
@@ -188,7 +186,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	var records []analytics.Record
 
 	for _, inst := range instances {
-		h.log.Infof("HandleAnalytics: %v\n", inst)
+		h.Log().Infof("HandleAnalytics: %v\n", inst)
 
 		record := analytics.Record{
 			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
@@ -208,14 +206,8 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 		}
 
-		// todo: this is nonsense, are we dealing with map[string]string or map[string]interface{}?
-		var claims map[string]interface{}
-		for k,v := range inst.ApiClaims {
-			claims[k] = v
-		}
-
 		if authContext == nil {
-			ac, err := auth.Authenticate(h, inst.ApiKey, claims)
+			ac, err := auth.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
 			if err != nil {
 				return err
 			}
@@ -228,66 +220,89 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return analytics.SendRecords(authContext, records)
 }
 
-var productNameToDetails map[string]auth.ApiProductDetails
+func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adapter.CheckResult, error) {
+	h.Log().Infof("HandleApiKey: %v\n", inst)
 
-// todo: naive impl, optimize
-// todo: paths can be wildcards
-// todo: auth scopes
-func resolveProducts(ac auth.Context, api, path string) []auth.ApiProductDetails {
-	var result []auth.ApiProductDetails
-	for _, name := range ac.APIProducts { // find product by name
-		apiProduct := productNameToDetails[name]
-
-		for _, attr := range apiProduct.Attributes { // find target services
-			if attr.Name == "istio-services" {
-				apiProductTargets := strings.Split(attr.Value, ",")
-				for _, apiProductTarget := range apiProductTargets { // find target paths
-					if apiProductTarget == api {
-						validPaths := apiProduct.Resources
-						for _, p := range validPaths {
-							if p == path { // todo: probably need to do a substring match
-								result = append(result, apiProduct)
-							}
-						}
-					}
-				}
-			}
-		}
+	if inst.ApiKey == "" || inst.Api == "" || inst.ApiOperation == "" {
+		h.Log().Infof("missing properties")
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied("missing authentication"),
+		}, nil
 	}
-	return result
+
+	authContext, err := auth.Authenticate(h, inst.ApiKey, nil)
+	if err != nil {
+		h.Log().Errorf("authenticate err: %v", err)
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied(err.Error()),
+		}, err
+	}
+
+	// todo: need to do better response for fail
+	if authContext.ClientID == "" {
+		h.Log().Infof("authenticate failed")
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied("authentication failed"),
+		}, nil
+	}
+
+	return authorize(authContext, inst.Api, inst.ApiOperation)
 }
 
-/*
-if no jwt, get jwt from api key
-for each product
-	get product def: (products -> lookup by id)
-	get services: attributes.name = "istio-services", "value" = comma-delimited service names
-	for each service, if matches target service (api)
-		for each apiResources, if matches request path
-			get quota
-		apply quota
-	end
-end
+func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
+	h.Log().Infof("HandleAuthorization: %v\n", inst)
 
-*/
-// jwt: application_name -> product list
-// jwt: application_name -> authorized scopes
-// products -> lookup by id
-// 		quota stuff
-// 		apiResources (valid paths)
-// 		required scopes
+	if inst.Subject == nil || inst.Subject.Properties == nil || inst.Action.Service == "" || inst.Action.Path == "" {
+		h.Log().Infof("missing properties")
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied("missing authentication"),
+		}, nil
+	}
 
-// 1. Authenticate & authorize path
-// 2. Check quota
-//		Get products
-//		For each product, check paths
-//		For each product w/ a matching path, apply quota?
+
+	claims, ok := inst.Subject.Properties["claims"].(map[string]string)
+	if !ok {
+		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Subject.Properties["claims"])
+	}
+
+	authContext, err := auth.Authenticate(h, "", convertClaims(claims))
+	if err != nil {
+		h.Log().Errorf("authenticate err: %v", err)
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied(err.Error()),
+		}, err
+	}
+
+	if authContext.ClientID == "" {
+		h.Log().Infof("authenticate failed")
+		return adapter.CheckResult{
+			Status: status.WithPermissionDenied("not authenticated"),
+		}, nil
+	}
+
+	return authorize(authContext, inst.Action.Service, inst.Action.Path)
+}
+
+// authorize: check service, path, scopes
+func authorize(authContext auth.Context, service, path string) (adapter.CheckResult, error) {
+
+	products := product.Resolve(authContext, service, path)
+	if len(products) > 0 {
+		return adapter.CheckResult{
+			Status: status.OK,
+		}, nil
+	}
+
+	return adapter.CheckResult{
+		Status: status.WithPermissionDenied("not authorized"),
+	}, nil
+}
 
 // Istio doesn't understand our Quotas, so it cannot be allowed to cache
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
-	h.log.Infof("HandleQuota: %v args: %v\n", inst, args)
+	h.Log().Infof("HandleQuota: %v args: %v\n", inst, args)
 
-	// todo: skip < 0 to eliminate Istio prefetch returns (if it does that?)
+	// skip < 0 to eliminate Istio prefetch returns
 	if args.QuotaAmount <= 0 {
 		return adapter.QuotaResult{}, nil
 	}
@@ -299,25 +314,25 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	apiKey := inst.Dimensions["api_key"].(string)
 	api := inst.Dimensions["api"].(string)
 
-	h.log.Infof("api: %v, key: %v, path: %v", api, apiKey, path)
+	h.Log().Infof("api: %v, key: %v, path: %v", api, apiKey, path)
 
 	// not sure about actual format
-	claims, ok := inst.Dimensions["api_claims"].(map[string]interface{})
+	claims, ok := inst.Dimensions["api_claims"].(map[string]string)
 	if !ok {
 		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Dimensions["api_claims"])
 	}
 
-	authContext, err := auth.Authenticate(h, apiKey, claims)
+	authContext, err := auth.Authenticate(h, apiKey, convertClaims(claims))
 	if err != nil {
 		return adapter.QuotaResult{}, err
 	}
 
-	h.log.Infof("auth: %v", authContext)
+	h.Log().Infof("auth: %v", authContext)
 
-	// checks auths, paths, scopes for relevant products
-	products := resolveProducts(authContext, api, path)
+	// get relevant products
+	prods := product.Resolve(authContext, api, path)
 
-	if len(products) == 0 { // no quotas, allow
+	if len(prods) == 0 { // no quotas, allow
 		return adapter.QuotaResult{
 			Amount:        args.QuotaAmount,
 			ValidDuration: 0,
@@ -325,15 +340,14 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}
 
 	// todo: support args.DeduplicationID
-
 	// todo: converting our quotas to Istio is weird, anything better?
 	// todo: set QuotaAmount to 1 to eliminate Istio prefetch (also renders BestEffort meaningless)
 	args.QuotaAmount = 1
 	var exceeded int64
 	var anyErr error
-	for _, product := range products {
-		if product.QuotaLimit != "" {
-			result, err := quota.Apply(authContext, product, args)
+	for _, p := range prods {
+		if p.QuotaLimit != "" {
+			result, err := quota.Apply(authContext, p, args)
 			if err != nil {
 				anyErr = err
 			} else if result.Exceeded > 0 {
@@ -359,33 +373,10 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}, nil
 }
 
-func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adapter.CheckResult, error) {
-	h.log.Infof("HandleApiKey: %v\n", inst)
-
-	if inst.ApiKey == "" {
-		h.log.Infof("missing api key")
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("Unauthorized"),
-		}, nil
+func convertClaims(claims map[string]string) map[string]interface{} {
+	var claimsOut map[string]interface{}
+	for k, v := range claims {
+		claimsOut[k] = v
 	}
-
-	authContext, err := auth.Authenticate(h, inst.ApiKey, nil)
-	if err != nil {
-		h.log.Errorf("authenticate err: %v", err)
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied(err.Error()),
-		}, err
-	}
-
-	// todo: need to do better response for fail
-	if authContext.ClientID == "" {
-		h.log.Infof("authenticate failed")
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("denied"),
-		}, nil
-	}
-
-	return adapter.CheckResult{
-		Status: status.OK,
-	}, nil
+	return claimsOut
 }

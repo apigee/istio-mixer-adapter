@@ -9,46 +9,31 @@ import (
 	"path"
 	"strconv"
 	"fmt"
+	"github.com/apigee/istio-mixer-adapter/apigee/product"
 )
 
-// todo: support args.DeduplicationID, args.BestEffort
+// todo: support args.DeduplicationID
 
 const quotaPath = "/quotas/organization/%s/environment/%s"
 
-type QuotaRequest struct {
-	Identifier string `json:"identifier"`
-	Weight     int64  `json:"weight"`
-	Interval   int64  `json:"interval"`
-	Allow      int64  `json:"allow"`
-	TimeUnit   string `json:"timeUnit"`
-}
-
-type QuotaResult struct {
-	Allowed    int64 `json:"allowed"`
-	Used       int64 `json:"used"`
-	Exceeded   int64 `json:"exceeded"`
-	ExpiryTime int64 `json:"expiryTime"`
-	Timestamp  int64 `json:"timestamp"`
-}
-
-func Apply(auth auth.Context, product auth.ApiProductDetails, args adapter.QuotaArgs) (QuotaResult, error) {
+// todo: async
+func Apply(auth auth.Context, p product.Details, args adapter.QuotaArgs) (QuotaResult, error) {
 
 	quotaURL := auth.ApigeeBase()
 	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, auth.Organization(), auth.Environment()))
 
-	allow, err := strconv.ParseInt(product.QuotaLimit, 10, 64)
+	allow, err := strconv.ParseInt(p.QuotaLimit, 10, 64)
 	if err != nil {
 		return QuotaResult{}, err
 	}
 
-	// todo: hold up, if it's per app, it's not per product, right?
-	// todo: I feel like the Identifier should be app+product?
+	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 	request := QuotaRequest{
-		Identifier: auth.Application,
+		Identifier: quotaID,
 		Weight:     args.QuotaAmount,
-		Interval:   product.QuotaInterval,
+		Interval:   p.QuotaInterval,
 		Allow:      allow,
-		TimeUnit:   product.QuotaTimeUnit,
+		TimeUnit:   p.QuotaTimeUnit,
 	}
 
 	body := new(bytes.Buffer)
