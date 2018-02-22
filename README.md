@@ -3,13 +3,16 @@
 This workspace holds an Apigee adapter for Istio Mixer. It can be tested standalone as noted below.
 Instructions for building and running in Kubernetes are available here: [README-Kubernetes.MD]().
 
+Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
+
 ## Building and testing standalone
 
-1. Install dep
+1. Install protoc and dep
 
-        [](https://github.com/golang/dep) 
+        [](https://developers.google.com/protocol-buffers/docs/downloads) 
+        [](https://github.com/golang/dep)
 
-2. Install dependencies
+2. Install Go dependencies
 
         dep ensure 
 
@@ -21,13 +24,16 @@ Instructions for building and running in Kubernetes are available here: [README-
    
 ## Testing in Mixer
 
-### Build mixer with apigee-mixer-adapter
+### Build mixer with apigee-mixer-adapter (local copy)
 
-1. clone istio
+1. clone istio:
 
-        cd $GOPATH/
-        git clone https://github.com/istio/istio
         export ISTIO=$GOPATH/src/istio.io
+        mkdir -p $ISTIO
+        cd $ISTIO
+        git clone https://github.com/istio/istio
+        cd istio
+        dep ensure
 
 2. install dependencies:
 
