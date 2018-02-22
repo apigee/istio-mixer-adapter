@@ -29,3 +29,5 @@ bazel-out
 bazel-testlogs
 # proto gen
 bin/protoc-*
+# Vim
+*.swp

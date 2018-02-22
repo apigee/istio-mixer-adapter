@@ -5,16 +5,17 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"github.com/lestrrat/go-jwx/jwk"
-	"istio.io/istio/mixer/pkg/adapter"
-	"istio.io/istio/mixer/pkg/adapter/test"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/lestrrat/go-jwx/jwk"
+	"istio.io/istio/mixer/pkg/adapter"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
 var badKeyResponse = []byte(`{"fault":{"faultstring":"Invalid ApiKey","detail":{"errorcode":"oauth.v2.InvalidApiKey"}}}`)
@@ -59,7 +60,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 		defer r.Body.Close()
 
 		if apiKey != req.ApiKey {
-			t.Fatal("expected: %v, got: %v", apiKey, req)
+			t.Fatalf("expected: %v, got: %v", apiKey, req)
 		}
 
 		jwt, err := generateJWT(privateKey)
