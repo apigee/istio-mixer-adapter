@@ -21,6 +21,8 @@ package apigee
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
@@ -32,7 +34,6 @@ import (
 	"istio.io/istio/mixer/template/apikey"
 	authT "istio.io/istio/mixer/template/authorization"
 	quotaT "istio.io/istio/mixer/template/quota"
-	"net/url"
 )
 
 type (
@@ -272,7 +273,6 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 			Status: status.WithPermissionDenied("missing authentication"),
 		}, nil
 	}
-
 
 	claims, ok := inst.Subject.Properties["claims"].(map[string]string)
 	if !ok {

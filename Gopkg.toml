@@ -6,17 +6,16 @@ required = [
   "github.com/gogo/protobuf/jsonpb",
   "github.com/gogo/protobuf/protoc-gen-gogoslick",
   "github.com/gogo/protobuf/gogoproto",
+  "github.com/lestrrat/go-jwx",
+  "github.com/lestrrat/go-pdebug",
+  "github.com/dgrijalva/jwt-go",
 ]
 
 [[constraint]]
   name = "istio.io/api"
-  revision = "a6c74ca9a8b5bba45bafd6d238a27dde4c406da7"
+  revision = "a11fc3a78b68ede57ad46fb4d1f7fe5742325489"
 
 [[override]]
   name = "github.com/gogo/protobuf"
   version = "=0.5"
 
-
-[[constraint]]
-  name = "github.com/dgrijalva/jwt-go"
-  version = "3.1.0"
