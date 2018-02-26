@@ -6,10 +6,12 @@
 
     sudo apt-get update
     sudo apt-get install git-remote-google
-    sudo goobuntu-add-repo -e cloud-sdk-trusty &&  sudo apt-get install google-cloud-sdk
-    sudo apt-get install bazel
+    sudo goobuntu-add-repo -e cloud-sdk-trusty && sudo apt-get install google-cloud-sdk
     
-    sudo apt-get install docker-engine
+    sudo glinux-add-repo docker-ce-$(lsb_release -cs)
+    sudo apt-get update
+    sudo apt-get install docker-ce
+
     sudo ip link set docker0 down
     echo 'DOCKER_OPTS="${DOCKER_OPTS} --bip=192.168.9.1/24"' |  sudo tee --append /etc/default/docker
     sudo ip link del docker0
@@ -27,7 +29,7 @@
     git clone https://github.com/theganyo/mixer.git
     cd mixer/docker
     git checkout istio-mixer-adapter
-    bazel build //... 
+    make build
     ./gcloud_build.sh
 
 
