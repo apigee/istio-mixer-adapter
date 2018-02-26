@@ -31,3 +31,4 @@ bazel-testlogs
 bin/protoc-*
 # Vim
 *.swp
+*.swo
