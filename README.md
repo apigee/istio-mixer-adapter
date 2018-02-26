@@ -45,7 +45,6 @@ Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
 
         ln -s $GOPATH/src/github.com/lestrrat $ISTIO/istio/vendor/github.com/lestrrat
         ln -s $GOPATH/src/github.com/apigee $ISTIO/istio/vendor/github.com/apigee
-        ln -s $ISTIO/istio/vendor/github.com/apigee/istio-mixer-adapter $GOPATH/src/github.com/apigee/istio-mixer-adapter
         mv $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor.bak
 
 3. patch $ISTIO/istio/mixer/adapter/inventory.yaml add:
