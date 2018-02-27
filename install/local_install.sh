@@ -51,7 +51,8 @@ fi
 
 echo "Checking if istio is built..."
 cd "${ISTIO}/istio"
-make build || exit 1
+make depend || exit 1
+make mixs || exit 1
 
 echo "All dependencies present, setting up adapter..."
 cd "${ADAPTER_DIR}"
@@ -65,6 +66,7 @@ go test ./... || exit 1
 
 echo "Re-building mixer with Apigee adapter..."
 
+rm -rf "${ADAPTER_DIR}/vendor"
 go get github.com/lestrrat/go-jwx
 go get github.com/lestrrat/go-pdebug
 
@@ -94,3 +96,4 @@ fi
 cd "${ISTIO}/istio"
 go generate mixer/adapter/doc.go || exit 1
 go generate mixer/template/doc.go || exit 1
+make mixs
