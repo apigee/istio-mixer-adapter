@@ -17,18 +17,18 @@ package product
 import (
 	"encoding/json"
 	"io/ioutil"
-	"istio.io/istio/mixer/pkg/adapter"
 	"net/http"
 	"net/url"
 	"path"
 	"sync/atomic"
 	"time"
+
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
-const (
-	productsURL  = "/products"
-	pollInterval = 2 * time.Minute
-)
+const productsURL = "/products"
+
+var pollInterval = 2 * time.Minute
 
 /*
 Usage:
@@ -45,6 +45,7 @@ func createProductManager(baseURL url.URL, log adapter.Logger) *productManager {
 	return &productManager{
 		baseURL:         baseURL,
 		log:             log,
+		products:        map[string]Details{},
 		quitPollingChan: make(chan bool, 1),
 		closedChan:      make(chan bool),
 		getProductsChan: make(chan bool),
@@ -75,6 +76,7 @@ func (p *productManager) start(env adapter.Env) {
 	})
 }
 
+// returns name => Details
 func (p *productManager) getProducts() map[string]Details {
 	p.log.Errorf("getProducts()")
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
