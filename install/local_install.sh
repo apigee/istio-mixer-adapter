@@ -39,14 +39,58 @@ if [ ! -d "${ISTIO}/istio" ]; then
   git clone https://github.com/istio/istio
 fi
 
+PROTOBUF_DIR="${GOPATH}/src/github.com/gogo/protobuf"
+
+if [ ! -d "${PROTOBUF_DIR}" ]; then
+  echo "gogo protobuf not found, fetching..."
+  cd "${GOPATH}/src"
+  mkdir -p github.com/gogo
+  cd github.com/gogo
+  git clone https://github.com/gogo/protobuf
+fi
+
 echo "Checking if istio is built..."
 cd "${ISTIO}/istio"
 make build || exit 1
 
-echo "All dependencies present, setting up adapter."
+echo "All dependencies present, setting up adapter..."
 cd "${ADAPTER_DIR}"
 echo "Running dep ensure..."
+echo "If this fails it is possible things have changed, try deleting your" \
+  "vendor directory and Gopkg.lock and attempting again."
 dep ensure || exit 1
 go generate ./... || exit 1
 go build ./... || exit 1
 go test ./... || exit 1
+
+echo "Re-building mixer with Apigee adapter..."
+
+go get github.com/lestrrat/go-jwx
+go get github.com/lestrrat/go-pdebug
+
+ln -sf "${GOPATH}/src/github.com/lestrrat" \
+  "${ISTIO}/istio/vendor/github.com/lestrrat"
+ln -sf "${GOPATH}/src/github.com/apigee" \
+  "${ISTIO}/istio/vendor/github.com/apigee"
+ln -sf "${GOPATH}/src/github.com/gogo/protobuf/protobuf" \
+  "${ISTIO}/istio/vendor/github.com/gogo/protobuf/protobuf"
+
+ADAPTER_FILE="${ISTIO}/istio/mixer/adapter/inventory.yaml"
+if [[ `grep "istio-mixer-adapter" "${ADAPTER_FILE}"` == "" ]]; then
+  echo "Adding apigee adapter to inventory..."
+  echo "
+apigee: \"github.com/apigee/istio-mixer-adapter/apigee\"" >> \
+    "${ADAPTER_FILE}"
+fi
+
+TEMPLATE_FILE="${ISTIO}/istio/mixer/template/inventory.yaml"
+if [[ `grep "istio-mixer-adapter" "${TEMPLATE_FILE}"` == "" ]]; then
+  echo "Adding apigee adapter template to inventory..."
+  echo "
+../../../../github.com/apigee/istio-mixer-adapter/template/analytics/template_proto.descriptor_set: \"github.com/apigee/istio-mixer-adapter/template/analytics\"" \
+    >> "${TEMPLATE_FILE}"
+fi
+
+cd "${ISTIO}/istio"
+go generate mixer/adapter/doc.go || exit 1
+go generate mixer/template/doc.go || exit 1
