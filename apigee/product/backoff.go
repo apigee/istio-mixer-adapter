@@ -72,15 +72,15 @@ func (b *ExponentialBackoff) exponentialBackoffStrategy() time.Duration {
 	attempt := float64(b.Backoff.attempt)
 	duration := initial * math.Pow(b.factor, attempt)
 
-	if duration > math.MaxInt64 {
-		return b.max
-	}
-	dur := time.Duration(duration)
-
 	if b.jitter {
 		duration = rand.Float64()*(duration-initial) + initial
 	}
 
+	if duration > math.MaxInt64 {
+		return b.max
+	}
+
+	dur := time.Duration(duration)
 	if dur > b.max {
 		return b.max
 	}
