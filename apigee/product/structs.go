@@ -20,12 +20,12 @@ type apiResponse struct {
 
 type Details struct {
 	Attributes     []Attribute `json:"attributes,omitempty"`
-	CreatedAt      string      `json:"createdAt,omitempty"`
+	CreatedAt      int64       `json:"createdAt,omitempty"`
 	CreatedBy      string      `json:"createdBy,omitempty"`
 	Description    string      `json:"description,omitempty"`
 	DisplayName    string      `json:"displayName,omitempty"`
 	Environments   []string    `json:"environments,omitempty"`
-	LastModifiedAt string      `json:"lastModifiedAt,omitempty"`
+	LastModifiedAt int64       `json:"lastModifiedAt,omitempty"`
 	LastModifiedBy string      `json:"lastModifiedBy,omitempty"`
 	Name           string      `json:"name,omitempty"`
 	QuotaLimit     string      `json:"quota,omitempty"`
@@ -36,7 +36,6 @@ type Details struct {
 }
 
 type Attribute struct {
-	Kind  string `json:"kind,omitempty"`
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
 }
