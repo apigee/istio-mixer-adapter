@@ -16,15 +16,16 @@ package quota
 
 import (
 	"encoding/json"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"istio.io/istio/mixer/pkg/adapter"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
-	"istio.io/istio/mixer/pkg/adapter/test"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/product"
+	"istio.io/istio/mixer/pkg/adapter"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
 func TestQuota(t *testing.T) {
@@ -49,7 +50,7 @@ func TestQuota(t *testing.T) {
 	context := &TestContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
-		log: test.NewEnv(t),
+		log:          test.NewEnv(t),
 	}
 	authContext := &auth.Context{
 		Context:        context,
@@ -59,16 +60,16 @@ func TestQuota(t *testing.T) {
 		ClientID:       "clientId",
 	}
 
-	p := product.Details{
-		QuotaLimit: "1",
+	p := product.APIProduct{
+		QuotaLimit:    "1",
 		QuotaInterval: 1,
 		QuotaTimeUnit: "second",
 	}
 
 	args := adapter.QuotaArgs{
 		DeduplicationID: "X",
-		QuotaAmount: 1,
-		BestEffort: true,
+		QuotaAmount:     1,
+		BestEffort:      true,
 	}
 
 	result, err := Apply(*authContext, p, args)

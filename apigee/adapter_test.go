@@ -16,15 +16,16 @@ package apigee
 
 import (
 	"context"
+	"testing"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/apikey"
-	"istio.io/istio/mixer/template/quota"
 	"istio.io/istio/mixer/template/authorization"
-	"testing"
+	"istio.io/istio/mixer/template/quota"
 
 	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
 )
@@ -34,12 +35,12 @@ func TestValidateBuild(t *testing.T) {
 
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
 	b.SetAdapterConfig(&config.Params{
-		ApigeeBase: "https://edgemicroservices.apigee.net/edgemicro/",
+		ApigeeBase:   "https://edgemicroservices.apigee.net/edgemicro/",
 		CustomerBase: "http://theganyo1-eval-test.apigee.net/edgemicro-auth",
-		OrgName: "theganyo1-eval",
-		EnvName: "test",
-		Key: "key",
-		Secret: "secret",
+		OrgName:      "theganyo1-eval",
+		EnvName:      "test",
+		Key:          "key",
+		Secret:       "secret",
 	})
 
 	if err := b.Validate(); err != nil {
@@ -148,13 +149,3 @@ func TestHandleQuota(t *testing.T) {
 		t.Errorf("Close() returned an unexpected error")
 	}
 }
-
-//func TestResolveProducts(t *testing.T) {
-//
-//	ac := auth.Context{}
-//	api := ""
-//	path := ""
-//	var got []auth.ApiProductDetails
-//
-//	got = resolveProducts(ac, api, path)
-//}

@@ -17,13 +17,14 @@ package quota
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"istio.io/istio/mixer/pkg/adapter"
+	"fmt"
 	"net/http"
 	"path"
 	"strconv"
-	"fmt"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/product"
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
 // todo: support args.DeduplicationID
@@ -31,7 +32,7 @@ import (
 const quotaPath = "/quotas/organization/%s/environment/%s"
 
 // todo: async
-func Apply(auth auth.Context, p product.Details, args adapter.QuotaArgs) (QuotaResult, error) {
+func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (QuotaResult, error) {
 
 	quotaURL := auth.ApigeeBase()
 	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, auth.Organization(), auth.Environment()))
