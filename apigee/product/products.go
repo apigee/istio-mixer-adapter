@@ -15,15 +15,18 @@
 package product
 
 import (
+	"fmt"
+	"net/url"
+	"regexp"
+	"strings"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
-	"strings"
-	"net/url"
 )
 
-var (
-	pm *productManager
-)
+const servicesAttr = "istio-services"
+
+var pm *productManager
 
 func Start(baseURL url.URL, log adapter.Logger, env adapter.Env) {
 	pm = createProductManager(baseURL, log)
@@ -34,44 +37,81 @@ func Stop() {
 	pm.close()
 }
 
-// todo: naive impl, optimize
-// todo: check auth scopes
-// todo: paths can be wildcards
-// 	see: https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior
-func Resolve(ac auth.Context, api, path string) []Details {
-	products := pm.getProducts()
-	var result []Details
-	for _, name := range ac.APIProducts { // find product by name
-		apiProduct := products[name]
+func Resolve(ac auth.Context, api, path string) []APIProduct {
+	return resolve(pm.getProducts(), ac.APIProducts, ac.Scopes, api, path)
+}
 
-		for _, attr := range apiProduct.Attributes { // find target services
-			if attr.Name == "istio-services" {
-				apiProductTargets := strings.Split(attr.Value, ",")
-				for _, apiProductTarget := range apiProductTargets { // find target paths
-					if apiProductTarget == api {
-						validPaths := apiProduct.Resources
-						for _, p := range validPaths {
-							if p == path {
+// todo: naive impl, optimize
+func resolve(pMap map[string]APIProduct, products, scopes []string, api, path string) (result []APIProduct) {
+
+	for _, name := range products {
+		apiProduct := pMap[name]
+		if apiProduct.isValidScopes(scopes) {
+			for _, attr := range apiProduct.Attributes {
+				if attr.Name == servicesAttr {
+					targets := strings.Split(attr.Value, ",")
+					for _, target := range targets { // find target paths
+						if target == api {
+							if apiProduct.isValidPath(path) {
 								result = append(result, apiProduct)
 							}
 						}
 					}
 				}
 			}
+
 		}
 	}
 	return result
 }
 
-// jwt: application_name -> product list
-// jwt: application_name -> authorized scopes
-// products -> lookup by id
-// 		quota stuff
-// 		apiResources (valid paths)
-// 		required scopes
+// true if valid path for API Product
+func (d *APIProduct) isValidPath(requestPath string) bool {
+	for _, resource := range d.Resources {
+		reg, err := makeResourceRegex(resource)
+		if err == nil && reg.MatchString(requestPath) {
+			return true
+		}
+	}
+	return false
+}
 
-// 1. Authenticate & authorize path
-// 2. Check quota
-//		Get products
-//		For each product, check paths
-//		For each product w/ a matching path, apply quota?
+// true if any intersect of scopes
+func (d *APIProduct) isValidScopes(scopes []string) bool {
+	for _, ds := range d.Scopes {
+		for _, s := range scopes {
+			if ds == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// *  : valid anywhere, match in segment (between / and /)
+// ** : valid at end, match any to EOL
+// see: https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior
+func makeResourceRegex(resource string) (*regexp.Regexp, error) {
+
+	// only allow ** as suffix
+	doubleStarIndex := strings.Index(resource, "**")
+	if doubleStarIndex >= 0 && doubleStarIndex != len(resource)-2 {
+		return nil, fmt.Errorf("bad resource specification")
+	}
+
+	// remove ** suffix if exists
+	pattern := resource
+	if doubleStarIndex >= 0 {
+		pattern = pattern[:len(pattern)-2]
+	}
+
+	// let * = any non-slash
+	pattern = strings.Replace(pattern, "*", "[^/]*", -1)
+
+	// if ** suffix, allow anything at end
+	if doubleStarIndex >= 0 {
+		pattern = pattern + ".*"
+	}
+
+	return regexp.Compile("^" + pattern + "$")
+}

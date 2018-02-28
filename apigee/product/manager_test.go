@@ -31,15 +31,15 @@ import (
 
 func TestManager(t *testing.T) {
 
-	allDetails := []Details{
+	apiProducts := []APIProduct{
 		{
 			Attributes: []Attribute{
 				{Name: "attr name", Value: "attr value"},
 			},
 			CreatedAt:      time.Now().Unix(),
 			CreatedBy:      "test1@apigee.com",
-			Description:    "details 1",
-			DisplayName:    "Details 1",
+			Description:    "product 1",
+			DisplayName:    "APIProduct 1",
 			Environments:   []string{"test"},
 			LastModifiedAt: time.Now().Unix(),
 			LastModifiedBy: "test@apigee.com",
@@ -56,8 +56,8 @@ func TestManager(t *testing.T) {
 			},
 			CreatedAt:      time.Now().Unix(),
 			CreatedBy:      "test2@apigee.com",
-			Description:    "details 1",
-			DisplayName:    "Details 2",
+			Description:    "product 2",
+			DisplayName:    "APIProduct 2",
 			Environments:   []string{"prod"},
 			LastModifiedAt: time.Now().Unix(),
 			LastModifiedBy: "test@apigee.com",
@@ -72,7 +72,7 @@ func TestManager(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var result = apiResponse{
-			APIProducts: allDetails,
+			APIProducts: apiProducts,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
@@ -89,14 +89,14 @@ func TestManager(t *testing.T) {
 	pp.start(env)
 	defer pp.close()
 
-	if len(pp.getProducts()) != len(allDetails) {
-		t.Errorf("num details want: %d, got: %d", len(allDetails), len(pp.getProducts()))
+	if len(pp.getProducts()) != len(apiProducts) {
+		t.Errorf("num products want: %d, got: %d", len(apiProducts), len(pp.getProducts()))
 	}
 
-	for _, want := range allDetails {
+	for _, want := range apiProducts {
 		got := pp.getProducts()[want.Name]
 		if !reflect.DeepEqual(got, want) {
-			t.Errorf("provided and received details don't match, got: %v, want: %v", got, want)
+			t.Errorf("provided and received products don't match, got: %v, want: %v", got, want)
 		}
 	}
 }
@@ -104,7 +104,7 @@ func TestManager(t *testing.T) {
 func TestManagerPolling(t *testing.T) {
 
 	var count = 0
-	var allDetails []Details
+	var apiProducts []APIProduct
 	oldPollInterval := pollInterval
 	pollInterval = 5 * time.Millisecond
 	defer func() {
@@ -113,12 +113,12 @@ func TestManagerPolling(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
-		allDetails = append(allDetails, Details{
+		apiProducts = append(apiProducts, APIProduct{
 			Name: fmt.Sprintf("Name %d", count),
 		})
 
 		var result = apiResponse{
-			APIProducts: allDetails,
+			APIProducts: apiProducts,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)

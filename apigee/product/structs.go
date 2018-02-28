@@ -15,10 +15,10 @@
 package product
 
 type apiResponse struct {
-	APIProducts []Details `json:"apiProducts"`
+	APIProducts []APIProduct `json:"apiProducts"`
 }
 
-type Details struct {
+type APIProduct struct {
 	Attributes     []Attribute `json:"attributes,omitempty"`
 	CreatedAt      int64       `json:"createdAt,omitempty"`
 	CreatedBy      string      `json:"createdBy,omitempty"`

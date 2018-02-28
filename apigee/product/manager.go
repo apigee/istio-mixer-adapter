@@ -45,11 +45,11 @@ func createProductManager(baseURL url.URL, log adapter.Logger) *productManager {
 	return &productManager{
 		baseURL:         baseURL,
 		log:             log,
-		products:        map[string]Details{},
+		products:        map[string]APIProduct{},
 		quitPollingChan: make(chan bool, 1),
 		closedChan:      make(chan bool),
 		getProductsChan: make(chan bool),
-		returnChan:      make(chan map[string]Details),
+		returnChan:      make(chan map[string]APIProduct),
 		updatedChan:     make(chan bool, 1),
 		isClosed:        &isClosedInt,
 	}
@@ -58,12 +58,12 @@ func createProductManager(baseURL url.URL, log adapter.Logger) *productManager {
 type productManager struct {
 	baseURL          url.URL
 	log              adapter.Logger
-	products         map[string]Details
+	products         map[string]APIProduct
 	isClosed         *int32
 	quitPollingChan  chan bool
 	closedChan       chan bool
 	getProductsChan  chan bool
-	returnChan       chan map[string]Details
+	returnChan       chan map[string]APIProduct
 	updatedChan      chan bool
 	refreshTimerChan <-chan time.Time
 }
@@ -76,8 +76,8 @@ func (p *productManager) start(env adapter.Env) {
 	})
 }
 
-// returns name => Details
-func (p *productManager) getProducts() map[string]Details {
+// returns name => APIProduct
+func (p *productManager) getProducts() map[string]APIProduct {
 	p.log.Errorf("getProducts()")
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
