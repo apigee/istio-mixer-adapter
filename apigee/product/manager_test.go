@@ -16,15 +16,13 @@ package product
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
-
-	"reflect"
-
-	"fmt"
 
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -36,8 +34,6 @@ func TestManager(t *testing.T) {
 			Attributes: []Attribute{
 				{Name: "attr name", Value: "attr value"},
 			},
-			CreatedAt:      time.Now().Unix(),
-			CreatedBy:      "test1@apigee.com",
 			Description:    "product 1",
 			DisplayName:    "APIProduct 1",
 			Environments:   []string{"test"},

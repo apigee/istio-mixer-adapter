@@ -51,7 +51,7 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api, path st
 				if attr.Name == servicesAttr {
 					targets := strings.Split(attr.Value, ",")
 					for _, target := range targets { // find target paths
-						if target == api {
+						if strings.TrimSpace(target) == api {
 							if apiProduct.isValidPath(path) {
 								result = append(result, apiProduct)
 							}
@@ -88,10 +88,14 @@ func (d *APIProduct) isValidScopes(scopes []string) bool {
 	return false
 }
 
-// *  : valid anywhere, match in segment (between / and /)
-// ** : valid at end, match any to EOL
-// see: https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior
+// - A single slash by itself matches any path
+// - * is valid anywhere and matches within a segment (between slashes)
+// - ** is valid only at the end and matches anything to EOL
 func makeResourceRegex(resource string) (*regexp.Regexp, error) {
+
+	if resource == "/" {
+		return regexp.Compile(".*")
+	}
 
 	// only allow ** as suffix
 	doubleStarIndex := strings.Index(resource, "**")

@@ -15,25 +15,71 @@
 package product
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
+
+func TestStartStop(t *testing.T) {
+
+	apiProducts := []APIProduct{
+		{
+			Attributes: []Attribute{
+				{Name: servicesAttr, Value: "service1.istio"},
+			},
+			Name:      "Name 1",
+			Resources: []string{"/"},
+			Scopes:    []string{"scope1"},
+		},
+	}
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var result = apiResponse{
+			APIProducts: apiProducts,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	}))
+	defer ts.Close()
+
+	env := test.NewEnv(t)
+	serverURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	Start(*serverURL, env, env)
+	defer Stop()
+	ac := auth.Context{
+		APIProducts: []string{apiProducts[0].Name},
+		Scopes:      apiProducts[0].Scopes,
+	}
+	products := Resolve(ac, apiProducts[0].Attributes[0].Value, "/")
+	if len(products) != 1 {
+		t.Errorf("want: 1, got: %d", len(products))
+	}
+}
 
 func TestResolve(t *testing.T) {
 
 	productsMap := map[string]APIProduct{
 		"Name 1": {
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "service1.istio"},
+				{Name: servicesAttr, Value: "service1.istio, shared.istio"},
 			},
-			Environments: []string{"test"},
-			Name:         "Name 1",
-			Resources:    []string{"/"},
-			Scopes:       []string{"scope1"},
+			Name:      "Name 1",
+			Resources: []string{"/"},
+			Scopes:    []string{"scope1"},
 		},
 		"Name 2": {
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "service1.istio, service2.istio"},
+				{Name: servicesAttr, Value: "service2.istio,shared.istio"},
 			},
 			Environments: []string{"prod"},
 			Name:         "Name 2",
@@ -44,7 +90,7 @@ func TestResolve(t *testing.T) {
 
 	products := []string{"Name 1", "Name 2"}
 	scopes := []string{"scope1", "scope2"}
-	api := "service1.istio"
+	api := "shared.istio"
 	path := "/"
 
 	resolved := resolve(productsMap, products, scopes, api, path)
@@ -52,7 +98,7 @@ func TestResolve(t *testing.T) {
 		t.Errorf("want: 2, got: %d", len(resolved))
 	}
 
-	path = "/blah"
+	scopes = []string{"scope2"}
 	resolved = resolve(productsMap, products, scopes, api, path)
 	if len(resolved) != 1 {
 		t.Errorf("want: 1, got: %d", len(resolved))
@@ -62,5 +108,73 @@ func TestResolve(t *testing.T) {
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("\nwant: %v\n got: %v", want, got)
 		}
+	}
+
+	products = []string{"Name 1"}
+	resolved = resolve(productsMap, products, scopes, api, path)
+	if len(resolved) != 0 {
+		t.Errorf("want: 0, got: %d", len(resolved))
+	}
+}
+
+// https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior
+func TestValidPath(t *testing.T) {
+
+	resources := []string{"/", "/v1/*", "/v1/**", "/v1/weatherapikey/*/2/**"}
+	specs := []struct {
+		Path    string
+		Results []bool
+	}{
+		{"/v1/weatherapikey", []bool{true, true, true, false}},
+		{"/v1/weatherapikey/", []bool{true, false, true, false}},
+		{"/v1/weatherapikey/1", []bool{true, false, true, false}},
+		{"/v1/weatherapikey/1/", []bool{true, false, true, false}},
+		{"/v1/weatherapikey/1/2", []bool{true, false, true, false}},
+		{"/v1/weatherapikey/1/2/", []bool{true, false, true, true}},
+		{"/v1/weatherapikey/1/2/3/", []bool{true, false, true, true}},
+		{"/v1/weatherapikey/1/a/2/3/", []bool{true, false, true, false}},
+	}
+
+	for _, spec := range specs {
+		for j, resource := range resources {
+			p := APIProduct{
+				Resources: []string{resource},
+			}
+			if p.isValidPath(spec.Path) != spec.Results[j] {
+				t.Errorf("expected: %v got: %v for path: %s, resource: %s",
+					spec.Results[j], p.isValidPath(spec.Path), spec.Path, resource)
+			}
+		}
+	}
+}
+
+func TestValidScopes(t *testing.T) {
+	p := APIProduct{
+		Scopes: []string{"scope1"},
+	}
+	if !p.isValidScopes([]string{"scope1"}) {
+		t.Errorf("expected %s is valid", p.Scopes)
+	}
+	if !p.isValidScopes([]string{"scope1", "scope2"}) {
+		t.Errorf("expected %s is valid", p.Scopes)
+	}
+	if p.isValidScopes([]string{"scope2"}) {
+		t.Errorf("expected %s is not valid", p.Scopes)
+	}
+	p.Scopes = []string{"scope1", "scope2"}
+	if !p.isValidScopes([]string{"scope1"}) {
+		t.Errorf("expected %s is valid", p.Scopes)
+	}
+	if !p.isValidScopes([]string{"scope1", "scope2"}) {
+		t.Errorf("expected %s is valid", p.Scopes)
+	}
+	if !p.isValidScopes([]string{"scope2"}) {
+		t.Errorf("expected %s is valid", p.Scopes)
+	}
+}
+
+func TestBadResource(t *testing.T) {
+	if _, e := makeResourceRegex("/**/bad"); e == nil {
+		t.Errorf("expected error for resource: %s", "/**/bad")
 	}
 }
