@@ -14,10 +14,10 @@
 
 package auth
 
-type ApiKeyRequest struct {
-	ApiKey string `json:"apiKey"`
+type apiKeyRequest struct {
+	APIKey string `json:"apiKey"`
 }
 
-type ApiKeyResponse struct {
+type apiKeyResponse struct {
 	Token string `json:"token"`
 }

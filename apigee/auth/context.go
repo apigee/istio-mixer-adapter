@@ -15,12 +15,15 @@
 package auth
 
 import (
-	"time"
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	"encoding/json"
-	"strconv"
 	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/context"
 )
+
+var verifier = newVerifier()
 
 type Context struct {
 	context.Context
@@ -116,9 +119,7 @@ func Authenticate(ctx context.Context, apiKey string, claims map[string]interfac
 		return ac, fmt.Errorf("missing api key")
 	}
 
-	// todo: cache apiKey => jwt
-
-	claims, err = VerifyAPIKey(ctx, apiKey)
+	claims, err = verifier.verify(ctx, apiKey)
 	if err != nil {
 		return ac, err
 	}
@@ -150,4 +151,4 @@ jwt claims:
  ],
  exp: 1516388028
 }
- */
+*/

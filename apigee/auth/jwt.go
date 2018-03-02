@@ -18,10 +18,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/lestrrat/go-jwx/jwk"
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	"path"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/lestrrat/go-jwx/jwk"
 )
 
 const jwksPath = "/jwkPublicKeys"
@@ -41,12 +42,10 @@ func verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
 }
 
 func getJWTKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
-
-	// TODO: cache response
-
 	jwksURL := ctx.CustomerBase()
 	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
 
+	// TODO(robbrit): periodically cache instead of pulling the set each time.
 	set, err := jwk.FetchHTTP(jwksURL.String())
 	if err != nil {
 		return nil, err

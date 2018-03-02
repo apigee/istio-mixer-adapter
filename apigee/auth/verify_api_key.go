@@ -17,31 +17,56 @@ package auth
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	"path"
+	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"istio.io/istio/pkg/cache"
 )
 
-const verifyApiKeyURL = "/verifyApiKey"
+const (
+	verifyAPIKeyURL = "/verifyApiKey"
+	// TODO(robbrit): Make these cache values configurable.
+	defaultCacheTTL       = 30 * time.Minute
+	cacheEvictionInterval = 10 * time.Second
+	maxCachedEntries      = 10000
+)
 
-// returns claims or error
-// todo: need a better "failed" error
-func VerifyAPIKey(ctx context.Context, apiKey string) (map[string]interface{}, error) {
-	ctx.Log().Infof("VerifyAPIKey: %v", apiKey)
+// keyVerifier encapsulates API key verification logic.
+type keyVerifier struct {
+	cache cache.ExpiringCache
+}
 
-	verifyRequest := ApiKeyRequest{
-		ApiKey: apiKey,
+func newVerifier() *keyVerifier {
+	return &keyVerifier{
+		cache: cache.NewLRU(defaultCacheTTL, cacheEvictionInterval, maxCachedEntries),
+	}
+}
+
+func (kv *keyVerifier) fetchToken(ctx context.Context, apiKey string) (string, error) {
+	if existing, ok := kv.cache.Get(apiKey); ok {
+		token, ok := existing.(string)
+		if !ok {
+			// Whelp, somebody put something in they shouldn't have.
+			return "", fmt.Errorf("cached value for %s is of invalid type %T", apiKey, existing)
+		}
+		return token, nil
+	}
+	verifyRequest := apiKeyRequest{
+		APIKey: apiKey,
 	}
 
 	apiURL := ctx.CustomerBase()
-	apiURL.Path = path.Join(apiURL.Path, verifyApiKeyURL)
+	apiURL.Path = path.Join(apiURL.Path, verifyAPIKeyURL)
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(verifyRequest)
 
 	req, err := http.NewRequest(http.MethodPost, apiURL.String(), body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -50,17 +75,27 @@ func VerifyAPIKey(ctx context.Context, apiKey string) (map[string]interface{}, e
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
-	//res, err := ioutil.ReadAll(resp.Body)
-	//ctx.Log().Infof("VerifyAPIKey response: %v", string(res))
-	//apiKeyResp := ApiKeyResponse{}
-	//json.Unmarshal(res, &apiKeyResp)
-
-	apiKeyResp := ApiKeyResponse{}
+	apiKeyResp := apiKeyResponse{}
 	json.NewDecoder(resp.Body).Decode(&apiKeyResp)
 
-	return verifyJWT(ctx, apiKeyResp.Token)
+	kv.cache.Set(apiKey, apiKeyResp.Token)
+	return apiKeyResp.Token, nil
+}
+
+// verify returns the list of claims that an API key has.
+func (kv *keyVerifier) verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
+	// TODO(theganyo): need a better "failed" error.
+	ctx.Log().Infof("keyVerifier.verify(): %v", apiKey)
+
+	token, err := kv.fetchToken(ctx, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO(robbrit): Do we need to clear the cache on error here?
+	return verifyJWT(ctx, token)
 }

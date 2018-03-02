@@ -34,17 +34,16 @@ import (
 
 var badKeyResponse = []byte(`{"fault":{"faultstring":"Invalid ApiKey","detail":{"errorcode":"oauth.v2.InvalidApiKey"}}}`)
 
-func TestVerifyAPIKeyValid(t *testing.T) {
-
-	apiKey := "testID"
-
+// goodHandler is an HTTP handler that handles all the requests in a proper fashion.
+func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, jwksPath) {
+			// Handling the JWK verifier
 			key, err := jwk.New(&privateKey.PublicKey)
 			if err != nil {
 				t.Fatal(err)
@@ -66,14 +65,14 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 			return
 		}
 
-		var req ApiKeyRequest
+		var req apiKeyRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer r.Body.Close()
 
-		if apiKey != req.ApiKey {
+		if apiKey != req.APIKey {
 			t.Fatalf("expected: %v, got: %v", apiKey, req)
 		}
 
@@ -82,11 +81,27 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		jwtResponse := ApiKeyResponse{Token: jwt}
+		jwtResponse := apiKeyResponse{Token: jwt}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(jwtResponse)
-	}))
+	}
+}
+
+// badHandler gives a handler that just gives a 401 for all requests.
+func badHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(401)
+		json.NewEncoder(w).Encode(badKeyResponse)
+	}
+}
+
+func TestVerifyAPIKeyValid(t *testing.T) {
+
+	apiKey := "testID"
+
+	ts := httptest.NewServer(goodHandler(apiKey, t))
 	defer ts.Close()
 
 	serverURL, err := url.Parse(ts.URL)
@@ -100,7 +115,8 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 		log:          test.NewEnv(t),
 	}
 
-	claims, err := VerifyAPIKey(ctx, apiKey)
+	v := newVerifier()
+	claims, err := v.verify(ctx, apiKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,13 +132,62 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	}
 }
 
+func TestVerifyAPIKeyCache(t *testing.T) {
+
+	apiKey := "testID"
+
+	// Make the server only return a good response once, subsequent requests will
+	// all fail.
+	called := false
+	g := goodHandler(apiKey, t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, jwksPath) {
+			g(w, r)
+			return
+		}
+		if !called {
+			called = true
+			g(w, r)
+		} else {
+			badHandler()(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	serverURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := &TestContext{
+		apigeeBase:   *serverURL,
+		customerBase: *serverURL,
+		log:          test.NewEnv(t),
+	}
+
+	v := newVerifier()
+
+	for i := 0; i < 5; i++ {
+		claims, err := v.verify(ctx, apiKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Printf("\nclaims: %v", claims)
+
+		if claims["client_id"].(string) != "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H" {
+			t.Errorf("bad client_id, got: %s, want: %s", claims["client_id"].(string), "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H")
+		}
+
+		if claims["application_name"].(string) != "61cd4d83-06b5-4270-a9ee-cf9255ef45c3" {
+			t.Errorf("bad client_id, got: %s, want: %s", claims["application_name"].(string), "61cd4d83-06b5-4270-a9ee-cf9255ef45c3")
+		}
+	}
+}
+
 func TestVerifyAPIKeyFail(t *testing.T) {
 
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(401)
-		json.NewEncoder(w).Encode(badKeyResponse)
-	}))
+	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
 
 	serverURL, err := url.Parse(ts.URL)
@@ -134,7 +199,8 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 		customerBase: *serverURL,
 		log:          test.NewEnv(t),
 	}
-	success, err := VerifyAPIKey(ctx, "badKey")
+	v := newVerifier()
+	success, err := v.verify(ctx, "badKey")
 
 	if success != nil {
 		t.Errorf("success should be nil, is: %v", success)
@@ -152,7 +218,8 @@ func TestVerifyAPIKeyError(t *testing.T) {
 		customerBase: url.URL{},
 		log:          test.NewEnv(t),
 	}
-	success, err := VerifyAPIKey(ctx, "badKey")
+	v := newVerifier()
+	success, err := v.verify(ctx, "badKey")
 
 	if err == nil {
 		t.Errorf("error should be nil")
