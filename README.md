@@ -12,80 +12,19 @@ Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
         [](https://developers.google.com/protocol-buffers/docs/downloads) 
         [](https://github.com/golang/dep)
 
-2. clone Istio and get deps:
+2. Run install script.
 
-        export ISTIO=$GOPATH/src/istio.io/istio
-        mkdir -p $ISTIO
-        cd $ISTIO
-        git clone https://github.com/istio/istio
-        cd istio
-        make build
+        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/local_install.sh
 
-3. Install adapter dependencies
-
-        cd $GOPATH/src/github.com/apigee/istio-mixer-adapter
-        dep ensure 
-
-4. Generate protos, build adapter, and run tests
-
-        go generate ./...
-        go build ./...
-        go test ./...
-   
 ## Testing in Mixer
-
-### Build mixer with apigee-mixer-adapter (local copy)
-
-1. install dependencies:
-
-        go get github.com/lestrrat/go-jwx
-        go get github.com/lestrrat/go-pdebug
-
-2. put deps and apigee in mixer vendor dir:
-
-        ln -s $GOPATH/src/github.com/lestrrat $ISTIO/istio/vendor/github.com/lestrrat
-        ln -s $GOPATH/src/github.com/apigee $ISTIO/istio/vendor/github.com/apigee
-        mv $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor $GOPATH/src/github.com/apigee/istio-mixer-adapter/vendor.bak
-
-3. patch $ISTIO/istio/mixer/adapter/inventory.yaml add:
-
-        apigee: "github.com/apigee/istio-mixer-adapter/apigee"
-
-4. patch $ISTIO/istio/mixer/template/inventory.yaml, add:
-
-        ../../../../github.com/apigee/istio-mixer-adapter/template/analytics/template_proto.descriptor_set: "github.com/apigee/istio-mixer-adapter/template/analytics"
-
-5. generate templates and make mixer:
-        
-        cd $ISTIO/istio
-        go generate mixer/adapter/doc.go
-        go generate mixer/template/doc.go
-        make mixs
 
 ### Configure mixer
 
-1. copy apigee config to mixer test directory:
+Run local mixer via install script:
 
-        cp $GOPATH/src/github.com/apigee/istio-mixer-adapter/testdata/operatorconfig/config.yaml $ISTIO/istio/mixer/testdata/config/apigee.yaml
-
-2. edit apigee config in mixer dir, set appropriate values:
-
-      apigee_base: https://edgemicroservices.apigee.net/edgemicro/
-      customer_base: http://myorg-myenv.apigee.net/edgemicro-auth
-      org_name: myorg
-      env_name: myenv
-      key: mykey
-      secret: mysecret
-    
-3. hack: patch mixer/testdata/config/attributes.yaml, add to `istio-proxy` manifest:
-
-      request.auth.claims:
-        valueType: STRING_MAP
-
-### Launch Mixer (adjust for your platform)
-
-    $GOPATH/out/darwin_amd64/release/mixs server --alsologtostderr \
-        --configStoreURL=fs://$ISTIO/istio/mixer/testdata/config
+        export APIGEE_ORG=my-org
+        export APIGEE_ENV=my-env
+        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/run_local.sh
 
 ### Sample commands
 
@@ -119,3 +58,18 @@ You should see "Check status was PERMISSION_DENIED".
 
 
 Analytics should show up in your org (may take several minutes depending on your account).
+
+## Deploying Mixer
+
+1. First, build the docker image:
+
+        export GCP_PROJECT=my-gcp-project
+        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/build_mixer_docker.sh
+
+2. Next, push to GKE:
+
+        export GCP_PROJECT=my-gcp-project
+        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/push_docker_to_gke.sh
+
+3. Go to [Pantheon](https://pantheon.corp.google.com/kubernetes/workload), you
+   should see the mixer running there.

@@ -12,16 +12,6 @@ if [[ "${APIGEE_ENV}" == "" ]]; then
   exit 1
 fi
 
-if [[ "${APIGEE_KEY}" == "" ]]; then
-  echo "APIGEE_KEY not set, please set it."
-  exit 1
-fi
-
-if [[ "${APIGEE_SECRET}" == "" ]]; then
-  echo "APIGEE_SECRET not set, please set it."
-  exit 1
-fi
-
 if [[ "${GOPATH}" == "" ]]; then
   echo "GOPATH not set, please set it."
   exit 1

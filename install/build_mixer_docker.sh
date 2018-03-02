@@ -3,9 +3,14 @@
 echo "Checking environment settings..."
 
 if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
-  echo "TARGET_DOCKER_IMAGE not set, please set it."
-  echo "For example: TARGET_DOCKER_IMAGE=gcr.io/robbrit-test/istio-mixer"
-  exit 1
+  if [[ "${GCP_PROJECT}" == "" ]]; then
+    echo "TARGET_DOCKER_IMAGE not set, please set it."
+    echo "For example: TARGET_DOCKER_IMAGE=gcr.io/robbrit-test/istio-mixer"
+    exit 1
+  fi
+
+  TARGET_DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/istio-mixer"
+  echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
 fi
 
 export ISTIO="${GOPATH}/src/istio.io"
