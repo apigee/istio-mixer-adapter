@@ -5,6 +5,8 @@ Instructions for building and running in Kubernetes are available here: [README-
 
 Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
 
+Note: You can only build Istio Docker images on Linux.
+
 ## Building and testing standalone
 
 1. Install protoc and dep prerequisites:
@@ -60,6 +62,8 @@ You should see "Check status was PERMISSION_DENIED".
 Analytics should show up in your org (may take several minutes depending on your account).
 
 ## Deploying Mixer
+
+Note from above: you can only do this on Linux.
 
 1. First, build the docker image:
 
