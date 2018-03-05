@@ -98,7 +98,6 @@ func badHandler() http.HandlerFunc {
 }
 
 func TestVerifyAPIKeyValid(t *testing.T) {
-
 	apiKey := "testID"
 
 	ts := httptest.NewServer(goodHandler(apiKey, t))
@@ -133,25 +132,11 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 }
 
 func TestVerifyAPIKeyCache(t *testing.T) {
-
 	apiKey := "testID"
 
 	// Make the server only return a good response once, subsequent requests will
 	// all fail.
-	called := false
-	g := goodHandler(apiKey, t)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, jwksPath) {
-			g(w, r)
-			return
-		}
-		if !called {
-			called = true
-			g(w, r)
-		} else {
-			badHandler()(w, r)
-		}
-	}))
+	ts := httptest.NewServer(http.HandlerFunc(goodHandler(apiKey, t)))
 	defer ts.Close()
 
 	serverURL, err := url.Parse(ts.URL)
@@ -182,11 +167,18 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 		if claims["application_name"].(string) != "61cd4d83-06b5-4270-a9ee-cf9255ef45c3" {
 			t.Errorf("bad client_id, got: %s, want: %s", claims["application_name"].(string), "61cd4d83-06b5-4270-a9ee-cf9255ef45c3")
 		}
+
+		// After the first iteration, switch out the server with one that gives a
+		// bad response. Later requests should be fine, since we have cached all
+		// our values.
+		if i == 0 {
+			ts.Close()
+			ts = httptest.NewServer(http.HandlerFunc(badHandler()))
+		}
 	}
 }
 
 func TestVerifyAPIKeyFail(t *testing.T) {
-
 	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
 

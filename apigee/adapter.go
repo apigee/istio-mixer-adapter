@@ -143,6 +143,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	}
 
 	product.Start(h.CustomerBase(), h.Log(), env)
+	auth.Start(env)
 
 	return h, nil
 }
@@ -191,6 +192,7 @@ func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 // Implements adapter.Handler
 func (h *handler) Close() error {
 	product.Stop()
+	auth.Stop()
 	return nil
 }
 
