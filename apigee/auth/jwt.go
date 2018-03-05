@@ -66,13 +66,17 @@ func (a *authManager) pollingLoop() {
 		case <-a.closedChan:
 			return
 		case <-tick:
-			a.refresh()
+			if err := a.refresh(); err != nil {
+				log.Printf("Error refreshing auth manager: %s", err)
+			}
 		}
 	}
 }
 
 func (a *authManager) start(env adapter.Env) {
-	a.refresh()
+	if err := a.refresh(); err != nil {
+		log.Printf("Error refreshing auth manager: %s", err)
+	}
 	env.ScheduleDaemon(func() {
 		a.pollingLoop()
 	})
@@ -91,13 +95,15 @@ func (a *authManager) ensureSet(url string) error {
 	return nil
 }
 
-func (a *authManager) refresh() {
+func (a *authManager) refresh() error {
+	var errRet error
 	a.jwkSets.Range(func(urlI interface{}, setI interface{}) bool {
 		if err := a.ensureSet(urlI.(string)); err != nil {
-			log.Printf("Error updating jwks set: %s", err)
+			errRet = err
 		}
 		return true
 	})
+	return errRet
 }
 
 func (a *authManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
@@ -110,6 +116,7 @@ func (a *authManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}
 	}
 
 	url := jwksURL.String()
+	log.Printf("url: %s\n", url)
 	if _, ok := a.jwkSets.Load(url); !ok {
 		if err := a.ensureSet(url); err != nil {
 			return nil, err

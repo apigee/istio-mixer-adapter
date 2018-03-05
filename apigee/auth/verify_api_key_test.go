@@ -134,9 +134,20 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 func TestVerifyAPIKeyCache(t *testing.T) {
 	apiKey := "testID"
 
-	// Make the server only return a good response once, subsequent requests will
-	// all fail.
-	ts := httptest.NewServer(http.HandlerFunc(goodHandler(apiKey, t)))
+	// On the first iteration, use a normal HTTP handler that will return good
+	// results for the various HTTP requests that go out. After the first run,
+	// replace with bad responses to ensure that we do not go out and fetch any
+	// new pages (things are cached).
+	called := map[string]bool{}
+	good := goodHandler(apiKey, t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !called[r.URL.Path] {
+			called[r.URL.Path] = true
+			good(w, r)
+		} else {
+			badHandler()(w, r)
+		}
+	}))
 	defer ts.Close()
 
 	serverURL, err := url.Parse(ts.URL)
@@ -167,14 +178,14 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 		if claims["application_name"].(string) != "61cd4d83-06b5-4270-a9ee-cf9255ef45c3" {
 			t.Errorf("bad client_id, got: %s, want: %s", claims["application_name"].(string), "61cd4d83-06b5-4270-a9ee-cf9255ef45c3")
 		}
+	}
 
-		// After the first iteration, switch out the server with one that gives a
-		// bad response. Later requests should be fine, since we have cached all
-		// our values.
-		if i == 0 {
-			ts.Close()
-			ts = httptest.NewServer(http.HandlerFunc(badHandler()))
-		}
+	// Clear the cache.
+	v.cache.RemoveAll()
+
+	_, err = v.verify(ctx, apiKey)
+	if err == nil {
+		t.Errorf("expected error result on cleared cache")
 	}
 }
 
