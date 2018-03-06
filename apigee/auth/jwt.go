@@ -47,6 +47,7 @@ func Stop() {
 	am.close()
 }
 
+// An authManager handles all of the various JWT authentication functionality.
 type authManager struct {
 	closedChan chan bool
 	jwkSets    sync.Map

@@ -23,8 +23,6 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 )
 
-var verifier = newVerifier()
-
 type Context struct {
 	context.Context
 	ClientID       string
@@ -102,32 +100,6 @@ func parseArrayOfStrings(obj interface{}) (results []string, err error) {
 		return
 	}
 	return
-}
-
-// pulls from jwt claims if available, api key if not
-func Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
-
-	ctx.Log().Infof("Authenticate: key: %v, claims: %v", apiKey, claims)
-
-	var ac = Context{Context: ctx}
-	err := ac.setClaims(claims)
-	if ac.ClientID != "" || err != nil {
-		return ac, err
-	}
-
-	if apiKey == "" {
-		return ac, fmt.Errorf("missing api key")
-	}
-
-	claims, err = verifier.verify(ctx, apiKey)
-	if err != nil {
-		return ac, err
-	}
-
-	err = ac.setClaims(claims)
-
-	ctx.Log().Infof("Authenticate complete: %v [%v]", ac, err)
-	return ac, err
 }
 
 // todo: add developerEmail

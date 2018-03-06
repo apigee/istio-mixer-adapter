@@ -108,14 +108,14 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := &TestContext{
+	ctx := &testContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
 		log:          test.NewEnv(t),
 	}
 
 	v := newVerifier()
-	claims, err := v.verify(ctx, apiKey)
+	claims, err := v.Verify(ctx, apiKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	ctx := &TestContext{
+	ctx := &testContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
 		log:          test.NewEnv(t),
@@ -164,7 +164,7 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 	v := newVerifier()
 
 	for i := 0; i < 5; i++ {
-		claims, err := v.verify(ctx, apiKey)
+		claims, err := v.Verify(ctx, apiKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,9 +181,9 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 	}
 
 	// Clear the cache.
-	v.cache.RemoveAll()
+	v.(*keyVerifierImpl).cache.RemoveAll()
 
-	_, err = v.verify(ctx, apiKey)
+	_, err = v.Verify(ctx, apiKey)
 	if err == nil {
 		t.Errorf("expected error result on cleared cache")
 	}
@@ -197,13 +197,13 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ctx := &TestContext{
+	ctx := &testContext{
 		apigeeBase:   *serverURL,
 		customerBase: *serverURL,
 		log:          test.NewEnv(t),
 	}
 	v := newVerifier()
-	success, err := v.verify(ctx, "badKey")
+	success, err := v.Verify(ctx, "badKey")
 
 	if success != nil {
 		t.Errorf("success should be nil, is: %v", success)
@@ -216,13 +216,13 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 
 func TestVerifyAPIKeyError(t *testing.T) {
 
-	ctx := &TestContext{
+	ctx := &testContext{
 		apigeeBase:   url.URL{},
 		customerBase: url.URL{},
 		log:          test.NewEnv(t),
 	}
 	v := newVerifier()
-	success, err := v.verify(ctx, "badKey")
+	success, err := v.Verify(ctx, "badKey")
 
 	if err == nil {
 		t.Errorf("error should be nil")
@@ -261,7 +261,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 	return t, e
 }
 
-type TestContext struct {
+type testContext struct {
 	apigeeBase   url.URL
 	customerBase url.URL
 	orgName      string
@@ -271,25 +271,25 @@ type TestContext struct {
 	log          adapter.Logger
 }
 
-func (h *TestContext) Log() adapter.Logger {
+func (h *testContext) Log() adapter.Logger {
 	return h.log
 }
-func (h *TestContext) ApigeeBase() url.URL {
+func (h *testContext) ApigeeBase() url.URL {
 	return h.apigeeBase
 }
-func (h *TestContext) CustomerBase() url.URL {
+func (h *testContext) CustomerBase() url.URL {
 	return h.customerBase
 }
-func (h *TestContext) Organization() string {
+func (h *testContext) Organization() string {
 	return h.orgName
 }
-func (h *TestContext) Environment() string {
+func (h *testContext) Environment() string {
 	return h.envName
 }
-func (h *TestContext) Key() string {
+func (h *testContext) Key() string {
 	return h.key
 }
-func (h *TestContext) Secret() string {
+func (h *testContext) Secret() string {
 	return h.secret
 }
 

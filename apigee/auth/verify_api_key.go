@@ -35,17 +35,21 @@ const (
 )
 
 // keyVerifier encapsulates API key verification logic.
-type keyVerifier struct {
+type keyVerifier interface {
+	Verify(ctx context.Context, apiKey string) (map[string]interface{}, error)
+}
+
+type keyVerifierImpl struct {
 	cache cache.ExpiringCache
 }
 
-func newVerifier() *keyVerifier {
-	return &keyVerifier{
+func newVerifier() keyVerifier {
+	return &keyVerifierImpl{
 		cache: cache.NewLRU(defaultCacheTTL, cacheEvictionInterval, maxCachedEntries),
 	}
 }
 
-func (kv *keyVerifier) fetchToken(ctx context.Context, apiKey string) (string, error) {
+func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (string, error) {
 	if existing, ok := kv.cache.Get(apiKey); ok {
 		token, ok := existing.(string)
 		if !ok {
@@ -87,9 +91,9 @@ func (kv *keyVerifier) fetchToken(ctx context.Context, apiKey string) (string, e
 }
 
 // verify returns the list of claims that an API key has.
-func (kv *keyVerifier) verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
+func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
 	// TODO(theganyo): need a better "failed" error.
-	ctx.Log().Infof("keyVerifier.verify(): %v", apiKey)
+	ctx.Log().Infof("keyVerifierImpl.Verify(): %v", apiKey)
 
 	token, err := kv.fetchToken(ctx, apiKey)
 	if err != nil {

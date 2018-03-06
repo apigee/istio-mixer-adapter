@@ -70,7 +70,7 @@ func TestJWTCaching(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ctx := &TestContext{
+		ctx := &testContext{
 			apigeeBase:   *serverURL,
 			customerBase: *serverURL,
 			log:          test.NewEnv(t),
