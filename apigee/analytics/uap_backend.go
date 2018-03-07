@@ -14,22 +14,12 @@
 
 package analytics
 
-import (
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-)
+import "github.com/apigee/istio-mixer-adapter/apigee/auth"
 
-const (
-	axPath       = "/axpublisher/organization/%s/environment/%s"
-	axRecordType = "APIAnalytics"
-)
-
-type AnalyticsProvider interface {
-	SendRecords(auth *auth.Context, records []Record) error
+type uapBackend struct {
 }
 
-// TODO(robbrit): Allow setting the backend based on a flag or config setting.
-var provider = &apigeeBackend{}
-
-func SendRecords(auth *auth.Context, records []Record) error {
-	return provider.SendRecords(auth, records)
+func (ub *uapBackend) SendRecords(auth *auth.Context, records []Record) error {
+	// TODO(robbrit) Implement.
+	return nil
 }

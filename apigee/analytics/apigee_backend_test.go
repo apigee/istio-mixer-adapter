@@ -16,15 +16,16 @@ package analytics
 
 import (
 	"encoding/json"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"istio.io/istio/mixer/pkg/adapter"
-	"istio.io/istio/mixer/pkg/adapter/test"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"istio.io/istio/mixer/pkg/adapter"
+	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
 func TestAnalyticsSubmit(t *testing.T) {
@@ -47,14 +48,14 @@ func TestAnalyticsSubmit(t *testing.T) {
 		RequestVerb:                  "PATCH",
 		RequestPath:                  "/test",
 		UserAgent:                    "007",
-		ClientReceivedStartTimestamp: TimeToUnix(startTime),
-		ClientReceivedEndTimestamp:   TimeToUnix(startTime),
-		ClientSentStartTimestamp:     TimeToUnix(startTime),
-		ClientSentEndTimestamp:       TimeToUnix(startTime),
-		TargetSentStartTimestamp:     TimeToUnix(startTime),
-		TargetSentEndTimestamp:       TimeToUnix(startTime),
-		TargetReceivedStartTimestamp: TimeToUnix(startTime),
-		TargetReceivedEndTimestamp:   TimeToUnix(startTime),
+		ClientReceivedStartTimestamp: startTime.Unix(),
+		ClientReceivedEndTimestamp:   startTime.Unix(),
+		ClientSentStartTimestamp:     startTime.Unix(),
+		ClientSentEndTimestamp:       startTime.Unix(),
+		TargetSentStartTimestamp:     startTime.Unix(),
+		TargetSentEndTimestamp:       startTime.Unix(),
+		TargetReceivedStartTimestamp: startTime.Unix(),
+		TargetReceivedEndTimestamp:   startTime.Unix(),
 	}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
@@ -64,7 +65,8 @@ func TestAnalyticsSubmit(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
+	ab := &apigeeBackend{}
+	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,7 +92,8 @@ func TestBadServerBase(t *testing.T) {
 	axRecord := Record{}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()
-	err := SendRecords(authContext, []Record{axRecord})
+	ab := &apigeeBackend{}
+	err := ab.SendRecords(authContext, []Record{axRecord})
 	if err == nil {
 		t.Errorf("should get bad base error")
 	}
@@ -119,7 +122,8 @@ func TestMissingOrg(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
+	ab := &apigeeBackend{}
+	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "organization") {
 		t.Errorf("should get missing organization error, got: %s", err)
 	}
@@ -148,7 +152,8 @@ func TestMissingEnv(t *testing.T) {
 	}
 	context.apigeeBase = *baseURL
 	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
+	ab := &apigeeBackend{}
+	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Errorf("should get missing environment error, got: %s", err)
 	}
