@@ -1,3 +1,4 @@
+---
 # Define an Istio Auth Policy
 apiVersion: config.istio.io/v1alpha2
 kind: EndUserAuthenticationPolicySpec
@@ -6,24 +7,21 @@ metadata:
   namespace: default
 spec:
   jwts:
-  - issuer: accounts.google.com
+  - issuer: https://theganyo1-eval-test.apigee.net/istio-auth/token
     audiences:
-    - 269356943445-7tujg7fu0f7pqurl8cs4ev61uvll01i3.apps.googleusercontent.com
-    jwks_uri: https://www.googleapis.com/oauth2/v3/certs
+    - microgateway
+    jwks_uri: https://theganyo1-eval-test.apigee.net/istio-auth/jwkPublicKeys
 ---
-# Bind the Istio Auth Policy to services
-# (Tells Pilot which Proxies to send the spec to)
+# Bind Istio Auth Policy to services
 apiVersion: config.istio.io/v1alpha2
 kind: EndUserAuthenticationPolicySpecBinding
 metadata:
-  name: auth-binding
+  name: auth
   namespace: default
 spec:
   policies:
   - name: auth-spec
     namespace: default
   services:
-  - name: helloworld
-    namespace: default
-  - name: httpbin
+  - name: helloworld    # bound to target service helloworld
     namespace: default

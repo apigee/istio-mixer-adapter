@@ -78,7 +78,6 @@ func (p *productManager) start(env adapter.Env) {
 
 // returns name => APIProduct
 func (p *productManager) getProducts() map[string]APIProduct {
-	p.log.Errorf("getProducts()")
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
 	}
@@ -91,13 +90,10 @@ func (p *productManager) pollingLoop() {
 	for {
 		select {
 		case <-p.closedChan:
-			p.log.Errorf("closedChan")
 			return
 		case <-p.getProductsChan:
-			p.log.Errorf("getProductsChan")
 			p.returnChan <- p.products
 		case <-tick:
-			p.log.Errorf("tick")
 			p.retrieve()
 		}
 	}
@@ -188,7 +184,6 @@ func (p *productManager) pollWithBackoff(quit chan bool, toExecute func(chan boo
 	for {
 		select {
 		case <-quit:
-			p.log.Infof("quit signal, returning")
 			return
 		case <-retry:
 			err := toExecute(quit)

@@ -1,45 +1,37 @@
+---
 # Define an Istio API
 apiVersion: config.istio.io/v1alpha2
 kind: HTTPAPISpec
 metadata:
   creationTimestamp: null
-  name: apikey-spec
+  name: helloworld
   namespace: default
 spec:
-  apiKeys: # populate request.api_key from query param "apikey" or header "x-apikey"
+  apiKeys: # populate request.api_key attr from query param "apikey" or header "x-api-key"
   - query: apikey
-  - header: x-apikey
+  - header: x-api-key
   attributes:
     attributes:
-      api.service: # populate api.service
-        stringValue: apigee
-      api.version: # populate api.version
-        stringValue: v1
-      api.operation: # populate api.operation
-        stringValue: /
+      api.service: helloworld
+      api.version: "1.0.0"
   patterns:
-    # example: if method is GET and path matches /get, override api.operation to "/get"
+    # example: if method=GET & path matches /somepath, override api.operation to /otherpath
   - attributes:
-      attributes:
-        api.operation:
-          stringValue: /get
-    httpMethod: GET
-    uriTemplate: /get
+      api.operation: /hello
+  httpMethod: GET
+  uriTemplate: /api/pets
 ---
-# Bind the Istio API to services
-# (Tells Pilot which Proxies to send the spec to)
+# Bind the Istio API to Istio services
 apiVersion: config.istio.io/v1alpha2
 kind: HTTPAPISpecBinding
 metadata:
   creationTimestamp: null
-  name: apikey-binding
+  name: helloworld-binding
   namespace: default
 spec:
-  apiSpecs:
-  - name: apikey-spec
+  api_specs:
+  - name: helloworld
     namespace: default
   services:
   - name: helloworld
-    namespace: default
-  - name: httpbin
     namespace: default

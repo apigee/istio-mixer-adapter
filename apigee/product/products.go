@@ -38,7 +38,9 @@ func Stop() {
 }
 
 func Resolve(ac auth.Context, api, path string) []APIProduct {
-	return resolve(pm.getProducts(), ac.APIProducts, ac.Scopes, api, path)
+	validProducts := resolve(pm.getProducts(), ac.APIProducts, ac.Scopes, api, path)
+	ac.Log().Infof("Resolve api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
+	return validProducts
 }
 
 // todo: naive impl, optimize
@@ -59,7 +61,6 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api, path st
 					}
 				}
 			}
-
 		}
 	}
 	return result
