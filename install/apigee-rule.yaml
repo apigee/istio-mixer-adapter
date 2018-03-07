@@ -1,116 +1,49 @@
-# Defines templates and rule for all requests labeled: "gateway: apigee"
+# Defines rules for requests
 ---
-# define apikeys type - todo: hack - this should be defined in Istio, not here!
-kind: CustomResourceDefinition
-apiVersion: apiextensions.k8s.io/v1beta1
-metadata:
-  name: apikeys.config.istio.io
-  labels:
-    package: apikey
-    istio: mixer-adapter
-spec:
-  group: config.istio.io
-  names:
-    kind: apikey
-    plural: apikeys
-    singular: apikey
-  scope: Namespaced
-  version: v1alpha2
----
-# instance configuration for template 'apigee.apikey'
-apiVersion: "config.istio.io/v1alpha2"
-kind: apikey
-metadata:
-  name: apigee
-  namespace: istio-system
-spec:
-  api: api.service | ""
-  api_version: api.version | ""
-  api_operation : api.operation
-  api_key : request.api_key
-  timestamp : request.time
----
-# instance configuration for template 'apigee.analytics'
-apiVersion: "config.istio.io/v1alpha2"
-kind: analytics
-metadata:
-  name: apigee
-  namespace: istio-system
-spec:
-  apikey: request.headers["apikey"] | "" # HACK
-  apigeeproxy: destination.name | "unknown"
-  response_status_code: response.code | 0
-  client_ip: source.ip | ip("0.0.0.0")
-  request_verb: request.method | ""
-  request_uri: request.path | "" # todo: fix
-  request_path: request.path | ""
-  useragent: request.useragent | ""
-  client_received_start_timestamp: request.time
-  client_received_end_timestamp: request.time
-  target_sent_start_timestamp: request.time
-  target_sent_end_timestamp: request.time
-  target_received_start_timestamp: response.time
-  target_received_end_timestamp: response.time
-  client_sent_start_timestamp: response.time
-  client_sent_end_timestamp: response.time
----
-# instance configuration for template 'apigee.quota'
-apiVersion: "config.istio.io/v1alpha2"
-kind: quota
-metadata:
-  name: apigee
-  namespace: istio-system
-spec:
-  dimensions:
-    source: source.labels["app"] | source.service | "unknown"
-    sourceVersion: source.labels["version"] | "unknown"
-    destination: destination.labels["app"] | destination.service | "unknown"
-    destinationVersion: destination.labels["version"] | "unknown"
-    apikey: request.headers["apikey"] | ""
-    uripath: request.path | "/"
----
-# rule: dispatch all requests labeled: "gateway: apigee" to apigee-handler
-apiVersion: "config.istio.io/v1alpha2"
+# rule to dispatch to handler 'apigee'
+apiVersion: config.istio.io/v1alpha2
 kind: rule
 metadata:
-  name: apigee
+  name: apigee-rule
   namespace: istio-system
 spec:
-  match: destination.labels["gateway"]=="apigee"
+  # dispatches all requests to adapter except ingress
+  match: destination.service != "istio-ingress.istio-system.svc.cluster.local"
   actions:
   - handler: apigee-handler.apigee
     instances:
+    - apigee.apikey
     - apigee.quota
     - apigee.analytics
-    - apigee.apikey
+    - apigee.auth
 ---
-# todo: hack to workaround Istio bug where missing value will not be delivered to adapter
-# deny all requests without request.api_key
-apiVersion: "config.istio.io/v1alpha2"
-kind: denier
-metadata:
-  name: reject-missing-apikey
-  namespace: istio-system
-spec:
-  status:
-    code: 401
-    message: Unauthorized
----
-apiVersion: "config.istio.io/v1alpha2"
-kind: checknothing
-metadata:
-  name: reject-missing-apikey
-  namespace: istio-system
-spec:
----
-apiVersion: "config.istio.io/v1alpha2"
-kind: rule
-metadata:
-  name: reject-missing-apikey
-  namespace: istio-system
-spec:
-  match: (request.api_key | "REJECT") == "REJECT"
-  actions:
-  - handler: reject-missing-apikey.denier
-    instances:
-    - reject-missing-apikey.checknothing
+## hack to workaround Istio bug where missing value will not be delivered to adapter
+## deny all requests without request.api_key
+#apiVersion: "config.istio.io/v1alpha2"
+#kind: denier
+#metadata:
+#  name: reject-missing-apikey
+#  namespace: istio-system
+#spec:
+#  status:
+#    code: 401
+#    message: Unauthorized
+#---
+#apiVersion: "config.istio.io/v1alpha2"
+#kind: checknothing
+#metadata:
+#  name: reject-missing-apikey
+#  namespace: istio-system
+#spec:
+#---
+#apiVersion: "config.istio.io/v1alpha2"
+#kind: rule
+#metadata:
+#  name: reject-missing-apikey
+#  namespace: istio-system
+#spec:
+#  match: (request.api_key | "REJECT") == "REJECT"
+#  actions:
+#  - handler: reject-missing-apikey.denier
+#    instances:
+#    - reject-missing-apikey.checknothing
