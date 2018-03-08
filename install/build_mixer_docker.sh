@@ -24,7 +24,7 @@ cd "${ISTIO}/istio"
 
 make docker.mixer
 
-IMAGE_ID=$(docker images istio/mixer --format "{{.ID}}")
+IMAGE_ID=$(docker images istio/mixer --format "{{.ID}}" | head -n1)
 
 if [[ "${IMAGE_ID}" == "" ]]; then
   echo "No image found for istio/mixer. Does it exist?"
