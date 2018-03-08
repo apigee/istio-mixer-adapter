@@ -16,20 +16,29 @@ package analytics
 
 import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-)
-
-const (
-	axPath       = "/axpublisher/organization/%s/environment/%s"
-	axRecordType = "APIAnalytics"
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
 type AnalyticsProvider interface {
+	Start(env adapter.Env)
+	Stop()
 	SendRecords(auth *auth.Context, records []Record) error
 }
 
 // TODO(robbrit): Allow setting the backend based on a flag or config setting.
 var provider = &apigeeBackend{}
 
+// Start starts the main analytics provider.
+func Start(env adapter.Env) {
+	provider.Start(env)
+}
+
+// Stop stops the main analytics provider.
+func Stop() {
+	provider.Stop()
+}
+
+// SendRecords sends analytics records to the backend server.
 func SendRecords(auth *auth.Context, records []Record) error {
 	return provider.SendRecords(auth, records)
 }

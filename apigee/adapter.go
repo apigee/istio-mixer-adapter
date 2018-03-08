@@ -144,6 +144,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	product.Start(h.CustomerBase(), h.Log(), env)
 	auth.Start(env)
+	analytics.Start(env)
 
 	return h, nil
 }
@@ -206,14 +207,14 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		h.Log().Infof("HandleAnalytics: %v\n", inst)
 
 		record := analytics.Record{
-			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
-			ClientSentEndTimestamp:       analytics.TimeToUnix(inst.ClientSentEndTimestamp),
-			TargetReceivedStartTimestamp: analytics.TimeToUnix(inst.TargetReceivedStartTimestamp),
-			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
-			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
-			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
+			ClientReceivedStartTimestamp: inst.ClientReceivedStartTimestamp.Unix(),
+			ClientReceivedEndTimestamp:   inst.ClientReceivedStartTimestamp.Unix(),
+			ClientSentStartTimestamp:     inst.ClientSentStartTimestamp.Unix(),
+			ClientSentEndTimestamp:       inst.ClientSentEndTimestamp.Unix(),
+			TargetReceivedStartTimestamp: inst.TargetReceivedStartTimestamp.Unix(),
+			TargetReceivedEndTimestamp:   inst.TargetReceivedEndTimestamp.Unix(),
+			TargetSentStartTimestamp:     inst.TargetSentStartTimestamp.Unix(),
+			TargetSentEndTimestamp:       inst.TargetSentEndTimestamp.Unix(),
 			APIProxy:                     inst.ApiProxy,
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,

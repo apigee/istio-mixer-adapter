@@ -22,6 +22,12 @@ import (
 	"path"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"istio.io/istio/mixer/pkg/adapter"
+)
+
+const (
+	axPath       = "/axpublisher/organization/%s/environment/%s"
+	axRecordType = "APIAnalytics"
 )
 
 type apigeeBackend struct {
@@ -32,36 +38,17 @@ type errorResponse struct {
 	Reason    string `json:"reason"`
 }
 
+func (ab *apigeeBackend) Start(env adapter.Env) {}
+func (ab *apigeeBackend) Stop()                 {}
+
 // todo: select best APIProduct based on path, otherwise arbitrary
 func (ab *apigeeBackend) SendRecords(auth *auth.Context, records []Record) error {
-	if auth == nil || len(records) == 0 {
-		return nil
-	}
-	if auth.Organization() == "" || auth.Environment() == "" {
-		return fmt.Errorf("organization and environment are required in auth: %v", auth)
-	}
-
-	for i := range records {
-		records[i].RecordType = axRecordType
-
-		// populate from auth context
-		records[i].DeveloperEmail = auth.DeveloperEmail
-		records[i].DeveloperApp = auth.Application
-		records[i].AccessToken = auth.AccessToken
-		records[i].ClientID = auth.ClientID
-
-		if len(auth.APIProducts) > 0 {
-			records[i].APIProduct = auth.APIProducts[0]
-		}
-	}
-
 	axURL := auth.ApigeeBase()
 	axURL.Path = path.Join(axURL.Path, fmt.Sprintf(axPath, auth.Organization(), auth.Environment()))
 
-	request := Request{
-		Organization: auth.Organization(),
-		Environment:  auth.Environment(),
-		Records:      records,
+	request, err := buildRequest(auth, records)
+	if request == nil || err != nil {
+		return err
 	}
 
 	body := new(bytes.Buffer)
