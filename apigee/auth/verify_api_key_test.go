@@ -98,6 +98,10 @@ func badHandler() http.HandlerFunc {
 }
 
 func TestVerifyAPIKeyValid(t *testing.T) {
+	env := test.NewEnv(t)
+	Start(env)
+	defer Stop()
+
 	apiKey := "testID"
 
 	ts := httptest.NewServer(goodHandler(apiKey, t))
@@ -132,6 +136,10 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 }
 
 func TestVerifyAPIKeyCache(t *testing.T) {
+	env := test.NewEnv(t)
+	Start(env)
+	defer Stop()
+
 	apiKey := "testID"
 
 	// On the first iteration, use a normal HTTP handler that will return good

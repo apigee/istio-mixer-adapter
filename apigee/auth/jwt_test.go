@@ -43,6 +43,10 @@ func badJWTRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestJWTCaching(t *testing.T) {
+	env := test.NewEnv(t)
+	Start(env)
+	defer Stop()
+
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
