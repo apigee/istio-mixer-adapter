@@ -100,7 +100,7 @@ func (p *productManager) pollingLoop() {
 }
 
 func (p *productManager) close() {
-	if atomic.SwapInt32(p.isClosed, 1) == int32(1) {
+	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
 	p.quitPollingChan <- true

@@ -18,10 +18,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"net/http"
-	"time"
 	"path"
+	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 )
 
 const (
@@ -35,7 +36,7 @@ func TimeToUnix(t time.Time) int64 {
 
 // todo: select best APIProduct based on path, otherwise arbitrary
 func SendRecords(auth *auth.Context, records []Record) error {
-	if auth == nil || len(records) == 0{
+	if auth == nil || len(records) == 0 {
 		return nil
 	}
 	if auth.Organization() == "" || auth.Environment() == "" {

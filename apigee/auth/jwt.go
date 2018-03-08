@@ -34,17 +34,19 @@ const (
 	pollInterval = 5 * time.Minute
 )
 
-var am = createAuthManager()
+var am *authManager
 
 // Start begins the update loop for the auth manager, which will periodically
 // refresh JWT credentials.
 func Start(env adapter.Env) {
+	am = createAuthManager()
 	am.start(env)
 }
 
 // Stop stops the auth manager's update loop.
 func Stop() {
 	am.close()
+	am = nil
 }
 
 // An authManager handles all of the various JWT authentication functionality.
@@ -84,7 +86,9 @@ func (a *authManager) start(env adapter.Env) {
 }
 
 func (a *authManager) close() {
-	a.closedChan <- true
+	if a != nil {
+		a.closedChan <- true
+	}
 }
 
 func (a *authManager) ensureSet(url string) error {

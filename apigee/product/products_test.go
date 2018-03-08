@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
@@ -56,7 +57,11 @@ func TestStartStop(t *testing.T) {
 
 	Start(*serverURL, env, env)
 	defer Stop()
+	context := &testContext{
+		log: env,
+	}
 	ac := auth.Context{
+		Context:     context,
 		APIProducts: []string{apiProducts[0].Name},
 		Scopes:      apiProducts[0].Scopes,
 	}
@@ -177,4 +182,36 @@ func TestBadResource(t *testing.T) {
 	if _, e := makeResourceRegex("/**/bad"); e == nil {
 		t.Errorf("expected error for resource: %s", "/**/bad")
 	}
+}
+
+type testContext struct {
+	apigeeBase   url.URL
+	customerBase url.URL
+	orgName      string
+	envName      string
+	key          string
+	secret       string
+	log          adapter.Logger
+}
+
+func (h *testContext) Log() adapter.Logger {
+	return h.log
+}
+func (h *testContext) ApigeeBase() url.URL {
+	return h.apigeeBase
+}
+func (h *testContext) CustomerBase() url.URL {
+	return h.customerBase
+}
+func (h *testContext) Organization() string {
+	return h.orgName
+}
+func (h *testContext) Environment() string {
+	return h.envName
+}
+func (h *testContext) Key() string {
+	return h.key
+}
+func (h *testContext) Secret() string {
+	return h.secret
 }

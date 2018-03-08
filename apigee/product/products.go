@@ -35,6 +35,7 @@ func Start(baseURL url.URL, log adapter.Logger, env adapter.Env) {
 
 func Stop() {
 	pm.close()
+	pm = nil
 }
 
 func Resolve(ac auth.Context, api, path string) []APIProduct {

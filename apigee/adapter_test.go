@@ -27,18 +27,33 @@ import (
 	"istio.io/istio/mixer/template/authorization"
 	"istio.io/istio/mixer/template/quota"
 
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+
 	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
 )
 
 func TestValidateBuild(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	}))
+	defer ts.Close()
+
+	serverURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	b := GetInfo().NewBuilder().(*builder)
 
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
 	b.SetAdapterConfig(&config.Params{
-		ApigeeBase:   "https://edgemicroservices.apigee.net/edgemicro/",
-		CustomerBase: "http://theganyo1-eval-test.apigee.net/edgemicro-auth",
-		OrgName:      "theganyo1-eval",
-		EnvName:      "test",
+		ApigeeBase:   serverURL.String(),
+		CustomerBase: serverURL.String(),
+		OrgName:      "org",
+		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
 	})
@@ -53,7 +68,10 @@ func TestValidateBuild(t *testing.T) {
 	b.SetQuotaTypes(map[string]*quota.Type{})
 
 	// check build
-	if _, err := b.Build(context.Background(), test.NewEnv(t)); err != nil {
+	handler, err := b.Build(context.Background(), test.NewEnv(t))
+
+	defer handler.Close()
+	if err != nil {
 		t.Errorf("Build() resulted in unexpected error: %v", err)
 	}
 }
