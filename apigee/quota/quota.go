@@ -42,11 +42,16 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Quo
 		return QuotaResult{}, err
 	}
 
+	interval, err := strconv.ParseInt(p.QuotaInterval, 10, 64)
+	if err != nil {
+		return QuotaResult{}, err
+	}
+
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 	request := QuotaRequest{
 		Identifier: quotaID,
 		Weight:     args.QuotaAmount,
-		Interval:   p.QuotaInterval,
+		Interval:   interval,
 		Allow:      allow,
 		TimeUnit:   p.QuotaTimeUnit,
 	}

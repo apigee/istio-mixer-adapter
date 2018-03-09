@@ -144,7 +144,6 @@ func (p *ProductManager) getPollingClosure(apiURL url.URL) func(chan bool) error
 		defer resp.Body.Close()
 
 		body, err := ioutil.ReadAll(resp.Body)
-		resp.Body.Close()
 		if err != nil {
 			log.Errorf("Unable to read server response: %v", err)
 			return err

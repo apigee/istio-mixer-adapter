@@ -15,7 +15,7 @@
 package product
 
 type apiResponse struct {
-	APIProducts []APIProduct `json:"apiProducts"`
+	APIProducts []APIProduct `json:"apiProduct"`
 }
 
 type APIProduct struct {
@@ -29,7 +29,7 @@ type APIProduct struct {
 	LastModifiedBy string      `json:"lastModifiedBy,omitempty"`
 	Name           string      `json:"name,omitempty"`
 	QuotaLimit     string      `json:"quota,omitempty"`
-	QuotaInterval  int64       `json:"quotaInterval,omitempty"`
+	QuotaInterval  string      `json:"quotaInterval,omitempty"`
 	QuotaTimeUnit  string      `json:"quotaTimeUnit,omitempty"`
 	Resources      []string    `json:"apiResources"`
 	Scopes         []string    `json:"scopes"`
