@@ -94,12 +94,14 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (strin
 
 // verify returns the list of claims that an API key has.
 func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
-	// TODO(theganyo): need a better "failed" error.
 	ctx.Log().Infof("keyVerifierImpl.Verify(): %v", apiKey)
 
 	token, err := kv.fetchToken(ctx, apiKey)
 	if err != nil {
 		return nil, err
+	}
+	if token == "" {
+		return nil, fmt.Errorf("invalid api key")
 	}
 
 	// TODO(robbrit): Do we need to clear the cache on error here?

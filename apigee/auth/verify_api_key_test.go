@@ -225,6 +225,8 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("error should not be nil")
+	} else if err.Error() != "invalid api key" {
+		t.Errorf("got error: '%s', expected: 'invalid api key'", err.Error())
 	}
 }
 
@@ -310,25 +312,3 @@ func (h *testContext) Key() string {
 func (h *testContext) Secret() string {
 	return h.secret
 }
-
-/*
-jwt claims:
-{
- api_product_list: [
-  "EdgeMicroTestProduct"
- ],
- audience: "microgateway",
- jti: "29e2320b-787c-4625-8599-acc5e05c68d0",
- iss: "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
- access_token: "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
- client_id: "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
- nbf: 1516387728,
- iat: 1516387728,
- application_name: "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
- scopes: [
-  "scope1",
-  "scope2"
- ],
- exp: 1516388028
-}
-*/

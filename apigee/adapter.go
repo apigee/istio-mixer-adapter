@@ -253,7 +253,7 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 	h.Log().Infof("HandleApiKey: %v\n", inst)
 
 	if inst.ApiKey == "" || inst.Api == "" || inst.ApiOperation == "" {
-		h.Log().Infof("missing properties")
+		h.Log().Infof("missing properties: %v", inst)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied("missing authentication"),
 		}, nil
@@ -267,7 +267,6 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 		}, err
 	}
 
-	// todo: need to do better response for fail
 	if authContext.ClientID == "" {
 		h.Log().Infof("authenticate failed")
 		return adapter.CheckResult{
@@ -282,7 +281,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	h.Log().Infof("HandleAuthorization: %v\n", inst)
 
 	if inst.Subject == nil || inst.Subject.Properties == nil || inst.Action.Service == "" || inst.Action.Path == "" {
-		h.Log().Infof("missing properties")
+		h.Log().Infof("missing properties: %v", inst)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied("missing authentication"),
 		}, nil
