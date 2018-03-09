@@ -236,10 +236,8 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		}
 
 		if authContext == nil {
-			ac, err := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
-			if err != nil {
-				return err
-			}
+			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
+			// ignore error, take whatever we have
 			authContext = &ac
 		}
 

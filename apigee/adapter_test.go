@@ -77,13 +77,31 @@ func TestValidateBuild(t *testing.T) {
 }
 
 func TestHandleAnalytics(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer ts.Close()
+	baseURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ctx := context.Background()
 
 	h := &handler{
-		env: test.NewEnv(t),
+		env:          test.NewEnv(t),
+		apigeeBase:   *baseURL,
+		customerBase: *baseURL,
+		orgName:      "org",
+		envName:      "env",
 	}
 
-	err := h.HandleAnalytics(ctx, nil)
+	inst := []*analytics.Instance{
+		{Name: "name"},
+	}
+
+	err = h.HandleAnalytics(ctx, inst)
 	if err != nil {
 		t.Errorf("HandleAnalytics(ctx, nil) resulted in an unexpected error: %v", err)
 	}
