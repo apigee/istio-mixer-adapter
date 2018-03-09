@@ -40,12 +40,14 @@ type keyVerifier interface {
 }
 
 type keyVerifierImpl struct {
-	cache cache.ExpiringCache
+	jwtMan *jwtManager
+	cache  cache.ExpiringCache
 }
 
-func newVerifier() keyVerifier {
+func newVerifier(jwtMan *jwtManager) keyVerifier {
 	return &keyVerifierImpl{
-		cache: cache.NewLRU(defaultCacheTTL, cacheEvictionInterval, maxCachedEntries),
+		jwtMan: jwtMan,
+		cache:  cache.NewLRU(defaultCacheTTL, cacheEvictionInterval, maxCachedEntries),
 	}
 }
 
@@ -101,5 +103,5 @@ func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[strin
 	}
 
 	// TODO(robbrit): Do we need to clear the cache on error here?
-	return verifyJWT(ctx, token)
+	return kv.jwtMan.verifyJWT(ctx, token)
 }

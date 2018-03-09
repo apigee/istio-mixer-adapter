@@ -7,13 +7,39 @@ import (
 	"fmt"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
-var verifier = newVerifier()
+// Start begins the update loop for the auth manager, which will periodically
+// refresh JWT credentials.
+// call Close() when done
+func NewAuthManager(env adapter.Env) *AuthManager {
+	jwtMan := newJWTManager()
+	v := newVerifier(jwtMan)
+	am := &AuthManager{
+		env:      env,
+		jwtMan:   jwtMan,
+		verifier: v,
+	}
+	am.start()
+	return am
+}
+
+type AuthManager struct {
+	env      adapter.Env
+	jwtMan   *jwtManager
+	verifier keyVerifier
+}
+
+func (a *AuthManager) Close() {
+	if a != nil {
+		a.jwtMan.stop()
+	}
+}
 
 // Authenticate constructs an Apigee context from an existing context and either
 // a set of JWT claims, or an Apigee API key.
-func Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
+func (a *AuthManager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
 
 	ctx.Log().Infof("Authenticate: key: %v, claims: %v", apiKey, claims)
 
@@ -29,7 +55,7 @@ func Authenticate(ctx context.Context, apiKey string, claims map[string]interfac
 		return ac, fmt.Errorf("missing api key")
 	}
 
-	claims, err := verifier.Verify(ctx, apiKey)
+	claims, err := a.verifier.Verify(ctx, apiKey)
 	if err != nil {
 		return ac, err
 	}
@@ -38,4 +64,8 @@ func Authenticate(ctx context.Context, apiKey string, claims map[string]interfac
 
 	ctx.Log().Infof("Authenticate complete: %v [%v]", ac, err)
 	return ac, err
+}
+
+func (a *AuthManager) start() {
+	a.jwtMan.start(a.env)
 }

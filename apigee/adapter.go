@@ -49,6 +49,9 @@ type (
 		envName      string
 		key          string
 		secret       string
+
+		productMan *product.ProductManager
+		authMan    *auth.AuthManager
 	}
 )
 
@@ -132,6 +135,16 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
+	pMan := product.CreateProductManager(*customerBase, env.Logger(), env)
+	if err != nil {
+		return nil, err
+	}
+
+	aMan := auth.NewAuthManager(env)
+	if err != nil {
+		return nil, err
+	}
+
 	h := &handler{
 		env:          env,
 		apigeeBase:   *apigeeBase,
@@ -140,12 +153,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		envName:      b.adapterConfig.EnvName,
 		key:          b.adapterConfig.Key,
 		secret:       b.adapterConfig.Secret,
+		productMan:   pMan,
+		authMan:      aMan,
 	}
-
-	product.Start(h.CustomerBase(), h.Log(), env)
-	h.Log().Infof("product manager started")
-	auth.Start(env)
-	h.Log().Infof("auth manager started")
 
 	return h, nil
 }
@@ -193,10 +203,8 @@ func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 
 // Implements adapter.Handler
 func (h *handler) Close() error {
-	product.Stop()
-	h.Log().Infof("product manager stopped")
-	auth.Stop()
-	h.Log().Infof("auth manager stopped")
+	h.productMan.Close()
+	h.authMan.Close()
 	return nil
 }
 
@@ -228,7 +236,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		}
 
 		if authContext == nil {
-			ac, err := auth.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
+			ac, err := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
 			if err != nil {
 				return err
 			}
@@ -251,7 +259,7 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 		}, nil
 	}
 
-	authContext, err := auth.Authenticate(h, inst.ApiKey, nil)
+	authContext, err := h.authMan.Authenticate(h, inst.ApiKey, nil)
 	if err != nil {
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
@@ -267,7 +275,7 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 		}, nil
 	}
 
-	return authorize(authContext, inst.Api, inst.ApiOperation)
+	return h.authorize(authContext, inst.Api, inst.ApiOperation)
 }
 
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
@@ -285,7 +293,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Subject.Properties["claims"])
 	}
 
-	authContext, err := auth.Authenticate(h, "", convertClaims(claims))
+	authContext, err := h.authMan.Authenticate(h, "", convertClaims(claims))
 	if err != nil {
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
@@ -300,13 +308,13 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}, nil
 	}
 
-	return authorize(authContext, inst.Action.Service, inst.Action.Path)
+	return h.authorize(authContext, inst.Action.Service, inst.Action.Path)
 }
 
 // authorize: check service, path, scopes
-func authorize(authContext auth.Context, service, path string) (adapter.CheckResult, error) {
+func (h *handler) authorize(authContext auth.Context, service, path string) (adapter.CheckResult, error) {
 
-	products := product.Resolve(authContext, service, path)
+	products := h.productMan.Resolve(authContext, service, path)
 	if len(products) > 0 {
 		return adapter.CheckResult{
 			Status: status.OK,
@@ -342,7 +350,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Dimensions["api_claims"])
 	}
 
-	authContext, err := auth.Authenticate(h, apiKey, convertClaims(claims))
+	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(claims))
 	if err != nil {
 		return adapter.QuotaResult{}, err
 	}
@@ -350,7 +358,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	h.Log().Infof("auth: %v", authContext)
 
 	// get relevant products
-	prods := product.Resolve(authContext, api, path)
+	prods := h.productMan.Resolve(authContext, api, path)
 
 	if len(prods) == 0 { // no quotas, allow
 		return adapter.QuotaResult{

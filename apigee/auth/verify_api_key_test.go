@@ -99,8 +99,10 @@ func badHandler() http.HandlerFunc {
 
 func TestVerifyAPIKeyValid(t *testing.T) {
 	env := test.NewEnv(t)
-	Start(env)
-	defer Stop()
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(jwtMan)
 
 	apiKey := "testID"
 
@@ -118,7 +120,6 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 		log:          test.NewEnv(t),
 	}
 
-	v := newVerifier()
 	claims, err := v.Verify(ctx, apiKey)
 	if err != nil {
 		t.Fatal(err)
@@ -137,8 +138,10 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 
 func TestVerifyAPIKeyCache(t *testing.T) {
 	env := test.NewEnv(t)
-	Start(env)
-	defer Stop()
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(jwtMan)
 
 	apiKey := "testID"
 
@@ -169,8 +172,6 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 		log:          test.NewEnv(t),
 	}
 
-	v := newVerifier()
-
 	for i := 0; i < 5; i++ {
 		claims, err := v.Verify(ctx, apiKey)
 		if err != nil {
@@ -198,6 +199,12 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 }
 
 func TestVerifyAPIKeyFail(t *testing.T) {
+	env := test.NewEnv(t)
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(jwtMan)
+
 	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
 
@@ -210,7 +217,6 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 		customerBase: *serverURL,
 		log:          test.NewEnv(t),
 	}
-	v := newVerifier()
 	success, err := v.Verify(ctx, "badKey")
 
 	if success != nil {
@@ -223,13 +229,17 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 }
 
 func TestVerifyAPIKeyError(t *testing.T) {
+	env := test.NewEnv(t)
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(jwtMan)
 
 	ctx := &testContext{
 		apigeeBase:   url.URL{},
 		customerBase: url.URL{},
 		log:          test.NewEnv(t),
 	}
-	v := newVerifier()
 	success, err := v.Verify(ctx, "badKey")
 
 	if err == nil {

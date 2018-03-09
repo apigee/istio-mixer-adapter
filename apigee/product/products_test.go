@@ -55,8 +55,8 @@ func TestStartStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	Start(*serverURL, env, env)
-	defer Stop()
+	p := CreateProductManager(*serverURL, env, env)
+	defer p.Close()
 	context := &testContext{
 		log: env,
 	}
@@ -65,7 +65,7 @@ func TestStartStop(t *testing.T) {
 		APIProducts: []string{apiProducts[0].Name},
 		Scopes:      apiProducts[0].Scopes,
 	}
-	products := Resolve(ac, apiProducts[0].Attributes[0].Value, "/")
+	products := p.Resolve(ac, apiProducts[0].Attributes[0].Value, "/")
 	if len(products) != 1 {
 		t.Errorf("want: 1, got: %d", len(products))
 	}

@@ -47,11 +47,21 @@ func TestAuthenticate(t *testing.T) {
 	} {
 		t.Log(test.desc)
 
-		verifier = &testVerifier{
+		env := adaptertest.NewEnv(t)
+
+		jwtMan := newJWTManager()
+		tv := &testVerifier{
 			goodAPIKey: goodAPIKey,
 		}
+		authMan := &AuthManager{
+			env:      env,
+			jwtMan:   jwtMan,
+			verifier: tv,
+		}
+		authMan.start()
+		defer authMan.Close()
 
-		_, err := Authenticate(&testContext{
+		_, err := authMan.Authenticate(&testContext{
 			log: adaptertest.NewEnv(t),
 		}, test.apiKey, test.claims)
 		if err != nil {

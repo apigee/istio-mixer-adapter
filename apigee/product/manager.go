@@ -16,13 +16,17 @@ package product
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -39,10 +43,10 @@ Usage:
 	pp.close() // when done
 */
 
-func createProductManager(baseURL url.URL, log adapter.Logger) *productManager {
+func createProductManager(baseURL url.URL, log adapter.Logger) *ProductManager {
 	isClosedInt := int32(0)
 
-	return &productManager{
+	return &ProductManager{
 		baseURL:         baseURL,
 		log:             log,
 		products:        map[string]APIProduct{},
@@ -55,7 +59,7 @@ func createProductManager(baseURL url.URL, log adapter.Logger) *productManager {
 	}
 }
 
-type productManager struct {
+type ProductManager struct {
 	baseURL          url.URL
 	log              adapter.Logger
 	products         map[string]APIProduct
@@ -68,7 +72,7 @@ type productManager struct {
 	refreshTimerChan <-chan time.Time
 }
 
-func (p *productManager) start(env adapter.Env) {
+func (p *ProductManager) start(env adapter.Env) {
 	p.retrieve()
 	//go p.pollingLoop()
 	env.ScheduleDaemon(func() {
@@ -77,7 +81,7 @@ func (p *productManager) start(env adapter.Env) {
 }
 
 // returns name => APIProduct
-func (p *productManager) getProducts() map[string]APIProduct {
+func (p *ProductManager) getProducts() map[string]APIProduct {
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
 	}
@@ -85,7 +89,7 @@ func (p *productManager) getProducts() map[string]APIProduct {
 	return <-p.returnChan
 }
 
-func (p *productManager) pollingLoop() {
+func (p *ProductManager) pollingLoop() {
 	tick := time.Tick(pollInterval)
 	for {
 		select {
@@ -99,7 +103,7 @@ func (p *productManager) pollingLoop() {
 	}
 }
 
-func (p *productManager) close() {
+func (p *ProductManager) Close() {
 	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
@@ -109,7 +113,7 @@ func (p *productManager) close() {
 }
 
 // don't call externally. will block until success.
-func (p *productManager) retrieve() {
+func (p *ProductManager) retrieve() {
 	apiURL := p.baseURL
 	apiURL.Path = path.Join(apiURL.Path, productsURL)
 
@@ -118,7 +122,7 @@ func (p *productManager) retrieve() {
 	})
 }
 
-func (p *productManager) getPollingClosure(apiURL url.URL) func(chan bool) error {
+func (p *ProductManager) getPollingClosure(apiURL url.URL) func(chan bool) error {
 	return func(_ chan bool) error {
 		log := p.log
 
@@ -172,11 +176,11 @@ func (p *productManager) getPollingClosure(apiURL url.URL) func(chan bool) error
 	}
 }
 
-func (p *productManager) getTokenReadyChannel() <-chan bool {
+func (p *ProductManager) getTokenReadyChannel() <-chan bool {
 	return p.updatedChan
 }
 
-func (p *productManager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
+func (p *ProductManager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
 
 	backoff := NewExponentialBackoff(200*time.Millisecond, pollInterval, 2, true)
 	retry := time.After(0 * time.Millisecond) // start first attempt immediately
@@ -202,3 +206,87 @@ func (p *productManager) pollWithBackoff(quit chan bool, toExecute func(chan boo
 }
 
 type quitSignalError error
+
+func (p *ProductManager) Resolve(ac auth.Context, api, path string) []APIProduct {
+	validProducts := resolve(p.getProducts(), ac.APIProducts, ac.Scopes, api, path)
+	ac.Log().Infof("Resolve api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
+	return validProducts
+}
+
+// todo: naive impl, optimize
+func resolve(pMap map[string]APIProduct, products, scopes []string, api, path string) (result []APIProduct) {
+
+	for _, name := range products {
+		apiProduct := pMap[name]
+		if apiProduct.isValidScopes(scopes) {
+			for _, attr := range apiProduct.Attributes {
+				if attr.Name == servicesAttr {
+					targets := strings.Split(attr.Value, ",")
+					for _, target := range targets { // find target paths
+						if strings.TrimSpace(target) == api {
+							if apiProduct.isValidPath(path) {
+								result = append(result, apiProduct)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	return result
+}
+
+// true if valid path for API Product
+func (d *APIProduct) isValidPath(requestPath string) bool {
+	for _, resource := range d.Resources {
+		reg, err := makeResourceRegex(resource)
+		if err == nil && reg.MatchString(requestPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// true if any intersect of scopes
+func (d *APIProduct) isValidScopes(scopes []string) bool {
+	for _, ds := range d.Scopes {
+		for _, s := range scopes {
+			if ds == s {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// - A single slash by itself matches any path
+// - * is valid anywhere and matches within a segment (between slashes)
+// - ** is valid only at the end and matches anything to EOL
+func makeResourceRegex(resource string) (*regexp.Regexp, error) {
+
+	if resource == "/" {
+		return regexp.Compile(".*")
+	}
+
+	// only allow ** as suffix
+	doubleStarIndex := strings.Index(resource, "**")
+	if doubleStarIndex >= 0 && doubleStarIndex != len(resource)-2 {
+		return nil, fmt.Errorf("bad resource specification")
+	}
+
+	// remove ** suffix if exists
+	pattern := resource
+	if doubleStarIndex >= 0 {
+		pattern = pattern[:len(pattern)-2]
+	}
+
+	// let * = any non-slash
+	pattern = strings.Replace(pattern, "*", "[^/]*", -1)
+
+	// if ** suffix, allow anything at end
+	if doubleStarIndex >= 0 {
+		pattern = pattern + ".*"
+	}
+
+	return regexp.Compile("^" + pattern + "$")
+}

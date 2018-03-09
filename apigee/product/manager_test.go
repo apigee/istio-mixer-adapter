@@ -83,7 +83,7 @@ func TestManager(t *testing.T) {
 
 	pp := createProductManager(*serverURL, env)
 	pp.start(env)
-	defer pp.close()
+	defer pp.Close()
 
 	if len(pp.getProducts()) != len(apiProducts) {
 		t.Errorf("num products want: %d, got: %d", len(apiProducts), len(pp.getProducts()))
@@ -129,7 +129,7 @@ func TestManagerPolling(t *testing.T) {
 
 	pp := createProductManager(*serverURL, env)
 	pp.start(env)
-	defer pp.close()
+	defer pp.Close()
 
 	pp1 := len(pp.getProducts())
 	pp2 := len(pp.getProducts())

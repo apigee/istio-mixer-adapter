@@ -18,13 +18,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"path"
 	"sync"
 	"time"
 
-	"path"
-
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter"
 )
@@ -34,35 +33,20 @@ const (
 	pollInterval = 5 * time.Minute
 )
 
-var am *authManager
-
-// Start begins the update loop for the auth manager, which will periodically
-// refresh JWT credentials.
-func Start(env adapter.Env) {
-	am = createAuthManager()
-	am.start(env)
-}
-
-// Stop stops the auth manager's update loop.
-func Stop() {
-	am.close()
-	am = nil
-}
-
-// An authManager handles all of the various JWT authentication functionality.
-type authManager struct {
-	closedChan chan bool
-	jwkSets    sync.Map
-}
-
-func createAuthManager() *authManager {
-	return &authManager{
+func newJWTManager() *jwtManager {
+	return &jwtManager{
 		closedChan: make(chan bool),
 		jwkSets:    sync.Map{},
 	}
 }
 
-func (a *authManager) pollingLoop() {
+// An jwtManager handles all of the various JWT authentication functionality.
+type jwtManager struct {
+	closedChan chan bool
+	jwkSets    sync.Map
+}
+
+func (a *jwtManager) pollingLoop() {
 	tick := time.Tick(pollInterval)
 	for {
 		select {
@@ -76,7 +60,7 @@ func (a *authManager) pollingLoop() {
 	}
 }
 
-func (a *authManager) start(env adapter.Env) {
+func (a *jwtManager) start(env adapter.Env) {
 	if err := a.refresh(); err != nil {
 		log.Printf("Error refreshing auth manager: %s", err)
 	}
@@ -85,13 +69,13 @@ func (a *authManager) start(env adapter.Env) {
 	})
 }
 
-func (a *authManager) close() {
+func (a *jwtManager) stop() {
 	if a != nil {
 		a.closedChan <- true
 	}
 }
 
-func (a *authManager) ensureSet(url string) error {
+func (a *jwtManager) ensureSet(url string) error {
 	set, err := jwk.FetchHTTP(url)
 	if err != nil {
 		return err
@@ -100,7 +84,7 @@ func (a *authManager) ensureSet(url string) error {
 	return nil
 }
 
-func (a *authManager) refresh() error {
+func (a *jwtManager) refresh() error {
 	var errRet error
 	a.jwkSets.Range(func(urlI interface{}, setI interface{}) bool {
 		if err := a.ensureSet(urlI.(string)); err != nil {
@@ -111,7 +95,7 @@ func (a *authManager) refresh() error {
 	return errRet
 }
 
-func (a *authManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
+func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
 	jwksURL := ctx.CustomerBase()
 	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
 
@@ -136,10 +120,10 @@ func (a *authManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}
 	return nil, fmt.Errorf("jwks doesn't contain key: %s", keyID)
 }
 
-func verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
+func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
 	ctx.Log().Infof("verifyJWT: %v", raw)
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
-		return getJWTKey(ctx, token)
+		return a.getJWTKey(ctx, token)
 	}
 	token, err := jwt.Parse(raw, keyFunc)
 	if err != nil {
@@ -150,9 +134,9 @@ func verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
 	return claims, nil
 }
 
-func getJWTKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
-	if am == nil {
+func (a *jwtManager) getJWTKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
+	if a == nil {
 		return nil, fmt.Errorf("auth manager not initialized")
 	}
-	return am.jwtKey(ctx, token)
+	return a.jwtKey(ctx, token)
 }
