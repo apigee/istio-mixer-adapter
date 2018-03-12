@@ -23,6 +23,8 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 )
 
+// A Context wraps all the various information that is needed to make requests
+// through the Apigee adapter.
 type Context struct {
 	context.Context
 	ClientID       string
@@ -34,7 +36,7 @@ type Context struct {
 	Scopes         []string
 }
 
-// does nothing if claims is empty
+// setClaims does nothing if claims is empty
 func (a *Context) setClaims(claims map[string]interface{}) error {
 	// todo: I'm not certain how Istio formats these claims values...
 

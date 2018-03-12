@@ -14,6 +14,7 @@
 
 package analytics
 
+// A Record is a single event that is tracked via Apigee analytics.
 type Record struct {
 	ClientReceivedStartTimestamp int64  `json:"client_received_start_timestamp"`
 	ClientReceivedEndTimestamp   int64  `json:"client_received_end_timestamp"`
@@ -39,13 +40,13 @@ type Record struct {
 	APIProduct                   string `json:"api_product,omitempty"`
 }
 
-type Request struct {
+type request struct {
 	Organization string   `json:"organization"`
 	Environment  string   `json:"environment"`
 	Records      []Record `json:"records"`
 }
 
-type Response struct {
+type response struct {
 	Accepted int `json:"accepted"`
 	Rejected int `json:"rejected"`
 }

@@ -50,8 +50,8 @@ type (
 		key          string
 		secret       string
 
-		productMan *product.ProductManager
-		authMan    *auth.AuthManager
+		productMan *product.Manager
+		authMan    *auth.Manager
 	}
 )
 
@@ -135,12 +135,12 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	pMan := product.CreateProductManager(*customerBase, env.Logger(), env)
+	pMan := product.NewManager(*customerBase, env.Logger(), env)
 	if err != nil {
 		return nil, err
 	}
 
-	aMan := auth.NewAuthManager(env)
+	aMan := auth.NewManager(env)
 	if err != nil {
 		return nil, err
 	}
@@ -287,7 +287,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 	claims, ok := inst.Subject.Properties["claims"].(map[string]string)
 	if !ok {
-		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Subject.Properties["claims"])
+		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v", inst.Subject.Properties["claims"])
 	}
 
 	authContext, err := h.authMan.Authenticate(h, "", convertClaims(claims))
@@ -344,7 +344,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	// not sure about actual format
 	claims, ok := inst.Dimensions["api_claims"].(map[string]string)
 	if !ok {
-		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v\n", inst.Dimensions["api_claims"])
+		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions["api_claims"])
 	}
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(claims))

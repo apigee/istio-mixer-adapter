@@ -30,12 +30,14 @@ const (
 	axRecordType = "APIAnalytics"
 )
 
+// TimeToUnix converts a time to a UNIX timestamp in milliseconds.
 func TimeToUnix(t time.Time) int64 {
 	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
-// todo: select best APIProduct based on path, otherwise arbitrary
+// SendRecords sends a set of analytics records to the server.
 func SendRecords(auth *auth.Context, records []Record) error {
+	// todo: select best APIProduct based on path, otherwise arbitrary
 	if auth == nil || len(records) == 0 {
 		return nil
 	}
@@ -60,7 +62,7 @@ func SendRecords(auth *auth.Context, records []Record) error {
 	axURL := auth.ApigeeBase()
 	axURL.Path = path.Join(axURL.Path, fmt.Sprintf(axPath, auth.Organization(), auth.Environment()))
 
-	request := Request{
+	request := request{
 		Organization: auth.Organization(),
 		Environment:  auth.Environment(),
 		Records:      records,
@@ -96,7 +98,7 @@ func SendRecords(auth *auth.Context, records []Record) error {
 		auth.Log().Infof("analytics accepted: %v", string(respBody))
 		return nil
 	default:
-		var errorResponse ErrorResponse
+		var errorResponse errorResponse
 		if err = json.Unmarshal(respBody, &errorResponse); err != nil {
 			auth.Log().Infof("analytics unmarshal error: %d, body: %v", resp.StatusCode, string(respBody))
 			return err
@@ -108,7 +110,7 @@ func SendRecords(auth *auth.Context, records []Record) error {
 	}
 }
 
-type ErrorResponse struct {
+type errorResponse struct {
 	ErrorCode string `json:"errorCode"`
 	Reason    string `json:"reason"`
 }

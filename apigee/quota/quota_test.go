@@ -31,7 +31,7 @@ import (
 func TestQuota(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		result := QuotaResult{
+		result := Result{
 			Allowed:    1,
 			Used:       1,
 			Exceeded:   1,
