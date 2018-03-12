@@ -53,7 +53,7 @@ func TestAuthenticate(t *testing.T) {
 		tv := &testVerifier{
 			goodAPIKey: goodAPIKey,
 		}
-		authMan := &AuthManager{
+		authMan := &Manager{
 			env:      env,
 			jwtMan:   jwtMan,
 			verifier: tv,

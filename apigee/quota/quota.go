@@ -31,24 +31,25 @@ import (
 
 const quotaPath = "/quotas/organization/%s/environment/%s"
 
-// todo: async
-func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (QuotaResult, error) {
+// Apply applies quota to a particular request.
+func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Result, error) {
+	// todo: async
 
 	quotaURL := auth.ApigeeBase()
 	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, auth.Organization(), auth.Environment()))
 
 	allow, err := strconv.ParseInt(p.QuotaLimit, 10, 64)
 	if err != nil {
-		return QuotaResult{}, err
+		return Result{}, err
 	}
 
 	interval, err := strconv.ParseInt(p.QuotaInterval, 10, 64)
 	if err != nil {
-		return QuotaResult{}, err
+		return Result{}, err
 	}
 
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
-	request := QuotaRequest{
+	request := request{
 		Identifier: quotaID,
 		Weight:     args.QuotaAmount,
 		Interval:   interval,
@@ -61,7 +62,7 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Quo
 
 	req, err := http.NewRequest(http.MethodPost, quotaURL.String(), body)
 	if err != nil {
-		return QuotaResult{}, err
+		return Result{}, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -72,7 +73,7 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Quo
 	client := http.DefaultClient
 	resp, err := client.Do(req)
 	if err != nil {
-		return QuotaResult{}, err
+		return Result{}, err
 	}
 	defer resp.Body.Close()
 
@@ -82,18 +83,13 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Quo
 
 	switch resp.StatusCode {
 	case 200:
-		var quotaResult QuotaResult
+		var quotaResult Result
 		if err = json.Unmarshal(respBody, &quotaResult); err != nil {
 			err = auth.Log().Errorf("Error unmarshalling: %s\n", string(respBody))
 		}
 		return quotaResult, err
 
 	default:
-		return QuotaResult{}, auth.Log().Errorf("quota apply failed. result: %s\n", string(respBody))
+		return Result{}, auth.Log().Errorf("quota apply failed. result: %s\n", string(respBody))
 	}
-}
-
-type ErrorResponse struct {
-	ErrorCode string `json:"errorCode"`
-	Reason    string `json:"reason"`
 }

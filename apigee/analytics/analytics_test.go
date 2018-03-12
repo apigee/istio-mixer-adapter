@@ -157,7 +157,7 @@ func TestMissingEnv(t *testing.T) {
 func makeTestServer(auth *auth.Context, rec Record, t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		decoder := json.NewDecoder(r.Body)
-		var axRequest Request
+		var axRequest request
 		err := decoder.Decode(&axRequest)
 		if err != nil {
 			t.Error(err)

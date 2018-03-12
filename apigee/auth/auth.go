@@ -10,14 +10,13 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-// Start begins the update loop for the auth manager, which will periodically
-// refresh JWT credentials.
-// call Close() when done
-func NewAuthManager(env adapter.Env) *AuthManager {
+// NewManager constructs a new Manager and begins the update loop, which
+// will periodically refresh JWT credentials. Call Close() when done.
+func NewManager(env adapter.Env) *Manager {
 	jwtMan := newJWTManager()
 	// TODO(robbrit): allow options to be configurable.
 	v := newVerifier(jwtMan, keyVerifierOpts{})
-	am := &AuthManager{
+	am := &Manager{
 		env:      env,
 		jwtMan:   jwtMan,
 		verifier: v,
@@ -26,13 +25,15 @@ func NewAuthManager(env adapter.Env) *AuthManager {
 	return am
 }
 
-type AuthManager struct {
+// An Manager handles all things related to authentication.
+type Manager struct {
 	env      adapter.Env
 	jwtMan   *jwtManager
 	verifier keyVerifier
 }
 
-func (a *AuthManager) Close() {
+// Close shuts down the Manager.
+func (a *Manager) Close() {
 	if a != nil {
 		a.jwtMan.stop()
 	}
@@ -40,7 +41,7 @@ func (a *AuthManager) Close() {
 
 // Authenticate constructs an Apigee context from an existing context and either
 // a set of JWT claims, or an Apigee API key.
-func (a *AuthManager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
+func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
 
 	ctx.Log().Infof("Authenticate: key: %v, claims: %v", apiKey, claims)
 
@@ -67,6 +68,6 @@ func (a *AuthManager) Authenticate(ctx context.Context, apiKey string, claims ma
 	return ac, err
 }
 
-func (a *AuthManager) start() {
+func (a *Manager) start() {
 	a.jwtMan.start(a.env)
 }

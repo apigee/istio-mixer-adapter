@@ -81,16 +81,16 @@ func TestManager(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createProductManager(*serverURL, env)
+	pp := createManager(*serverURL, env)
 	pp.start(env)
 	defer pp.Close()
 
-	if len(pp.getProducts()) != len(apiProducts) {
-		t.Errorf("num products want: %d, got: %d", len(apiProducts), len(pp.getProducts()))
+	if len(pp.Products()) != len(apiProducts) {
+		t.Errorf("num products want: %d, got: %d", len(apiProducts), len(pp.Products()))
 	}
 
 	for _, want := range apiProducts {
-		got := pp.getProducts()[want.Name]
+		got := pp.Products()[want.Name]
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("provided and received products don't match, got: %v, want: %v", got, want)
 		}
@@ -127,18 +127,18 @@ func TestManagerPolling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createProductManager(*serverURL, env)
+	pp := createManager(*serverURL, env)
 	pp.start(env)
 	defer pp.Close()
 
-	pp1 := len(pp.getProducts())
-	pp2 := len(pp.getProducts())
+	pp1 := len(pp.Products())
+	pp2 := len(pp.Products())
 	if pp1 != pp2 {
 		t.Errorf("number of products should not have incremented")
 	}
 
 	time.Sleep(pollInterval * 2)
-	pp2 = len(pp.getProducts())
+	pp2 = len(pp.Products())
 	if pp1 == pp2 {
 		t.Errorf("number of products should have incremented")
 	}

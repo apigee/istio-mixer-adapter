@@ -23,6 +23,8 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 )
 
+// A Context wraps all the various information that is needed to make requests
+// through the Apigee adapter.
 type Context struct {
 	context.Context
 	ClientID       string
@@ -41,11 +43,12 @@ func parseExp(claims map[string]interface{}) (time.Time, error) {
 	case float64:
 		return time.Unix(int64(exp), 0), nil
 	case string:
-		if expi, err := strconv.ParseInt(exp, 10, 64); err != nil {
+		var expi int64
+		var err error
+		if expi, err = strconv.ParseInt(exp, 10, 64); err != nil {
 			return time.Time{}, err
-		} else {
-			return time.Unix(expi, 0), nil
 		}
+		return time.Unix(expi, 0), nil
 	}
 	return time.Time{}, fmt.Errorf("unknown type for time %s: %T", claims["exp"], claims["exp"])
 }
