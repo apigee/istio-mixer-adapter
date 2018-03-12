@@ -19,7 +19,8 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-type AnalyticsProvider interface {
+// A Provider is how we interact with some Apigee analytics backend.
+type Provider interface {
 	Start(env adapter.Env)
 	Stop()
 	SendRecords(auth *auth.Context, records []Record) error

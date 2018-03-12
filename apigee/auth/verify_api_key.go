@@ -27,11 +27,10 @@ import (
 )
 
 const (
-	verifyAPIKeyURL = "/verifyApiKey"
-	// TODO(robbrit): Make these cache values configurable.
-	defaultCacheTTL       = 30 * time.Minute
-	cacheEvictionInterval = 10 * time.Second
-	maxCachedEntries      = 10000
+	verifyAPIKeyURL              = "/verifyApiKey"
+	defaultCacheTTL              = 30 * time.Minute
+	defaultCacheEvictionInterval = 10 * time.Second
+	defaultMaxCachedEntries      = 10000
 )
 
 // keyVerifier encapsulates API key verification logic.
@@ -40,24 +39,35 @@ type keyVerifier interface {
 }
 
 type keyVerifierImpl struct {
-	cache cache.ExpiringCache
+	jwtMan *jwtManager
+	cache  cache.ExpiringCache
+	now    func() time.Time
 }
 
-func newVerifier() keyVerifier {
+type keyVerifierOpts struct {
+	CacheTTL              time.Duration
+	CacheEvictionInterval time.Duration
+	MaxCachedEntries      int
+}
+
+func newVerifier(jwtMan *jwtManager, opts keyVerifierOpts) keyVerifier {
+	if opts.CacheTTL == 0 {
+		opts.CacheTTL = defaultCacheTTL
+	}
+	if opts.CacheEvictionInterval == 0 {
+		opts.CacheEvictionInterval = defaultCacheEvictionInterval
+	}
+	if opts.MaxCachedEntries == 0 {
+		opts.MaxCachedEntries = defaultMaxCachedEntries
+	}
 	return &keyVerifierImpl{
-		cache: cache.NewLRU(defaultCacheTTL, cacheEvictionInterval, maxCachedEntries),
+		jwtMan: jwtMan,
+		cache:  cache.NewLRU(opts.CacheTTL, opts.CacheEvictionInterval, int32(opts.MaxCachedEntries)),
+		now:    time.Now,
 	}
 }
 
 func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (string, error) {
-	if existing, ok := kv.cache.Get(apiKey); ok {
-		token, ok := existing.(string)
-		if !ok {
-			// Whelp, somebody put something in they shouldn't have.
-			return "", fmt.Errorf("cached value for %s is of invalid type %T", apiKey, existing)
-		}
-		return token, nil
-	}
 	verifyRequest := apiKeyRequest{
 		APIKey: apiKey,
 	}
@@ -86,20 +96,39 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (strin
 	apiKeyResp := apiKeyResponse{}
 	json.NewDecoder(resp.Body).Decode(&apiKeyResp)
 
-	kv.cache.Set(apiKey, apiKeyResp.Token)
 	return apiKeyResp.Token, nil
 }
 
 // verify returns the list of claims that an API key has.
 func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
-	// TODO(theganyo): need a better "failed" error.
-	ctx.Log().Infof("keyVerifierImpl.Verify(): %v", apiKey)
+	var token string
 
-	token, err := kv.fetchToken(ctx, apiKey)
+	if existing, ok := kv.cache.Get(apiKey); ok {
+		token = existing.(string)
+	} else {
+		var err error
+		token, err = kv.fetchToken(ctx, apiKey)
+		if err != nil {
+			return nil, fmt.Errorf("fetchToken(): %s", err)
+		}
+	}
+
+	if token == "" {
+		return nil, fmt.Errorf("invalid api key")
+	}
+
+	jwt, err := kv.jwtMan.verifyJWT(ctx, token)
+	if err != nil {
+		return nil, fmt.Errorf("verifyJWT(): %s", err)
+	}
+
+	exp, err := parseExp(jwt)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(robbrit): Do we need to clear the cache on error here?
-	return verifyJWT(ctx, token)
+	// A bit hacky, but since SetWithExpiration uses a duration instead of a
+	// timestamp which is what the JWT contains, need to do a bit of math.
+	kv.cache.SetWithExpiration(apiKey, token, exp.Sub(kv.now()))
+	return jwt, nil
 }

@@ -41,7 +41,7 @@ func TestManager(t *testing.T) {
 			LastModifiedBy: "test@apigee.com",
 			Name:           "Name 1",
 			QuotaLimit:     "10",
-			QuotaInterval:  1,
+			QuotaInterval:  "1",
 			QuotaTimeUnit:  "minute",
 			Resources:      []string{"/"},
 			Scopes:         []string{"scope1"},
@@ -59,7 +59,7 @@ func TestManager(t *testing.T) {
 			LastModifiedBy: "test@apigee.com",
 			Name:           "Name 2",
 			QuotaLimit:     "20",
-			QuotaInterval:  1,
+			QuotaInterval:  "1",
 			QuotaTimeUnit:  "hour",
 			Resources:      []string{"/"},
 			Scopes:         []string{"scope1"},
@@ -83,7 +83,7 @@ func TestManager(t *testing.T) {
 
 	pp := createProductManager(*serverURL, env)
 	pp.start(env)
-	defer pp.close()
+	defer pp.Close()
 
 	if len(pp.getProducts()) != len(apiProducts) {
 		t.Errorf("num products want: %d, got: %d", len(apiProducts), len(pp.getProducts()))
@@ -129,7 +129,7 @@ func TestManagerPolling(t *testing.T) {
 
 	pp := createProductManager(*serverURL, env)
 	pp.start(env)
-	defer pp.close()
+	defer pp.Close()
 
 	pp1 := len(pp.getProducts())
 	pp2 := len(pp.getProducts())

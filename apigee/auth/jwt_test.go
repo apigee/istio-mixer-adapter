@@ -43,6 +43,11 @@ func badJWTRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestJWTCaching(t *testing.T) {
+	env := test.NewEnv(t)
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
@@ -77,14 +82,14 @@ func TestJWTCaching(t *testing.T) {
 		}
 
 		// Do a first request and confirm that things look good.
-		_, err = verifyJWT(ctx, jwt)
+		_, err = jwtMan.verifyJWT(ctx, jwt)
 		if err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	// Refresh, should fail
-	err = am.refresh()
+	err = jwtMan.refresh()
 	if err == nil {
 		t.Errorf("Expected refresh to fail")
 	}
