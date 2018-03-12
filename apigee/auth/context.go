@@ -36,7 +36,24 @@ type Context struct {
 	Scopes         []string
 }
 
-// setClaims does nothing if claims is empty
+func parseExp(claims map[string]interface{}) (time.Time, error) {
+	// JSON decodes this struct to either float64 or string, so we won't
+	// need to check anything else.
+	switch exp := claims["exp"].(type) {
+	case float64:
+		return time.Unix(int64(exp), 0), nil
+	case string:
+		var expi int64
+		var err error
+		if expi, err = strconv.ParseInt(exp, 10, 64); err != nil {
+			return time.Time{}, err
+		}
+		return time.Unix(expi, 0), nil
+	}
+	return time.Time{}, fmt.Errorf("unknown type for time %s: %T", claims["exp"], claims["exp"])
+}
+
+// does nothing if claims is empty
 func (a *Context) setClaims(claims map[string]interface{}) error {
 	// todo: I'm not certain how Istio formats these claims values...
 
@@ -56,19 +73,13 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 		return fmt.Errorf("unable to interpret scopes: %v", claims["scopes"])
 	}
 
-	exp, ok := claims["exp"].(float64)
-	if !ok {
-		if str, ok := claims["exp"].(string); ok {
-			var err error
-			if exp, err = strconv.ParseFloat(str, 64); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("unable to interpret exp: %v", claims["exp"])
-		}
+	exp, err := parseExp(claims)
+	if err != nil {
+		return err
 	}
 	a.Log().Infof("exp: %v", exp)
 
+	var ok bool
 	if a.ClientID, ok = claims["client_id"].(string); !ok {
 		return fmt.Errorf("unable to interpret client_id: %v", claims["client_id"])
 	}
@@ -80,7 +91,7 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	}
 	a.APIProducts = products
 	a.Scopes = scopes
-	a.Expires = time.Unix(int64(exp), 0)
+	a.Expires = exp
 
 	a.Log().Infof("claims set: %v", a)
 	return nil

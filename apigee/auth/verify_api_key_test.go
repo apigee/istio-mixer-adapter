@@ -32,7 +32,9 @@ import (
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
-var badKeyResponse = []byte(`{"fault":{"faultstring":"Invalid ApiKey","detail":{"errorcode":"oauth.v2.InvalidApiKey"}}}`)
+var (
+	badKeyResponse = []byte(`{"fault":{"faultstring":"Invalid ApiKey","detail":{"errorcode":"oauth.v2.InvalidApiKey"}}}`)
+)
 
 // goodHandler is an HTTP handler that handles all the requests in a proper fashion.
 func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
@@ -102,7 +104,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	jwtMan := newJWTManager()
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan)
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 
 	apiKey := "testID"
 
@@ -136,12 +138,12 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	}
 }
 
-func TestVerifyAPIKeyCache(t *testing.T) {
+func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 	env := test.NewEnv(t)
 	jwtMan := newJWTManager()
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan)
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 
 	apiKey := "testID"
 
@@ -198,12 +200,83 @@ func TestVerifyAPIKeyCache(t *testing.T) {
 	}
 }
 
+func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
+	env := test.NewEnv(t)
+	jwtMan := newJWTManager()
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		CacheEvictionInterval: 50 * time.Millisecond,
+	})
+
+	apiKey := "testID"
+
+	// On the first iteration, use a normal HTTP handler that will return good
+	// results for the various HTTP requests that go out. After the first run,
+	// replace with bad responses to ensure that we do not go out and fetch any
+	// new pages (things are cached).
+	called := false
+	good := goodHandler(apiKey, t)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, jwksPath) {
+			// We don't care about jwks expiry here.
+			good(w, r)
+			return
+		}
+		if !called {
+			called = true
+			good(w, r)
+		} else {
+			badHandler()(w, r)
+		}
+	}))
+	defer ts.Close()
+
+	serverURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ctx := &testContext{
+		apigeeBase:   *serverURL,
+		customerBase: *serverURL,
+		log:          test.NewEnv(t),
+	}
+
+	for i := 0; i < 5; i++ {
+		t.Logf("run %d", i)
+		claims, err := v.Verify(ctx, apiKey)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Printf("\nclaims: %v", claims)
+
+		if claims["client_id"].(string) != "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H" {
+			t.Errorf("bad client_id, got: %s, want: %s", claims["client_id"].(string), "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H")
+		}
+
+		if claims["application_name"].(string) != "61cd4d83-06b5-4270-a9ee-cf9255ef45c3" {
+			t.Errorf("bad client_id, got: %s, want: %s", claims["application_name"].(string), "61cd4d83-06b5-4270-a9ee-cf9255ef45c3")
+		}
+	}
+
+	// Wait until the key is expired. This should give us an error since we are
+	// now going to make an HTTP request that will fail.
+	time.Sleep(200 * time.Millisecond)
+
+	_, err = v.Verify(ctx, apiKey)
+	if err == nil {
+		t.Errorf("expected error result on cleared cache")
+	}
+}
+
 func TestVerifyAPIKeyFail(t *testing.T) {
 	env := test.NewEnv(t)
 	jwtMan := newJWTManager()
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan)
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 
 	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
@@ -235,7 +308,7 @@ func TestVerifyAPIKeyError(t *testing.T) {
 	jwtMan := newJWTManager()
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan)
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 
 	ctx := &testContext{
 		apigeeBase:   url.URL{},
@@ -271,7 +344,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 		},
 		"nbf": time.Date(2017, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
 		"iat": time.Now().Unix(),
-		"exp": (time.Now().Add(time.Minute)).Unix(),
+		"exp": (time.Now().Add(50 * time.Millisecond)).Unix(),
 	})
 
 	token.Header["kid"] = "1"

@@ -14,7 +14,8 @@ import (
 // will periodically refresh JWT credentials. Call Close() when done.
 func NewManager(env adapter.Env) *Manager {
 	jwtMan := newJWTManager()
-	v := newVerifier(jwtMan)
+	// TODO(robbrit): allow options to be configurable.
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 	am := &Manager{
 		env:      env,
 		jwtMan:   jwtMan,
