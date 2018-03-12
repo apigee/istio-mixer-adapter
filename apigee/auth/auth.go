@@ -15,7 +15,8 @@ import (
 // call Close() when done
 func NewAuthManager(env adapter.Env) *AuthManager {
 	jwtMan := newJWTManager()
-	v := newVerifier(jwtMan)
+	// TODO(robbrit): allow options to be configurable.
+	v := newVerifier(jwtMan, keyVerifierOpts{})
 	am := &AuthManager{
 		env:      env,
 		jwtMan:   jwtMan,
