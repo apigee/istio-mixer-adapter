@@ -19,6 +19,8 @@ import (
 	"net/url"
 )
 
+// A Context contains all the information needed to communicate with Apigee
+// home servers.
 type Context interface {
 	Log() adapter.Logger
 	Organization() string

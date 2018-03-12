@@ -55,7 +55,7 @@ func TestStartStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := CreateProductManager(*serverURL, env, env)
+	p := NewManager(*serverURL, env, env)
 	defer p.Close()
 	context := &testContext{
 		log: env,

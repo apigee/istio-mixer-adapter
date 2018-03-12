@@ -24,6 +24,7 @@ const defaultInitial = 200 * time.Millisecond
 const defaultMax = 10 * time.Second
 const defaultFactor float64 = 2
 
+// Backoff contains parameters for RPC backoff strategy.
 type Backoff struct {
 	attempt         int
 	initial, max    time.Duration
@@ -31,11 +32,13 @@ type Backoff struct {
 	backoffStrategy func() time.Duration
 }
 
+// ExponentialBackoff is a backoff strategy that backs off exponentially.
 type ExponentialBackoff struct {
 	Backoff
 	factor float64
 }
 
+// NewExponentialBackoff constructs a new ExponentialBackoff struct.
 func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bool) *ExponentialBackoff {
 	backoff := &ExponentialBackoff{}
 
@@ -60,6 +63,8 @@ func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bo
 	return backoff
 }
 
+// Duration calculates how long should be waited before attempting again. Note
+// that this method is stateful - each call counts as an "attempt".
 func (b *Backoff) Duration() time.Duration {
 	d := b.backoffStrategy()
 	b.attempt++
@@ -88,10 +93,12 @@ func (b *ExponentialBackoff) exponentialBackoffStrategy() time.Duration {
 	return dur
 }
 
+// Reset clears any state that the backoff strategy has.
 func (b *Backoff) Reset() {
 	b.attempt = 0
 }
 
+// Attempt returns how many attempts have been made.
 func (b *Backoff) Attempt() int {
 	return b.attempt
 }

@@ -36,17 +36,17 @@ var pollInterval = 2 * time.Minute
 
 /*
 Usage:
-	pp := createProductManager()
+	pp := createManager()
 	pp.start()
-	products := pp.getProducts()
+	products := pp.Products()
 	...
 	pp.close() // when done
 */
 
-func createProductManager(baseURL url.URL, log adapter.Logger) *ProductManager {
+func createManager(baseURL url.URL, log adapter.Logger) *Manager {
 	isClosedInt := int32(0)
 
-	return &ProductManager{
+	return &Manager{
 		baseURL:         baseURL,
 		log:             log,
 		products:        map[string]APIProduct{},
@@ -59,7 +59,8 @@ func createProductManager(baseURL url.URL, log adapter.Logger) *ProductManager {
 	}
 }
 
-type ProductManager struct {
+// A Manager wraps all things related to a set of API products.
+type Manager struct {
 	baseURL          url.URL
 	log              adapter.Logger
 	products         map[string]APIProduct
@@ -72,7 +73,7 @@ type ProductManager struct {
 	refreshTimerChan <-chan time.Time
 }
 
-func (p *ProductManager) start(env adapter.Env) {
+func (p *Manager) start(env adapter.Env) {
 	p.retrieve()
 	//go p.pollingLoop()
 	env.ScheduleDaemon(func() {
@@ -80,8 +81,8 @@ func (p *ProductManager) start(env adapter.Env) {
 	})
 }
 
-// returns name => APIProduct
-func (p *ProductManager) getProducts() map[string]APIProduct {
+// Products atomically gets a mapping of name => APIProduct.
+func (p *Manager) Products() map[string]APIProduct {
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
 	}
@@ -89,7 +90,7 @@ func (p *ProductManager) getProducts() map[string]APIProduct {
 	return <-p.returnChan
 }
 
-func (p *ProductManager) pollingLoop() {
+func (p *Manager) pollingLoop() {
 	tick := time.Tick(pollInterval)
 	for {
 		select {
@@ -103,7 +104,8 @@ func (p *ProductManager) pollingLoop() {
 	}
 }
 
-func (p *ProductManager) Close() {
+// Close shuts down the manager.
+func (p *Manager) Close() {
 	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
@@ -113,16 +115,16 @@ func (p *ProductManager) Close() {
 }
 
 // don't call externally. will block until success.
-func (p *ProductManager) retrieve() {
+func (p *Manager) retrieve() {
 	apiURL := p.baseURL
 	apiURL.Path = path.Join(apiURL.Path, productsURL)
 
-	p.pollWithBackoff(p.quitPollingChan, p.getPollingClosure(apiURL), func(err error) {
+	p.pollWithBackoff(p.quitPollingChan, p.pollingClosure(apiURL), func(err error) {
 		p.log.Errorf("Error retrieving products: %v", err)
 	})
 }
 
-func (p *ProductManager) getPollingClosure(apiURL url.URL) func(chan bool) error {
+func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 	return func(_ chan bool) error {
 		log := p.log
 
@@ -175,11 +177,11 @@ func (p *ProductManager) getPollingClosure(apiURL url.URL) func(chan bool) error
 	}
 }
 
-func (p *ProductManager) getTokenReadyChannel() <-chan bool {
+func (p *Manager) getTokenReadyChannel() <-chan bool {
 	return p.updatedChan
 }
 
-func (p *ProductManager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
+func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
 
 	backoff := NewExponentialBackoff(200*time.Millisecond, pollInterval, 2, true)
 	retry := time.After(0 * time.Millisecond) // start first attempt immediately
@@ -206,8 +208,9 @@ func (p *ProductManager) pollWithBackoff(quit chan bool, toExecute func(chan boo
 
 type quitSignalError error
 
-func (p *ProductManager) Resolve(ac auth.Context, api, path string) []APIProduct {
-	validProducts := resolve(p.getProducts(), ac.APIProducts, ac.Scopes, api, path)
+// Resolve determines the valid products for a given API.
+func (p *Manager) Resolve(ac auth.Context, api, path string) []APIProduct {
+	validProducts := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
 	ac.Log().Infof("Resolve api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
 	return validProducts
 }
@@ -217,18 +220,26 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api, path st
 
 	for _, name := range products {
 		apiProduct := pMap[name]
-		if apiProduct.isValidScopes(scopes) {
-			for _, attr := range apiProduct.Attributes {
-				if attr.Name == servicesAttr {
-					targets := strings.Split(attr.Value, ",")
-					for _, target := range targets { // find target paths
-						if strings.TrimSpace(target) == api {
-							if apiProduct.isValidPath(path) {
-								result = append(result, apiProduct)
-							}
-						}
-					}
+		if !apiProduct.isValidScopes(scopes) {
+			continue
+		}
+
+		for _, attr := range apiProduct.Attributes {
+			if attr.Name != servicesAttr {
+				continue
+			}
+
+			targets := strings.Split(attr.Value, ",")
+			for _, target := range targets { // find target paths
+				if strings.TrimSpace(target) != api {
+					continue
 				}
+
+				if !apiProduct.isValidPath(path) {
+					continue
+				}
+
+				result = append(result, apiProduct)
 			}
 		}
 	}

@@ -20,7 +20,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 )
 
-func buildRequest(auth *auth.Context, records []Record) (*Request, error) {
+func buildRequest(auth *auth.Context, records []Record) (*request, error) {
 	if auth == nil || len(records) == 0 {
 		return nil, nil
 	}
@@ -42,7 +42,7 @@ func buildRequest(auth *auth.Context, records []Record) (*Request, error) {
 		}
 	}
 
-	return &Request{
+	return &request{
 		Organization: auth.Organization(),
 		Environment:  auth.Environment(),
 		Records:      records,

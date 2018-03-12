@@ -22,9 +22,9 @@ import (
 
 const servicesAttr = "istio-services"
 
-// call Close() when done
-func CreateProductManager(baseURL url.URL, log adapter.Logger, env adapter.Env) *ProductManager {
-	pm := createProductManager(baseURL, log)
+// NewManager creates a new product.Manager. Call Close() when done.
+func NewManager(baseURL url.URL, log adapter.Logger, env adapter.Env) *Manager {
+	pm := createManager(baseURL, log)
 	pm.start(env)
 	return pm
 }

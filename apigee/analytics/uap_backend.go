@@ -36,20 +36,20 @@ const (
 
 type uapBackend struct {
 	spool  chan *pushRequest
-	stop   chan bool
+	close  chan bool
 	client *http.Client
 	now    func() time.Time
 }
 
 type pushRequest struct {
 	auth *auth.Context
-	req  *Request
+	req  *request
 }
 
-func newUAPBackend() AnalyticsProvider {
+func newUAPBackend() Manager {
 	return &uapBackend{
 		spool: make(chan *pushRequest),
-		stop:  make(chan bool),
+		close: make(chan bool),
 		client: &http.Client{
 			Timeout: httpTimeout,
 		},
@@ -63,8 +63,8 @@ func (ub *uapBackend) Start(env adapter.Env) {
 	})
 }
 
-func (ub *uapBackend) Stop() {
-	ub.stop <- true
+func (ub *uapBackend) Close() {
+	ub.close <- true
 }
 
 func (ub *uapBackend) pollingLoop() {
@@ -75,14 +75,14 @@ func (ub *uapBackend) pollingLoop() {
 			if err := ub.push(r.auth, r.req); err != nil {
 				r.auth.Log().Errorf("analytics not sent: %s", err)
 			}
-		case <-ub.stop:
+		case <-ub.close:
 			return
 		}
 	}
 }
 
 // push sends a request to UAP.
-func (ub *uapBackend) push(ctx *auth.Context, r *Request) error {
+func (ub *uapBackend) push(ctx *auth.Context, r *request) error {
 	url, err := ub.signedURL(ctx, r)
 	if err != nil {
 		return fmt.Errorf("signedURL: %s", err)
@@ -121,7 +121,7 @@ func (ub *uapBackend) push(ctx *auth.Context, r *Request) error {
 }
 
 // signedURL constructs a signed URL that can be used to upload the given request.
-func (ub *uapBackend) signedURL(ctx *auth.Context, r *Request) (string, error) {
+func (ub *uapBackend) signedURL(ctx *auth.Context, r *request) (string, error) {
 	base := ctx.ApigeeBase()
 	url := path.Join(base.String(), uapPath)
 	req, err := http.NewRequest("GET", url, nil)
@@ -154,11 +154,11 @@ func (ub *uapBackend) signedURL(ctx *auth.Context, r *Request) (string, error) {
 	return data.URL, nil
 }
 
-func (ub *uapBackend) formatTenant(r *Request) string {
+func (ub *uapBackend) formatTenant(r *request) string {
 	return fmt.Sprintf("%s~%s", r.Organization, r.Environment)
 }
 
-func (ub *uapBackend) filePath(r *Request) string {
+func (ub *uapBackend) filePath(r *request) string {
 	now := ub.now()
 	d := now.Format("2006-01-02")
 	start := now.Unix()

@@ -15,31 +15,28 @@
 package analytics
 
 import (
+	"time"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-// A Provider is how we interact with some Apigee analytics backend.
-type Provider interface {
+// A Manager is how we interact with some Apigee analytics backend.
+type Manager interface {
 	Start(env adapter.Env)
-	Stop()
+	Close()
 	SendRecords(auth *auth.Context, records []Record) error
 }
 
-// TODO(robbrit): Allow setting the backend based on a flag or config setting.
-var provider = &apigeeBackend{}
-
-// Start starts the main analytics provider.
-func Start(env adapter.Env) {
-	provider.Start(env)
+// NewManager constructs a new analytics Manager. Call Close when you are done.
+func NewManager(env adapter.Env) Manager {
+	// TODO(robbrit): Allow setting the backend based on a flag or config setting.
+	m := &apigeeBackend{}
+	m.Start(env)
+	return m
 }
 
-// Stop stops the main analytics provider.
-func Stop() {
-	provider.Stop()
-}
-
-// SendRecords sends analytics records to the backend server.
-func SendRecords(auth *auth.Context, records []Record) error {
-	return provider.SendRecords(auth, records)
+// TimeToUnix converts a time to a UNIX timestamp in milliseconds.
+func TimeToUnix(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }

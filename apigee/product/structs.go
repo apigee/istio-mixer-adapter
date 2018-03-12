@@ -18,6 +18,8 @@ type apiResponse struct {
 	APIProducts []APIProduct `json:"apiProduct"`
 }
 
+// An APIProduct is an Apigee API product. See the Apigee docs for details:
+// https://docs.apigee.com/api-platform/publish/what-api-product
 type APIProduct struct {
 	Attributes     []Attribute `json:"attributes,omitempty"`
 	CreatedAt      int64       `json:"createdAt,omitempty"`
@@ -35,6 +37,7 @@ type APIProduct struct {
 	Scopes         []string    `json:"scopes"`
 }
 
+// An Attribute is a name-value-pair attribute of an API product.
 type Attribute struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`

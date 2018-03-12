@@ -39,7 +39,7 @@ type errorResponse struct {
 }
 
 func (ab *apigeeBackend) Start(env adapter.Env) {}
-func (ab *apigeeBackend) Stop()                 {}
+func (ab *apigeeBackend) Close()                {}
 
 // todo: select best APIProduct based on path, otherwise arbitrary
 func (ab *apigeeBackend) SendRecords(auth *auth.Context, records []Record) error {

@@ -18,8 +18,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
-	"github.com/apigee/istio-mixer-adapter/template/analytics"
+	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
@@ -63,7 +64,7 @@ func TestValidateBuild(t *testing.T) {
 	}
 
 	// invoke the empty set methods for coverage
-	b.SetAnalyticsTypes(map[string]*analytics.Type{})
+	b.SetAnalyticsTypes(map[string]*analyticsT.Type{})
 	b.SetApiKeyTypes(map[string]*apikey.Type{})
 	b.SetQuotaTypes(map[string]*quota.Type{})
 
@@ -87,17 +88,20 @@ func TestHandleAnalytics(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	env := test.NewEnv(t)
+
 	ctx := context.Background()
 
 	h := &handler{
-		env:          test.NewEnv(t),
+		env:          env,
 		apigeeBase:   *baseURL,
 		customerBase: *baseURL,
 		orgName:      "org",
 		envName:      "env",
+		analyticsMan: analytics.NewManager(env),
 	}
 
-	inst := []*analytics.Instance{
+	inst := []*analyticsT.Instance{
 		{Name: "name"},
 	}
 

@@ -14,7 +14,7 @@
 
 package quota
 
-type QuotaRequest struct {
+type request struct {
 	Identifier string `json:"identifier"`
 	Weight     int64  `json:"weight"`
 	Interval   int64  `json:"interval"`
@@ -22,7 +22,9 @@ type QuotaRequest struct {
 	TimeUnit   string `json:"timeUnit"`
 }
 
-type QuotaResult struct {
+// A Result is a response from Apigee's quota server that gives information
+// about how much quota is available.
+type Result struct {
 	Allowed    int64 `json:"allowed"`
 	Used       int64 `json:"used"`
 	Exceeded   int64 `json:"exceeded"`
