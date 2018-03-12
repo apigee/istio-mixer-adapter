@@ -206,7 +206,7 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	jwtMan.start(env)
 	defer jwtMan.stop()
 	v := newVerifier(jwtMan, keyVerifierOpts{
-		CacheEvictionInterval: 50*time.Millisecond,
+		CacheEvictionInterval: 50 * time.Millisecond,
 	})
 
 	apiKey := "testID"

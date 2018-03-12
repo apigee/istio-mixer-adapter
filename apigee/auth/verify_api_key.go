@@ -27,8 +27,8 @@ import (
 )
 
 const (
-	verifyAPIKeyURL = "/verifyApiKey"
-	defaultCacheTTL       = 30 * time.Minute
+	verifyAPIKeyURL              = "/verifyApiKey"
+	defaultCacheTTL              = 30 * time.Minute
 	defaultCacheEvictionInterval = 10 * time.Second
 	defaultMaxCachedEntries      = 10000
 )
@@ -45,9 +45,9 @@ type keyVerifierImpl struct {
 }
 
 type keyVerifierOpts struct {
-	CacheTTL time.Duration
+	CacheTTL              time.Duration
 	CacheEvictionInterval time.Duration
-	MaxCachedEntries int
+	MaxCachedEntries      int
 }
 
 func newVerifier(jwtMan *jwtManager, opts keyVerifierOpts) keyVerifier {
