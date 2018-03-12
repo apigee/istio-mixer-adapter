@@ -105,7 +105,6 @@ func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{},
 	}
 
 	url := jwksURL.String()
-	log.Printf("url: %s\n", url)
 	if _, ok := a.jwkSets.Load(url); !ok {
 		if err := a.ensureSet(url); err != nil {
 			return nil, err
@@ -127,7 +126,7 @@ func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, 
 	}
 	token, err := jwt.Parse(raw, keyFunc)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("jwt.Parse(): %s", err)
 	}
 	claims := token.Claims.(jwt.MapClaims)
 	ctx.Log().Infof("claims: %v", claims)
