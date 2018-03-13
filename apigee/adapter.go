@@ -40,7 +40,13 @@ import (
 	quotaT "istio.io/istio/mixer/template/quota"
 )
 
-const encodedClaimsKey = "encoded"
+const (
+	encodedClaimsKey   = "encoded"
+	apiClaimsAttribute = "api_claims"
+	apiKeyAttribute    = "api_key"
+	apiNameAttribute   = "api"
+	pathAttribute      = "path"
+)
 
 type (
 	builder struct {
@@ -289,9 +295,10 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}, nil
 	}
 
-	claims, ok := inst.Subject.Properties["api_claims"].(map[string]string)
+	claims, ok := inst.Subject.Properties[apiClaimsAttribute].(map[string]string)
 	if !ok {
-		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v", inst.Subject.Properties["claims"])
+		h.Log().Errorf("wrong claims type: %v", inst.Subject.Properties[apiClaimsAttribute])
+		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v", inst.Subject.Properties[apiClaimsAttribute])
 	}
 
 	authContext, err := h.authMan.Authenticate(h, "", convertClaims(h.Log(), claims))
@@ -336,19 +343,18 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		return adapter.QuotaResult{}, nil
 	}
 
-	path := inst.Dimensions["path"].(string)
+	path := inst.Dimensions[pathAttribute].(string)
 	if path == "" {
 		return adapter.QuotaResult{}, fmt.Errorf("path attribute required")
 	}
-	apiKey := inst.Dimensions["api_key"].(string)
-	api := inst.Dimensions["api"].(string)
+	apiKey := inst.Dimensions[apiKeyAttribute].(string)
+	api := inst.Dimensions[apiNameAttribute].(string)
 
 	h.Log().Infof("api: %v, key: %v, path: %v", api, apiKey, path)
 
-	// not sure about actual format
-	claims, ok := inst.Dimensions["api_claims"].(map[string]string)
+	claims, ok := inst.Dimensions[apiClaimsAttribute].(map[string]string)
 	if !ok {
-		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions["api_claims"])
+		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
 	}
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(h.Log(), claims))
@@ -424,7 +430,7 @@ func convertClaims(log adapter.Logger, claims map[string]string) map[string]inte
 	}
 
 	if err != nil {
-		log.Errorf("error decoding claims: %v", err)
+		log.Errorf("error decoding claims: %v, data: %v", err, encoded)
 	}
 
 	return claimsOut
