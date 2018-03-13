@@ -24,6 +24,9 @@ import (
 	"reflect"
 	"testing"
 
+	"strconv"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/template/analytics"
 	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
@@ -191,12 +194,18 @@ func TestHandleQuota(t *testing.T) {
 	}
 }
 
-func TestConvertClaims(t *testing.T) {
+func TestResolveClaims(t *testing.T) {
 	env := test.NewEnv(t)
 
-	want := map[string]string{
-		"test key":   "test value",
-		"test key 2": "test value 2",
+	input := map[string]string{}
+	for i, c := range auth.AllValidClaims {
+		input[c] = strconv.Itoa(i)
+	}
+	input["extra"] = "extra"
+
+	want := map[string]string{}
+	for i, c := range auth.AllValidClaims {
+		input[c] = strconv.Itoa(i)
 	}
 
 	jsonBytes, err := json.Marshal(want)
@@ -216,7 +225,7 @@ func TestConvertClaims(t *testing.T) {
 	} {
 		t.Log(ea.desc)
 
-		claimsOut := convertClaims(env, ea.claims)
+		claimsOut := resolveClaims(env, ea.claims)
 
 		// normalize the type to same as want
 		got := map[string]string{}

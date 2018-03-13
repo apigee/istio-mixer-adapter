@@ -247,7 +247,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		}
 
 		if authContext == nil {
-			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(h.Log(), inst.ApiClaims))
+			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, resolveClaims(h.Log(), inst.ApiClaims))
 			// ignore error, take whatever we have
 			authContext = &ac
 		}
@@ -288,21 +288,30 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	h.Log().Infof("HandleAuthorization: Subject: %#v, Action: %#v", inst.Subject, inst.Action)
 
-	if inst.Subject == nil || inst.Subject.Properties == nil || inst.Action.Service == "" || inst.Action.Path == "" {
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("missing authentication"),
-		}, nil
-	}
-
-	// Mixer template says this is map[string]interface{}, but won't allow non-string values
+	// Mixer template says this is map[string]interface{}, but won't allow non-string values...
 	// so, we'll have to take the entire properties value as the claims since we can't nest a map
-	claims := map[string]string{}
+	// also, need to convert to map[string]string for processing by resolveClaims()
+	c := map[string]string{}
 	for k, v := range inst.Subject.Properties {
-		claims[k] = v.(string)
+		if vstr, ok := v.(string); ok {
+			c[k] = vstr
+		}
+	}
+	claims := resolveClaims(h.Log(), c)
+
+	var apiKey string
+	if k, ok := inst.Subject.Properties[apiKeyAttribute]; ok {
+		apiKey = k.(string)
 	}
 
-	authContext, err := h.authMan.Authenticate(h, "", convertClaims(h.Log(), claims))
+	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
 	if err != nil {
+		if _, ok := err.(*auth.NoAuthInfoError); ok {
+			h.Log().Infof("authenticate err: %v", err)
+			return adapter.CheckResult{
+				Status: status.WithPermissionDenied(err.Error()),
+			}, nil
+		}
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied(err.Error()),
@@ -357,7 +366,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
 	}
 
-	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(h.Log(), claims))
+	authContext, err := h.authMan.Authenticate(h, apiKey, resolveClaims(h.Log(), claims))
 	if err != nil {
 		return adapter.QuotaResult{}, err
 	}
@@ -410,18 +419,19 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 // For future compatibility with Istio, accepts the "encoded" base64 string value
 // until request.auth.claims attribute is defined and supported.
 // see: https://github.com/istio/istio/issues/3194
-func convertClaims(log adapter.Logger, claims map[string]string) map[string]interface{} {
-	var claimsOut = map[string]interface{}{}
-	if len(claims) > 1 {
-		for k, v := range claims {
-			claimsOut[k] = v
+func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]interface{} {
+	var claims = map[string]interface{}{}
+	for _, k := range auth.AllValidClaims {
+		if v, ok := claims[k]; ok {
+			claims[k] = v
 		}
-		return claimsOut
+	}
+	if len(claims) > 0 {
+		return claims
 	}
 
 	var err error
-	encoded, ok := claims[encodedClaimsKey]
-	if ok {
+	if encoded, ok := claimsIn[encodedClaimsKey]; ok {
 		var decoded []byte
 		decoded, err = base64.StdEncoding.DecodeString(encoded)
 
@@ -431,13 +441,16 @@ func convertClaims(log adapter.Logger, claims map[string]string) map[string]inte
 		}
 
 		if err == nil {
-			err = json.Unmarshal(decoded, &claimsOut)
+			err = json.Unmarshal(decoded, &claims)
 		}
+
+		if err != nil {
+			log.Errorf("error resolving claims: %v, data: %v", err, encoded)
+			return claims
+		}
+
+		err = json.Unmarshal(decoded, &claims)
 	}
 
-	if err != nil {
-		log.Errorf("error decoding claims: %v, data: %v", err, encoded)
-	}
-
-	return claimsOut
+	return claims
 }
