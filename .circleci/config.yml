@@ -18,6 +18,7 @@ jobs:
     steps:
       - checkout
       - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: ./install/install_protoc.sh
       - run: dep ensure
       - run: go generate ./...
       - run: go test ./...

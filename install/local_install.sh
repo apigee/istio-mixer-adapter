@@ -18,12 +18,7 @@ fi
 if [[ `command -v protoc` == "" ]]; then
   if [[ "${INSTALL_PROTOC}" == "1" ]]; then
     echo "protoc not installed, installing..."
-    mkdir "${ADAPTER_DIR}/protoc"
-    wget -O "${ADAPTER_DIR}/protoc/protoc.zip" https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
-    unzip "${ADAPTER_DIR}/protoc/protoc.zip" -d "${ADAPTER_DIR}/protoc"
-    sudo mv -f "${ADAPTER_DIR}/protoc/bin/protoc" /usr/bin/
-    sudo mv -f "${ADAPTER_DIR}/protoc/include/google" /usr/local/include/
-    rm -rf "${ADAPTER_DIR}/protoc"
+    "./${ADAPTER_DIR}/install/install_protoc.sh"
   else
     echo "protoc is not installed, install or run with INSTALL_PROTOC=1."
     exit 1
