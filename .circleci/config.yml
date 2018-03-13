@@ -12,7 +12,13 @@ jobs:
       - run: INSTALL_PROTOC=1 ./install/local_install.sh
         # test needs dep ensure to be run again, since the Mixer plugin install
         # will have removed the vendor link.
-      - run: dep ensure && go test ./...
+      - run: dep ensure
+      - run: go test -coverprofile=/tmp/coverage.out ./...
+      - run: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
+      - store_artifacts:
+          path: /tmp/coverage.out
+      - store_artifacts:
+          path: /tmp/coverage.html
 
   build-image:
     docker:
