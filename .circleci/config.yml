@@ -9,9 +9,7 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: ./install/install_protoc.sh
-      - run: ls -R /go/src/github.com/apigee | grep -v vendor
-      - run: ./install/local_install.sh
+      - run: INSTALL_PROTOC=1 ./install/local_install.sh
 
   test:
     docker:
@@ -19,6 +17,9 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
+        #- curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: dep ensure
+      - run: go generate ./...
       - run: go test ./...
 
   build-image:
@@ -27,17 +28,15 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: export GCP_PROJECT=apigee-api-management-istio
-      - run: ./install/build_mixer_docker.sh
+      - run: INSTALL_PROTOC=1 ./install/local_install.sh
+      - run: GCP_PROJECT=apigee-api-management-istio ./install/build_mixer_docker.sh
 
 workflows:
   version: 2
   on-commit:
     jobs:
       - build
-      - test:
-          requires:
-            - build
+      - test
   nightly:
     triggers:
       - schedule:
@@ -48,9 +47,8 @@ workflows:
                 - master
     jobs:
       - build
-      - test:
-          requires:
-            - build
+      - test
       - build-image:
           requires:
+            - build
             - test
