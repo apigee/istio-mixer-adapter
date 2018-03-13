@@ -3,24 +3,13 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
-  build:
+  build-and-test:
     docker:
       - image: circleci/golang:1.9
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
       - run: INSTALL_PROTOC=1 ./install/local_install.sh
-
-  test:
-    docker:
-      - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
-    steps:
-      - checkout
-      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-      - run: ./install/install_protoc.sh
-      - run: dep ensure
-      - run: go generate ./...
       - run: go test ./...
 
   build-image:
@@ -36,8 +25,7 @@ workflows:
   version: 2
   on-commit:
     jobs:
-      - build
-      - test
+      - build-and-test
   nightly:
     triggers:
       - schedule:
@@ -47,9 +35,7 @@ workflows:
               only:
                 - master
     jobs:
-      - build
-      - test
+      - build-and-test
       - build-image:
           requires:
-            - build
-            - test
+            - build-and-test
