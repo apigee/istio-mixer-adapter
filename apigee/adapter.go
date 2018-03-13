@@ -27,6 +27,8 @@ import (
 
 	"encoding/json"
 
+	"strings"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
@@ -425,6 +427,12 @@ func convertClaims(log adapter.Logger, claims map[string]string) map[string]inte
 	if ok {
 		var decoded []byte
 		decoded, err = base64.StdEncoding.DecodeString(encoded)
+
+		// hack: weird truncation issue coming from Istio, add suffix and try again
+		if err != nil && strings.HasPrefix(err.Error(), "illegal base64 data") {
+			decoded, err = base64.StdEncoding.DecodeString(encoded + "o=")
+		}
+
 		if err == nil {
 			err = json.Unmarshal(decoded, &claimsOut)
 		}
