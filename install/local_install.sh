@@ -30,15 +30,6 @@ if [[ `command -v dep` == "" ]]; then
   fi
 fi
 
-export ISTIO="${GOPATH}/src/istio.io"
-mkdir -p "${ISTIO}"
-
-if [ ! -d "${ISTIO}/istio" ]; then
-  echo "istio repo not found, fetching and building..."
-  cd "${ISTIO}"
-  git clone https://github.com/istio/istio
-fi
-
 PROTOBUF_DIR="${GOPATH}/src/github.com/gogo/protobuf"
 
 if [ ! -d "${PROTOBUF_DIR}" ]; then
@@ -49,10 +40,19 @@ if [ ! -d "${PROTOBUF_DIR}" ]; then
   git clone https://github.com/gogo/protobuf
 fi
 
-echo "Checking if istio is built..."
-cd "${ISTIO}/istio"
-make depend || exit 1
-make mixs || exit 1
+export ISTIO="${GOPATH}/src/istio.io"
+mkdir -p "${ISTIO}"
+
+if [ ! -d "${ISTIO}/istio" ]; then
+  echo "istio repo not found, fetching and building..."
+  cd "${ISTIO}"
+  git clone https://github.com/istio/istio
+
+  echo "Checking if istio is built..."
+  cd "${ISTIO}/istio"
+  make depend || exit 1
+  make mixs || exit 1
+fi
 
 echo "All dependencies present, setting up adapter..."
 cd "${ADAPTER_DIR}"
