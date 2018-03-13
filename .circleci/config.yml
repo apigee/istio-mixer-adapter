@@ -5,7 +5,7 @@ version: 2
 jobs:
   build-and-test:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.10
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
@@ -22,7 +22,7 @@ jobs:
 
   build-image:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.10
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
