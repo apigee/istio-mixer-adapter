@@ -17,7 +17,7 @@ jobs:
     #### expecting it in the form of
     ####   /go/src/github.com/circleci/go-tool
     ####   /go/src/bitbucket.org/circleci/go-tool
-    working_directory: /go/src/github.com/{{ORG_NAME}}/{{REPO_NAME}}
+    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
 
@@ -25,4 +25,7 @@ jobs:
       - run: unzip protoc-3.5.1-linux-x86_64.zip
       - run: sudo mv bin/* /usr/bin/
       - run: sudo mv include/google /usr/local/include/
+      - run: ls /go/src/
+      - run: ls /go/src/github.com/
+      - run: ls /go/src/github.com/apigee
       - run: ./install/local_install.sh
