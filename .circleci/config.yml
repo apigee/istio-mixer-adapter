@@ -17,7 +17,7 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+      - run: curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
       - run: dep ensure
       - run: go generate ./...
       - run: go test ./...
