@@ -20,8 +20,11 @@ package apigee
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -34,6 +37,14 @@ import (
 	"istio.io/istio/mixer/template/apikey"
 	authT "istio.io/istio/mixer/template/authorization"
 	quotaT "istio.io/istio/mixer/template/quota"
+)
+
+const (
+	encodedClaimsKey   = "encoded_claims"
+	apiClaimsAttribute = "api_claims"
+	apiKeyAttribute    = "api_key"
+	apiNameAttribute   = "api"
+	pathAttribute      = "path"
 )
 
 type (
@@ -236,7 +247,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		}
 
 		if authContext == nil {
-			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(inst.ApiClaims))
+			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, convertClaims(h.Log(), inst.ApiClaims))
 			// ignore error, take whatever we have
 			authContext = &ac
 		}
@@ -283,12 +294,14 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}, nil
 	}
 
-	claims, ok := inst.Subject.Properties["claims"].(map[string]string)
-	if !ok {
-		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v", inst.Subject.Properties["claims"])
+	// Mixer template says this is map[string]interface{}, but won't allow non-string values
+	// so, we'll have to take the entire properties value as the claims since we can't nest a map
+	claims := map[string]string{}
+	for k, v := range inst.Subject.Properties {
+		claims[k] = v.(string)
 	}
 
-	authContext, err := h.authMan.Authenticate(h, "", convertClaims(claims))
+	authContext, err := h.authMan.Authenticate(h, "", convertClaims(h.Log(), claims))
 	if err != nil {
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
@@ -330,22 +343,21 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		return adapter.QuotaResult{}, nil
 	}
 
-	path := inst.Dimensions["path"].(string)
+	path := inst.Dimensions[pathAttribute].(string)
 	if path == "" {
 		return adapter.QuotaResult{}, fmt.Errorf("path attribute required")
 	}
-	apiKey := inst.Dimensions["api_key"].(string)
-	api := inst.Dimensions["api"].(string)
+	apiKey := inst.Dimensions[apiKeyAttribute].(string)
+	api := inst.Dimensions[apiNameAttribute].(string)
 
 	h.Log().Infof("api: %v, key: %v, path: %v", api, apiKey, path)
 
-	// not sure about actual format
-	claims, ok := inst.Dimensions["api_claims"].(map[string]string)
+	claims, ok := inst.Dimensions[apiClaimsAttribute].(map[string]string)
 	if !ok {
-		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions["api_claims"])
+		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
 	}
 
-	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(claims))
+	authContext, err := h.authMan.Authenticate(h, apiKey, convertClaims(h.Log(), claims))
 	if err != nil {
 		return adapter.QuotaResult{}, err
 	}
@@ -395,10 +407,37 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}, nil
 }
 
-func convertClaims(claims map[string]string) map[string]interface{} {
+// For future compatibility with Istio, accepts the "encoded" base64 string value
+// until request.auth.claims attribute is defined and supported.
+// see: https://github.com/istio/istio/issues/3194
+func convertClaims(log adapter.Logger, claims map[string]string) map[string]interface{} {
 	var claimsOut = map[string]interface{}{}
-	for k, v := range claims {
-		claimsOut[k] = v
+	if len(claims) > 1 {
+		for k, v := range claims {
+			claimsOut[k] = v
+		}
+		return claimsOut
 	}
+
+	var err error
+	encoded, ok := claims[encodedClaimsKey]
+	if ok {
+		var decoded []byte
+		decoded, err = base64.StdEncoding.DecodeString(encoded)
+
+		// hack: weird truncation issue coming from Istio, add suffix and try again
+		if err != nil && strings.HasPrefix(err.Error(), "illegal base64 data") {
+			decoded, err = base64.StdEncoding.DecodeString(encoded + "o=")
+		}
+
+		if err == nil {
+			err = json.Unmarshal(decoded, &claimsOut)
+		}
+	}
+
+	if err != nil {
+		log.Errorf("error decoding claims: %v, data: %v", err, encoded)
+	}
+
 	return claimsOut
 }

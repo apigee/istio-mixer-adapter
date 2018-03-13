@@ -81,6 +81,7 @@ func TestResolve(t *testing.T) {
 			Name:      "Name 1",
 			Resources: []string{"/"},
 			Scopes:    []string{"scope1"},
+			Targets:   []string{"service1.istio", "shared.istio"},
 		},
 		"Name 2": {
 			Attributes: []Attribute{
@@ -90,6 +91,7 @@ func TestResolve(t *testing.T) {
 			Name:         "Name 2",
 			Resources:    []string{"/**"},
 			Scopes:       []string{"scope2"},
+			Targets:      []string{"service2.istio", "shared.istio"},
 		},
 	}
 
