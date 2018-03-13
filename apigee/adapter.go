@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	encodedClaimsKey   = "encoded"
+	encodedClaimsKey   = "encoded_claims"
 	apiClaimsAttribute = "api_claims"
 	apiKeyAttribute    = "api_key"
 	apiNameAttribute   = "api"
@@ -295,10 +295,11 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}, nil
 	}
 
-	claims, ok := inst.Subject.Properties[apiClaimsAttribute].(map[string]string)
-	if !ok {
-		h.Log().Errorf("wrong claims type: %v", inst.Subject.Properties[apiClaimsAttribute])
-		return adapter.CheckResult{}, fmt.Errorf("wrong claims type: %v", inst.Subject.Properties[apiClaimsAttribute])
+	// Mixer template says this is map[string]interface{}, but won't allow non-string values
+	// so, we'll have to take the entire properties value as the claims since we can't nest a map
+	claims := map[string]string{}
+	for k, v := range inst.Subject.Properties {
+		claims[k] = v.(string)
 	}
 
 	authContext, err := h.authMan.Authenticate(h, "", convertClaims(h.Log(), claims))
