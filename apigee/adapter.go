@@ -20,13 +20,10 @@ package apigee
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
-
-	"encoding/base64"
-
-	"encoding/json"
-
 	"strings"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"

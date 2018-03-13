@@ -162,10 +162,21 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 			return err
 		}
 
-		// reformat to map
+		pm := map[string]APIProduct{}
 		for _, product := range res.APIProducts {
-			p.products[product.Name] = product
+			// only save products that actually map to something
+			for _, attr := range product.Attributes {
+				if attr.Name == servicesAttr {
+					targets := strings.Split(attr.Value, ",")
+					for _, t := range targets {
+						product.Targets = append(product.Targets, strings.TrimSpace(t))
+					}
+					pm[product.Name] = product
+					break
+				}
+			}
 		}
+		p.products = pm
 
 		// don't block, default means there is existing signal
 		select {
@@ -223,23 +234,13 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api, path st
 		if !apiProduct.isValidScopes(scopes) {
 			continue
 		}
-
-		for _, attr := range apiProduct.Attributes {
-			if attr.Name != servicesAttr {
-				continue
-			}
-
-			targets := strings.Split(attr.Value, ",")
-			for _, target := range targets { // find target paths
-				if strings.TrimSpace(target) != api {
-					continue
-				}
-
-				if !apiProduct.isValidPath(path) {
-					continue
-				}
-
+		if !apiProduct.isValidPath(path) {
+			continue
+		}
+		for _, target := range apiProduct.Targets {
+			if target == api {
 				result = append(result, apiProduct)
+				break
 			}
 		}
 	}
