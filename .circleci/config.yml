@@ -10,7 +10,9 @@ jobs:
     steps:
       - checkout
       - run: INSTALL_PROTOC=1 ./install/local_install.sh
-      - run: go test ./...
+        # test needs dep ensure to be run again, since the Mixer plugin install
+        # will have removed the vendor link.
+      - run: dep ensure && go test ./...
 
   build-image:
     docker:
