@@ -39,6 +39,10 @@ type uapBackend struct {
 	close  chan bool
 	client *http.Client
 	now    func() time.Time
+
+	instanceID         string
+	collectionInterval time.Duration
+	bearerToken        string
 }
 
 type pushRequest struct {
@@ -46,7 +50,7 @@ type pushRequest struct {
 	req  *request
 }
 
-func newUAPBackend() Manager {
+func newUAPBackend(bearerToken string) Manager {
 	return &uapBackend{
 		spool: make(chan *pushRequest),
 		close: make(chan bool),
@@ -54,6 +58,12 @@ func newUAPBackend() Manager {
 			Timeout: httpTimeout,
 		},
 		now: time.Now,
+		// TODO(robbrit): Set these via some option.
+		instanceID:         "",
+		collectionInterval: 120 * time.Second,
+		// TODO(robbrit): This is static, but should probably be updateable without
+		// restarting the mixer.
+		bearerToken: bearerToken,
 	}
 }
 
@@ -136,8 +146,7 @@ func (ub *uapBackend) signedURL(ctx *auth.Context, r *request) (string, error) {
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
 
-	token := "" // TODO(robbrit): How to get the token?
-	req.Header.Add("Authorization", "Bearer "+token)
+	req.Header.Add("Authorization", "Bearer "+ub.bearerToken)
 
 	resp, err := ub.client.Do(req)
 	if err != nil {
@@ -162,9 +171,9 @@ func (ub *uapBackend) filePath(r *request) string {
 	now := ub.now()
 	d := now.Format("2006-01-02")
 	start := now.Unix()
-	end := now.Unix()
+	end := now.Unix().Add(ub.collectionInterval)
 	hex := getRandomHex()
-	id := "5" // TODO(robbrit): Figure out what this is.
+	id := ub.instanceID
 	return fmt.Sprintf(pathFmt, d, start, end, hex, start, end, id)
 }
 
