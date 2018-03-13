@@ -215,7 +215,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	var records []analytics.Record
 
 	for _, inst := range instances {
-		h.Log().Infof("HandleAnalytics: %v\n", inst)
+		h.Log().Infof("HandleAnalytics: %#v", inst)
 
 		record := analytics.Record{
 			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
@@ -248,10 +248,9 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 }
 
 func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adapter.CheckResult, error) {
-	h.Log().Infof("HandleApiKey: %v\n", inst)
+	h.Log().Infof("HandleApiKey: %#v", inst)
 
 	if inst.ApiKey == "" || inst.Api == "" || inst.ApiOperation == "" {
-		h.Log().Infof("missing properties: %v", inst)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied("missing authentication"),
 		}, nil
@@ -276,10 +275,9 @@ func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adap
 }
 
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	h.Log().Infof("HandleAuthorization: %v\n", inst)
+	h.Log().Infof("HandleAuthorization: Subject: %#v, Action: %#v", inst.Subject, inst.Action)
 
 	if inst.Subject == nil || inst.Subject.Properties == nil || inst.Action.Service == "" || inst.Action.Path == "" {
-		h.Log().Infof("missing properties: %v", inst)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied("missing authentication"),
 		}, nil
@@ -325,7 +323,7 @@ func (h *handler) authorize(authContext auth.Context, service, path string) (ada
 
 // Istio doesn't understand our Quotas, so it cannot be allowed to cache
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
-	h.Log().Infof("HandleQuota: %v args: %v\n", inst, args)
+	h.Log().Infof("HandleQuota: %#v args: %v", inst, args)
 
 	// skip < 0 to eliminate Istio prefetch returns
 	if args.QuotaAmount <= 0 {
@@ -365,8 +363,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}
 
 	// todo: support args.DeduplicationID
-	// todo: converting our quotas to Istio is weird, anything better?
-	// todo: set QuotaAmount to 1 to eliminate Istio prefetch (also renders BestEffort meaningless)
+	// set QuotaAmount to 1 to eliminate Istio prefetch (also renders BestEffort meaningless)
 	args.QuotaAmount = 1
 	var exceeded int64
 	var anyErr error
@@ -399,7 +396,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 }
 
 func convertClaims(claims map[string]string) map[string]interface{} {
-	var claimsOut map[string]interface{}
+	var claimsOut = map[string]interface{}{}
 	for k, v := range claims {
 		claimsOut[k] = v
 	}

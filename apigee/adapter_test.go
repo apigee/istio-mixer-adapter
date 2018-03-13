@@ -143,7 +143,11 @@ func TestHandleAuthorization(t *testing.T) {
 		env: test.NewEnv(t),
 	}
 
-	inst := &authorization.Instance{}
+	inst := &authorization.Instance{
+		Name:    "",
+		Subject: &authorization.Subject{},
+		Action:  &authorization.Action{},
+	}
 
 	got, err := h.HandleAuthorization(ctx, inst)
 	if err != nil {
