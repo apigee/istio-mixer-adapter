@@ -1,36 +1,51 @@
+# Defines an "API" in Istio.
+# An API identifies specific requests to services and binds API attributes
+# and behavior to that request.
+# In the definition below, we've defined an API named "helloworldapi" that defines
+# an operation we've called "/hello" when a request calls: GET /hello.
+# Then, in the binding, we've bound our API to the "helloworld" service.
+# The result is that GET request to /hello on the helloworld service will be
+# assigned the attributes and functions we define for the API.
+# One key feature is being able to map an incoming API Key from a header or
+# query parameter to the request.api_key
+# This can be used to very specifically map requests to Apigee policies and
+# analytics.
 ---
-# Define an Istio API
+# Define an API
 apiVersion: config.istio.io/v1alpha2
 kind: HTTPAPISpec
 metadata:
   creationTimestamp: null
-  name: helloworld
+  name: helloworldapi
   namespace: default
 spec:
-  apiKeys: # populate request.api_key attr from query param "apikey" or header "x-api-key"
+  apiKeys:
   - query: apikey
   - header: x-api-key
   attributes:
     attributes:
-      api.service: helloworld
-      api.version: "1.0.0"
+      api.service:
+        stringValue: helloworldapi
+      api.version:
+        stringValue: v1
   patterns:
-    # example: if method=GET & path matches /somepath, override api.operation to /otherpath
   - attributes:
-      api.operation: /hello
-  httpMethod: GET
-  uriTemplate: /api/pets
+      attributes:
+        api.operation:
+            stringValue: /hello
+    httpMethod: GET
+    uriTemplate: /hello
 ---
-# Bind the Istio API to Istio services
+# Bind the API to a service
 apiVersion: config.istio.io/v1alpha2
 kind: HTTPAPISpecBinding
 metadata:
   creationTimestamp: null
-  name: helloworld-binding
+  name: helloworldapi-binding
   namespace: default
 spec:
   api_specs:
-  - name: helloworld
+  - name: helloworldapi
     namespace: default
   services:
   - name: helloworld
