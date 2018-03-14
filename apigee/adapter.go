@@ -432,6 +432,9 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 
 	var err error
 	if encoded, ok := claimsIn[encodedClaimsKey]; ok {
+		if encoded == "" {
+			return claims
+		}
 		var decoded []byte
 		decoded, err = base64.StdEncoding.DecodeString(encoded)
 

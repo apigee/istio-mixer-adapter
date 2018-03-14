@@ -74,5 +74,5 @@ type NoAuthInfoError struct {
 }
 
 func (e *NoAuthInfoError) Error() string {
-	return "auth info"
+	return "missing authentication"
 }
