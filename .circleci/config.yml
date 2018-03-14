@@ -3,41 +3,41 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
-  build:
+  build-and-test:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.10
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: ./install/install_protoc.sh
-      - run: ls -R /go/src/github.com/apigee | grep -v vendor
-      - run: ./install/local_install.sh
-
-  test:
-    docker:
-      - image: circleci/golang:1.9
-    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
-    steps:
-      - checkout
-      - run: go test ./...
+      - run:
+          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          name: Run local install script
+        # test needs dep ensure to be run again, since the Mixer plugin install
+        # will have removed the vendor link.
+      - run: dep ensure
+      - run:
+          command: go test -coverprofile=/tmp/coverage.out ./...
+          name: Run tests
+      - run:
+          command: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
+          name: Build HTML coverage report
+      - store_artifacts:
+          path: /tmp/coverage.html
 
   build-image:
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.10
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: export GCP_PROJECT=apigee-api-management-istio
-      - run: ./install/build_mixer_docker.sh
+      - run: INSTALL_PROTOC=1 ./install/local_install.sh
+      - run: GCP_PROJECT=apigee-api-management-istio ./install/build_mixer_docker.sh
 
 workflows:
   version: 2
   on-commit:
     jobs:
-      - build
-      - test:
-          requires:
-            - build
+      - build-and-test
   nightly:
     triggers:
       - schedule:
@@ -47,10 +47,7 @@ workflows:
               only:
                 - master
     jobs:
-      - build
-      - test:
-          requires:
-            - build
+      - build-and-test
       - build-image:
           requires:
-            - test
+            - build-and-test
