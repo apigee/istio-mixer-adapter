@@ -40,6 +40,7 @@ if [[ `command -v gcloud` == "" ]]; then
     gcloud --quiet components update
     gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
     gcloud config set project "${GCP_PROJECT}"
+    docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gco.io
 
     sudo gcloud components install docker-credential-gcr
     docker-credential-gcr configure-docker
