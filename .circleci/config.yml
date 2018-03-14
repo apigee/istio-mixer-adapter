@@ -9,14 +9,18 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: INSTALL_PROTOC=1 ./install/local_install.sh
+      - run:
+          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          name: Run local install script
         # test needs dep ensure to be run again, since the Mixer plugin install
         # will have removed the vendor link.
       - run: dep ensure
-      - run: go test -coverprofile=/tmp/coverage.out ./...
-      - run: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
-      - store_artifacts:
-          path: /tmp/coverage.out
+      - run:
+          command: go test -coverprofile=/tmp/coverage.out ./...
+          name: Run tests
+      - run:
+          command: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
+          name: Build HTML coverage report
       - store_artifacts:
           path: /tmp/coverage.html
 
