@@ -34,7 +34,6 @@ import (
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"
-	"istio.io/istio/mixer/template/apikey"
 	authT "istio.io/istio/mixer/template/authorization"
 	quotaT "istio.io/istio/mixer/template/quota"
 )
@@ -96,14 +95,12 @@ var (
 	_ adapter.HandlerBuilder    = &builder{}
 	_ quotaT.HandlerBuilder     = &builder{}
 	_ analyticsT.HandlerBuilder = &builder{}
-	_ apikey.HandlerBuilder     = &builder{}
 	_ authT.HandlerBuilder      = &builder{}
 
 	// Handler
 	_ adapter.Handler    = &handler{}
 	_ quotaT.Handler     = &handler{}
 	_ analyticsT.Handler = &handler{}
-	_ apikey.Handler     = &handler{}
 	_ authT.Handler      = &handler{}
 )
 
@@ -117,7 +114,6 @@ func GetInfo() adapter.Info {
 		Description: "Apigee adapter",
 		SupportedTemplates: []string{
 			analyticsT.TemplateName,
-			apikey.TemplateName,
 			authT.TemplateName,
 			quotaT.TemplateName,
 		},
@@ -206,7 +202,6 @@ func (b *builder) Validate() (errs *adapter.ConfigErrors) {
 }
 
 func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
-func (*builder) SetApiKeyTypes(map[string]*apikey.Type)        {}
 func (*builder) SetAuthorizationTypes(map[string]*authT.Type)  {}
 func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 
@@ -256,33 +251,6 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	}
 
 	return analytics.SendRecords(authContext, records)
-}
-
-func (h *handler) HandleApiKey(ctx context.Context, inst *apikey.Instance) (adapter.CheckResult, error) {
-	h.Log().Infof("HandleApiKey: %#v", inst)
-
-	if inst.ApiKey == "" || inst.Api == "" || inst.ApiOperation == "" {
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("missing authentication"),
-		}, nil
-	}
-
-	authContext, err := h.authMan.Authenticate(h, inst.ApiKey, nil)
-	if err != nil {
-		h.Log().Errorf("authenticate err: %v", err)
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied(err.Error()),
-		}, err
-	}
-
-	if authContext.ClientID == "" {
-		h.Log().Infof("authenticate failed")
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("authentication failed"),
-		}, nil
-	}
-
-	return h.authorize(authContext, inst.Api, inst.ApiOperation)
 }
 
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {

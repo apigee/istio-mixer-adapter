@@ -116,16 +116,3 @@ spec:
       # application_name: request.auth.claims["application_name"] | ""
       # scopes: request.auth.claims["scopes"] | ""
       # exp: request.auth.claims["exp"] | ""
----
-## instance configuration for template 'apigee.apikey'
-#apiVersion: config.istio.io/v1alpha2
-#kind: apikey
-#metadata:
-#  name: apigee
-#  namespace: istio-system
-#spec:
-#  api: api.service | destination.service | ""
-#  api_version: api.version | ""
-#  api_operation : api.operation | request.path | ""
-#  api_key : request.api_key | request.headers["x-api-key"] | ""
-#  timestamp : request.time
