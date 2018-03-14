@@ -13,6 +13,20 @@ if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
   echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
 fi
 
+if [[ `command -v docker` == "" ]]; then
+  if [[ "${INSTALL_DOCKER}" == "1" ]]; then
+    # Docker not installed, install it
+    VER=17.12.1
+    wget -O /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER-ce.tgz
+    tar -zx -C /tmp -f /tmp/docker-$VER.tgz
+    mv /tmp/docker/* /usr/bin/
+  else
+    # Don't install it, just complain.
+    echo "docker client not installed, please install it."
+    exit 1
+  fi
+fi
+
 export ISTIO="${GOPATH}/src/istio.io"
 
 if [ ! -d "${ISTIO}/istio" ]; then

@@ -30,8 +30,13 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: INSTALL_PROTOC=1 ./install/local_install.sh
-      - run: GCP_PROJECT=apigee-api-management-istio ./install/build_mixer_docker.sh
+      - setup_remote_docker
+      - run:
+          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          name: Run local install script
+      - run:
+          command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 ./install/build_mixer_docker.sh
+          name: Build and push Docker image
 
 workflows:
   version: 2
@@ -41,7 +46,7 @@ workflows:
   nightly:
     triggers:
       - schedule:
-          cron: "0 0 * * *"
+          cron: "0 1 * * *"
           filters:
             branches:
               only:
