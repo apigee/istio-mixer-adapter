@@ -13,43 +13,6 @@ if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
   echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
 fi
 
-if [[ `command -v gcloud` == "" ]]; then
-  if [[ "${INSTALL_GCLOUD}" == "1" ]]; then
-    if [[ $GCLOUD_SERVICE_KEY == "" ]]; then
-      echo "GCLOUD_SERVICE_KEY not set, please set it."
-      exit 1
-    fi
-
-    if [[ $GCP_PROJECT == "" ]]; then
-      echo "GCP_PROJECT not set, please set it."
-      exit 1
-    fi
-
-    echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
-
-    echo "Installing gcloud..."
-    wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-193.0.0-linux-x86_64.tar.gz
-    sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
-
-    export PATH=$PATH:/opt/google-cloud-sdk/bin
-    # Need to ln so that `sudo gcloud` works
-    sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
-
-    export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
-
-    gcloud --quiet components update
-    gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
-    gcloud config set project "${GCP_PROJECT}"
-    docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gco.io
-
-    sudo gcloud components install docker-credential-gcr
-    docker-credential-gcr configure-docker
-  else
-    echo "gcloud not installed, please install it."
-    exit 1
-  fi
-fi
-
 if [[ `command -v docker` == "" ]]; then
   if [[ "${INSTALL_DOCKER}" == "1" ]]; then
     # Docker not installed, install it
@@ -84,4 +47,9 @@ if [[ "${IMAGE_ID}" == "" ]]; then
 fi
 
 docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}"
-gcloud docker -- push "${TARGET_DOCKER_IMAGE}"
+
+if [[ "${DOCKER_USERNAME}" != "" && "${DOCKER_PASSWORD}" != "" ]]; then
+  echo "Pushing image to Docker Hub..."
+  docker login --username "${DOCKER_USERNAME}" --password "${DOCKER_PASSWORD}"
+  docker push "${TARGET_DOCKER_IMAGE}"
+fi
