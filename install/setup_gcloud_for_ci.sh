@@ -17,6 +17,8 @@ wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/down
 sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
 
 export PATH=$PATH:/opt/google-cloud-sdk/bin
+# Need to ln so that `sudo gcloud` works
+sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
 
 export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
 
