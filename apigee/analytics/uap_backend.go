@@ -171,7 +171,7 @@ func (ub *uapBackend) filePath(r *request) string {
 	now := ub.now()
 	d := now.Format("2006-01-02")
 	start := now.Unix()
-	end := now.Unix().Add(ub.collectionInterval)
+	end := now.Add(ub.collectionInterval).Unix()
 	hex := getRandomHex()
 	id := ub.instanceID
 	return fmt.Sprintf(pathFmt, d, start, end, hex, start, end, id)

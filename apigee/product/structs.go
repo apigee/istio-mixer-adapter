@@ -35,6 +35,7 @@ type APIProduct struct {
 	QuotaTimeUnit  string      `json:"quotaTimeUnit,omitempty"`
 	Resources      []string    `json:"apiResources"`
 	Scopes         []string    `json:"scopes"`
+	Targets        []string
 }
 
 // An Attribute is a name-value-pair attribute of an API product.

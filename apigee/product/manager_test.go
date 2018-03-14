@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"reflect"
 	"testing"
 	"time"
 
@@ -32,7 +31,7 @@ func TestManager(t *testing.T) {
 	apiProducts := []APIProduct{
 		{
 			Attributes: []Attribute{
-				{Name: "attr name", Value: "attr value"},
+				{Name: servicesAttr, Value: "attr value"},
 			},
 			Description:    "product 1",
 			DisplayName:    "APIProduct 1",
@@ -48,7 +47,7 @@ func TestManager(t *testing.T) {
 		},
 		{
 			Attributes: []Attribute{
-				{Name: "attr name", Value: "attr value"},
+				{Name: servicesAttr, Value: "attr value"},
 			},
 			CreatedAt:      time.Now().Unix(),
 			CreatedBy:      "test2@apigee.com",
@@ -91,8 +90,8 @@ func TestManager(t *testing.T) {
 
 	for _, want := range apiProducts {
 		got := pp.Products()[want.Name]
-		if !reflect.DeepEqual(got, want) {
-			t.Errorf("provided and received products don't match, got: %v, want: %v", got, want)
+		if want.Attributes[0].Value != got.Targets[0] {
+			t.Errorf("targets not created: %v", got)
 		}
 	}
 }
@@ -111,6 +110,9 @@ func TestManagerPolling(t *testing.T) {
 		count++
 		apiProducts = append(apiProducts, APIProduct{
 			Name: fmt.Sprintf("Name %d", count),
+			Attributes: []Attribute{
+				{Name: servicesAttr, Value: "attr value"},
+			},
 		})
 
 		var result = apiResponse{

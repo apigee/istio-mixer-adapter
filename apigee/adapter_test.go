@@ -16,23 +16,24 @@ package apigee
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"reflect"
 	"testing"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
+	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/apikey"
 	"istio.io/istio/mixer/template/authorization"
 	"istio.io/istio/mixer/template/quota"
-
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-
-	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
 )
 
 func TestValidateBuild(t *testing.T) {
@@ -147,7 +148,11 @@ func TestHandleAuthorization(t *testing.T) {
 		env: test.NewEnv(t),
 	}
 
-	inst := &authorization.Instance{}
+	inst := &authorization.Instance{
+		Name:    "",
+		Subject: &authorization.Subject{},
+		Action:  &authorization.Action{},
+	}
 
 	got, err := h.HandleAuthorization(ctx, inst)
 	if err != nil {
@@ -187,5 +192,44 @@ func TestHandleQuota(t *testing.T) {
 
 	if err := h.Close(); err != nil {
 		t.Errorf("Close() returned an unexpected error")
+	}
+}
+
+func TestConvertClaims(t *testing.T) {
+	env := test.NewEnv(t)
+
+	want := map[string]string{
+		"test key":   "test value",
+		"test key 2": "test value 2",
+	}
+
+	jsonBytes, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := base64.StdEncoding.EncodeToString(jsonBytes)
+
+	for _, ea := range []struct {
+		desc   string
+		claims map[string]string
+	}{
+		{"map of strings", want},
+		{"encoded value", map[string]string{
+			encodedClaimsKey: encoded,
+		}},
+	} {
+		t.Log(ea.desc)
+
+		claimsOut := convertClaims(env, ea.claims)
+
+		// normalize the type to same as want
+		got := map[string]string{}
+		for k, v := range claimsOut {
+			got[k] = v.(string)
+		}
+
+		if !reflect.DeepEqual(want, got) {
+			t.Errorf("want: %v, got: %v", want, got)
+		}
 	}
 }

@@ -7,17 +7,27 @@ if [[ "${GOPATH}" == "" ]]; then
   exit 1
 fi
 
-if [[ `command -v protoc` == "" ]]; then
-  echo "protoc is not installed, please install."
-  exit 1
-fi
-
 ADAPTER_DIR="${GOPATH}/src/github.com/apigee/istio-mixer-adapter"
 
 if [ ! -d "${ADAPTER_DIR}" ]; then
   echo "could not find istio-mixer-adapter repo, please put it in:"
   echo "${ADAPTER_DIR}"
   exit 1
+fi
+
+if [[ `command -v protoc` == "" ]]; then
+  if [[ "${INSTALL_PROTOC}" == "1" ]]; then
+    echo "protoc not installed, installing..."
+    mkdir /tmp/protoc
+    wget -O /tmp/protoc/protoc.zip https://github.com/google/protobuf/releases/download/v3.5.1/protoc-3.5.1-linux-x86_64.zip
+    unzip /tmp/protoc/protoc.zip -d /tmp/protoc
+    sudo mv -f /tmp/protoc/bin/protoc /usr/bin/
+    sudo mv -f /tmp/protoc/include/google /usr/local/include/
+    rm -rf /tmp/protoc
+  else
+    echo "protoc is not installed, install or run with INSTALL_PROTOC=1."
+    exit 1
+  fi
 fi
 
 if [[ `command -v dep` == "" ]]; then
@@ -30,15 +40,6 @@ if [[ `command -v dep` == "" ]]; then
   fi
 fi
 
-export ISTIO="${GOPATH}/src/istio.io"
-mkdir -p "${ISTIO}"
-
-if [ ! -d "${ISTIO}/istio" ]; then
-  echo "istio repo not found, fetching and building..."
-  cd "${ISTIO}"
-  git clone https://github.com/istio/istio
-fi
-
 PROTOBUF_DIR="${GOPATH}/src/github.com/gogo/protobuf"
 
 if [ ! -d "${PROTOBUF_DIR}" ]; then
@@ -49,10 +50,19 @@ if [ ! -d "${PROTOBUF_DIR}" ]; then
   git clone https://github.com/gogo/protobuf
 fi
 
-echo "Checking if istio is built..."
-cd "${ISTIO}/istio"
-make depend || exit 1
-make mixs || exit 1
+export ISTIO="${GOPATH}/src/istio.io"
+mkdir -p "${ISTIO}"
+
+if [ ! -d "${ISTIO}/istio" ]; then
+  echo "istio repo not found, fetching and building..."
+  cd "${ISTIO}"
+  git clone https://github.com/istio/istio
+
+  echo "Checking if istio is built..."
+  cd "${ISTIO}/istio"
+  make depend || exit 1
+  make mixs || exit 1
+fi
 
 echo "All dependencies present, setting up adapter..."
 cd "${ADAPTER_DIR}"
