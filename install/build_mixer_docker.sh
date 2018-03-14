@@ -13,9 +13,15 @@ if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
   echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
 fi
 
+if [[ `command -v gcloud` == "" ]]; then
+  echo "gcloud not installed, please install it."
+  exit 1
+fi
+
 if [[ `command -v docker` == "" ]]; then
   if [[ "${INSTALL_DOCKER}" == "1" ]]; then
     # Docker not installed, install it
+    echo "Installing docker client..."
     VER=17.12.1
     wget -O /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER-ce.tgz
     tar -zx -C /tmp -f /tmp/docker-$VER.tgz
