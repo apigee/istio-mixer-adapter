@@ -16,8 +16,13 @@ echo "Installing gcloud..."
 wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-193.0.0-linux-x86_64.tar.gz
 sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
 
-sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
+export PATH=$PATH:/opt/google-cloud-sdk/bin
+
+export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
 
 gcloud --quiet components update
-gcloud auth activate-service-account --key-file=${HOME}/gcloud-service-key.json
+gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
 gcloud config set project "${GCP_PROJECT}"
+
+sudo gcloud components install docker-credential-gcr
+docker-credential-gcr configure-docker
