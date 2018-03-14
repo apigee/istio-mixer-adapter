@@ -14,7 +14,7 @@ echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-ser
 
 echo "Installing gcloud..."
 wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-193.0.0-linux-x86_64.tar.gz
-tar -zx -C /opt -f /tmp/gcloud.tar.gz
+sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
 
 sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
 
