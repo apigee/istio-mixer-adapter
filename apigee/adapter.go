@@ -384,8 +384,11 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}, nil
 }
 
-// For future compatibility with Istio, accepts the "encoded" base64 string value
-// until request.auth.claims attribute is defined and supported.
+// resolveClaims ensures that jwt auth claims are properly populated from an
+// incoming map of potential claims values--including extraneous filtering.
+// For future compatibility with Istio, also checks for "encoded_claims" - a
+// base64 string value containing all claims in a JSON format. This is used
+// as the request.auth.claims attribute has not yet been defined in Mixer.
 // see: https://github.com/istio/istio/issues/3194
 func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]interface{} {
 	var claims = map[string]interface{}{}
