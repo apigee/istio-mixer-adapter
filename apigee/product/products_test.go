@@ -93,22 +93,32 @@ func TestResolve(t *testing.T) {
 			Scopes:       []string{"scope2"},
 			Targets:      []string{"service2.istio", "shared.istio"},
 		},
+		"Name 3": {
+			Attributes: []Attribute{
+				{Name: servicesAttr, Value: "shared.istio"},
+			},
+			Environments: []string{"prod"},
+			Name:         "Name 3",
+			Resources:    []string{"/"},
+			Scopes:       []string{},
+			Targets:      []string{"shared.istio"},
+		},
 	}
 
-	products := []string{"Name 1", "Name 2"}
+	products := []string{"Name 1", "Name 2", "Name 3", "Missing"}
 	scopes := []string{"scope1", "scope2"}
 	api := "shared.istio"
 	path := "/"
 
 	resolved := resolve(productsMap, products, scopes, api, path)
-	if len(resolved) != 2 {
-		t.Errorf("want: 2, got: %d", len(resolved))
+	if len(resolved) != 3 {
+		t.Errorf("want: 3, got: %d", len(resolved))
 	}
 
 	scopes = []string{"scope2"}
 	resolved = resolve(productsMap, products, scopes, api, path)
-	if len(resolved) != 1 {
-		t.Errorf("want: 1, got: %d", len(resolved))
+	if len(resolved) != 2 {
+		t.Errorf("want: 2, got: %d", len(resolved))
 	} else {
 		got := resolved[0]
 		want := productsMap["Name 2"]

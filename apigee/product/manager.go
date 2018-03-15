@@ -230,7 +230,10 @@ func (p *Manager) Resolve(ac auth.Context, api, path string) []APIProduct {
 func resolve(pMap map[string]APIProduct, products, scopes []string, api, path string) (result []APIProduct) {
 
 	for _, name := range products {
-		apiProduct := pMap[name]
+		apiProduct, ok := pMap[name]
+		if !ok {
+			continue
+		}
 		if !apiProduct.isValidScopes(scopes) {
 			continue
 		}
@@ -260,6 +263,9 @@ func (d *APIProduct) isValidPath(requestPath string) bool {
 
 // true if any intersect of scopes
 func (d *APIProduct) isValidScopes(scopes []string) bool {
+	if len(d.Scopes) == 0 {
+		return true
+	}
 	for _, ds := range d.Scopes {
 		for _, s := range scopes {
 			if ds == s {
