@@ -63,6 +63,17 @@ func TestManager(t *testing.T) {
 			Resources:      []string{"/"},
 			Scopes:         []string{"scope1"},
 		},
+		{
+			Attributes: []Attribute{
+				{Name: servicesAttr, Value: "attr value"},
+			},
+			Description:  "product 3",
+			DisplayName:  "APIProduct 3",
+			Environments: []string{"prod"},
+			Name:         "Name 3",
+			Resources:    []string{"/"},
+			Scopes:       []string{""},
+		},
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +104,10 @@ func TestManager(t *testing.T) {
 		if want.Attributes[0].Value != got.Targets[0] {
 			t.Errorf("targets not created: %v", got)
 		}
+	}
+
+	if len(pp.Products()["Name3"].Scopes) != 0 {
+		t.Errorf("empty scopes should be removed")
 	}
 }
 
