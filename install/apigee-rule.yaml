@@ -1,49 +1,19 @@
-# Defines rules for requests
+# Defines rules to apply the Apigee mixer adapter to requests.
+# In the rule below, we are matching all requests in the Istio mesh (other than
+# ingress, to avoid duplication) and applying Apigee authorization and
+# analytics as defined in the apigee-handler.
+# (See also: apigee-handler.yaml)
 ---
-# rule to dispatch to handler 'apigee'
 apiVersion: config.istio.io/v1alpha2
 kind: rule
 metadata:
   name: apigee-rule
   namespace: istio-system
 spec:
-  # dispatches all requests to adapter except ingress
   match: destination.service != "istio-ingress.istio-system.svc.cluster.local"
   actions:
   - handler: apigee-handler.apigee
     instances:
-    - apigee.apikey
-    - apigee.quota
+    - apigee.authorization
     - apigee.analytics
-    - apigee.auth
----
-## hack to workaround Istio bug where missing value will not be delivered to adapter
-## deny all requests without request.api_key
-#apiVersion: "config.istio.io/v1alpha2"
-#kind: denier
-#metadata:
-#  name: reject-missing-apikey
-#  namespace: istio-system
-#spec:
-#  status:
-#    code: 401
-#    message: Unauthorized
-#---
-#apiVersion: "config.istio.io/v1alpha2"
-#kind: checknothing
-#metadata:
-#  name: reject-missing-apikey
-#  namespace: istio-system
-#spec:
-#---
-#apiVersion: "config.istio.io/v1alpha2"
-#kind: rule
-#metadata:
-#  name: reject-missing-apikey
-#  namespace: istio-system
-#spec:
-#  match: (request.api_key | "REJECT") == "REJECT"
-#  actions:
-#  - handler: reject-missing-apikey.denier
-#    instances:
-#    - reject-missing-apikey.checknothing
+    # - apigee.quota
