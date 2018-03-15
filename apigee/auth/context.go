@@ -33,6 +33,7 @@ const (
 )
 
 var (
+	// AllValidClaims is a list of the claims expected from a JWT token
 	AllValidClaims = []string{
 		apiProductListClaim, audienceClaim, clientIDClaim, applicationNameClaim, scopesClaim, expClaim,
 	}

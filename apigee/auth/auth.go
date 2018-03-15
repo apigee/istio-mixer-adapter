@@ -70,6 +70,7 @@ func (a *Manager) start() {
 	a.jwtMan.start(a.env)
 }
 
+// NoAuthInfoError indicates that the error was because of missing auth
 type NoAuthInfoError struct {
 }
 
