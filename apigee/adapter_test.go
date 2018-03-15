@@ -24,13 +24,15 @@ import (
 	"reflect"
 	"testing"
 
+	"strconv"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/template/analytics"
 	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
-	"istio.io/istio/mixer/template/apikey"
 	"istio.io/istio/mixer/template/authorization"
 	"istio.io/istio/mixer/template/quota"
 )
@@ -65,8 +67,8 @@ func TestValidateBuild(t *testing.T) {
 
 	// invoke the empty set methods for coverage
 	b.SetAnalyticsTypes(map[string]*analytics.Type{})
-	b.SetApiKeyTypes(map[string]*apikey.Type{})
 	b.SetQuotaTypes(map[string]*quota.Type{})
+	b.SetAuthorizationTypes(map[string]*authorization.Type{})
 
 	// check build
 	handler, err := b.Build(context.Background(), test.NewEnv(t))
@@ -105,31 +107,6 @@ func TestHandleAnalytics(t *testing.T) {
 	err = h.HandleAnalytics(ctx, inst)
 	if err != nil {
 		t.Errorf("HandleAnalytics(ctx, nil) resulted in an unexpected error: %v", err)
-	}
-
-	if err := h.Close(); err != nil {
-		t.Errorf("Close() returned an unexpected error")
-	}
-}
-
-func TestHandleApiKey(t *testing.T) {
-	ctx := context.Background()
-
-	h := &handler{
-		env: test.NewEnv(t),
-	}
-
-	inst := &apikey.Instance{}
-
-	got, err := h.HandleApiKey(ctx, inst)
-	if err != nil {
-		t.Errorf("HandleApiKey(ctx, nil) resulted in an unexpected error: %v", err)
-	}
-	//if !status.IsOK(got.Status) {
-	//	t.Errorf("HandleApiKey(ctx, nil) => %#v, want %#v", got.Status, status.OK)
-	//}
-	if got.Status.Code != int32(rpc.PERMISSION_DENIED) {
-		t.Errorf("HandleApiKey(ctx, nil) => %#v, want %#v", got.Status, status.OK)
 	}
 
 	if err := h.Close(); err != nil {
@@ -191,12 +168,18 @@ func TestHandleQuota(t *testing.T) {
 	}
 }
 
-func TestConvertClaims(t *testing.T) {
+func TestResolveClaims(t *testing.T) {
 	env := test.NewEnv(t)
 
-	want := map[string]string{
-		"test key":   "test value",
-		"test key 2": "test value 2",
+	input := map[string]string{}
+	for i, c := range auth.AllValidClaims {
+		input[c] = strconv.Itoa(i)
+	}
+	input["extra"] = "extra"
+
+	want := map[string]string{}
+	for i, c := range auth.AllValidClaims {
+		input[c] = strconv.Itoa(i)
 	}
 
 	jsonBytes, err := json.Marshal(want)
@@ -216,7 +199,7 @@ func TestConvertClaims(t *testing.T) {
 	} {
 		t.Log(ea.desc)
 
-		claimsOut := convertClaims(env, ea.claims)
+		claimsOut := resolveClaims(env, ea.claims)
 
 		// normalize the type to same as want
 		got := map[string]string{}

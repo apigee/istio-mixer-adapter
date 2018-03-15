@@ -23,6 +23,22 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 )
 
+const (
+	apiProductListClaim  = "api_product_list"
+	audienceClaim        = "audience"
+	clientIDClaim        = "client_id"
+	applicationNameClaim = "application_name"
+	scopesClaim          = "scopes"
+	expClaim             = "exp"
+)
+
+var (
+	// AllValidClaims is a list of the claims expected from a JWT token
+	AllValidClaims = []string{
+		apiProductListClaim, audienceClaim, clientIDClaim, applicationNameClaim, scopesClaim, expClaim,
+	}
+)
+
 // A Context wraps all the various information that is needed to make requests
 // through the Apigee adapter.
 type Context struct {
@@ -59,18 +75,18 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 
 	a.Log().Infof("setClaims: %v", claims)
 
-	if claims["client_id"] == nil {
+	if claims[clientIDClaim] == nil {
 		return nil
 	}
 
-	products, err := parseArrayOfStrings(claims["api_product_list"])
+	products, err := parseArrayOfStrings(claims[apiProductListClaim])
 	if err != nil {
-		return fmt.Errorf("unable to interpret api_product_list: %v", claims["api_product_list"])
+		return fmt.Errorf("unable to interpret api_product_list: %v", claims[apiProductListClaim])
 	}
 
-	scopes, err := parseArrayOfStrings(claims["scopes"])
+	scopes, err := parseArrayOfStrings(claims[scopesClaim])
 	if err != nil {
-		return fmt.Errorf("unable to interpret scopes: %v", claims["scopes"])
+		return fmt.Errorf("unable to interpret scopes: %v", claims[scopesClaim])
 	}
 
 	exp, err := parseExp(claims)
@@ -80,14 +96,11 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	a.Log().Infof("exp: %v", exp)
 
 	var ok bool
-	if a.ClientID, ok = claims["client_id"].(string); !ok {
-		return fmt.Errorf("unable to interpret client_id: %v", claims["client_id"])
+	if a.ClientID, ok = claims[clientIDClaim].(string); !ok {
+		return fmt.Errorf("unable to interpret client_id: %v", claims[clientIDClaim])
 	}
-	//if a.AccessToken, ok = claims["access_token"].(string); !ok {
-	//	return fmt.Errorf("unable to interpret access_token: %v", claims["access_token"])
-	//}
-	if a.Application, ok = claims["application_name"].(string); !ok {
-		return fmt.Errorf("unable to interpret application_name: %v", claims["application_name"])
+	if a.Application, ok = claims[applicationNameClaim].(string); !ok {
+		return fmt.Errorf("unable to interpret application_name: %v", claims[applicationNameClaim])
 	}
 	a.APIProducts = products
 	a.Scopes = scopes

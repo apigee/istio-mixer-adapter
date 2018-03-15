@@ -1,0 +1,18 @@
+# Defines the Apigee adapter for a specific Apigee tenant.
+# Set the apigee_base, customer_base, org_name, env_name, key, and secret
+# This handler is called "apigee-handle" and for reference by mixer rules.
+# (See also: apigee-rule.yaml)
+---
+# handler configuration for adapter 'apigee'
+apiVersion: config.istio.io/v1alpha2
+kind: apigee
+metadata:
+  name: apigee-handler
+  namespace: istio-system
+spec:
+  apigee_base: https://edgemicroservices.apigee.net/edgemicro/
+  customer_base: https://theganyo1-eval-test.apigee.net/edgemicro-auth
+  org_name: theganyo1-eval
+  env_name: test
+  key: c350bf25849dd6288250caf4d36d25f8e1c5ad7d79d8195aaf09979239aca5c3
+  secret: af5966114656123f89d60d5a2e60e4d9c341da129c3b644bc9cb3420eca9e6f8

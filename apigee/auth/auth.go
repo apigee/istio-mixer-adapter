@@ -4,8 +4,6 @@ package auth
 // Authenticate function.
 
 import (
-	"fmt"
-
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	"istio.io/istio/mixer/pkg/adapter"
 )
@@ -54,7 +52,7 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 	}
 
 	if apiKey == "" {
-		return ac, fmt.Errorf("missing api key")
+		return ac, &NoAuthInfoError{}
 	}
 
 	claims, err := a.verifier.Verify(ctx, apiKey)
@@ -70,4 +68,12 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 
 func (a *Manager) start() {
 	a.jwtMan.start(a.env)
+}
+
+// NoAuthInfoError indicates that the error was because of missing auth
+type NoAuthInfoError struct {
+}
+
+func (e *NoAuthInfoError) Error() string {
+	return "missing authentication"
 }
