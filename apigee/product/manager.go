@@ -175,6 +175,10 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					break
 				}
 			}
+			// server returns empty scopes as array with a single empty string, remove for consistency
+			if len(product.Scopes) == 1 && product.Scopes[0] == "" {
+				product.Scopes = []string{}
+			}
 		}
 		p.products = pm
 
@@ -251,8 +255,8 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api, path st
 }
 
 // true if valid path for API Product
-func (d *APIProduct) isValidPath(requestPath string) bool {
-	for _, resource := range d.Resources {
+func (p *APIProduct) isValidPath(requestPath string) bool {
+	for _, resource := range p.Resources {
 		reg, err := makeResourceRegex(resource)
 		if err == nil && reg.MatchString(requestPath) {
 			return true
@@ -261,12 +265,12 @@ func (d *APIProduct) isValidPath(requestPath string) bool {
 	return false
 }
 
-// true if any intersect of scopes
-func (d *APIProduct) isValidScopes(scopes []string) bool {
-	if len(d.Scopes) == 0 {
+// true if any intersect of scopes (or no product scopes)
+func (p *APIProduct) isValidScopes(scopes []string) bool {
+	if len(p.Scopes) == 0 {
 		return true
 	}
-	for _, ds := range d.Scopes {
+	for _, ds := range p.Scopes {
 		for _, s := range scopes {
 			if ds == s {
 				return true
