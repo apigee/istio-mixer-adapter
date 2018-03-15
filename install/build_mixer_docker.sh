@@ -71,7 +71,7 @@ fi
 
 docker-credential-gcr configure-docker || exit 1
 
-docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gco.io
+docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io || exit 1
 
 echo "Building mixer image..."
 export ISTIO="${GOPATH}/src/istio.io"
