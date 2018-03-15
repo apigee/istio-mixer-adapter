@@ -19,3 +19,7 @@ required = [
   name = "github.com/gogo/protobuf"
   version = "=0.5"
 
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hashicorp/go-multierror"

@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
+	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -70,16 +70,7 @@ func TestJWTCaching(t *testing.T) {
 	defer ts.Close()
 
 	for i := 0; i < 5; i++ {
-		serverURL, err := url.Parse(ts.URL)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		ctx := &testContext{
-			apigeeBase:   *serverURL,
-			customerBase: *serverURL,
-			log:          test.NewEnv(t),
-		}
+		ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 
 		// Do a first request and confirm that things look good.
 		_, err = jwtMan.verifyJWT(ctx, jwt)
