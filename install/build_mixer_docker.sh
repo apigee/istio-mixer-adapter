@@ -2,20 +2,18 @@
 
 echo "Checking environment settings..."
 
-if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
-  if [[ "${GCP_PROJECT}" == "" ]]; then
-    echo "TARGET_DOCKER_IMAGE not set, please set it."
-    echo "For example: TARGET_DOCKER_IMAGE=gcr.io/robbrit-test/istio-mixer"
-    exit 1
-  fi
-
-  TARGET_DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/istio-mixer"
-  echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
+if [[ $GCLOUD_SERVICE_KEY == "" ]]; then
+  echo "GCLOUD_SERVICE_KEY not set, not using service account."
 fi
 
-if [[ `command -v gcloud` == "" ]]; then
-  echo "gcloud not installed, please install it."
+if [[ $GCP_PROJECT == "" ]]; then
+  echo "GCP_PROJECT not set, please set it."
   exit 1
+fi
+
+if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
+  TARGET_DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/istio-mixer"
+  echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
 fi
 
 if [[ `command -v docker` == "" ]]; then
@@ -23,7 +21,7 @@ if [[ `command -v docker` == "" ]]; then
     # Docker not installed, install it
     echo "Installing docker client..."
     VER=17.12.1
-    wget -O /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER-ce.tgz
+    wget -O /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER-ce.tgz || exit 1
     tar -zx -C /tmp -f /tmp/docker-$VER.tgz
     mv /tmp/docker/* /usr/bin/
   else
@@ -33,6 +31,54 @@ if [[ `command -v docker` == "" ]]; then
   fi
 fi
 
+if [[ `command -v gcloud` == "" ]]; then
+  if [[ "${INSTALL_GCLOUD}" == "1" ]]; then
+    echo "Installing gcloud..."
+    wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-193.0.0-linux-x86_64.tar.gz || exit 1
+    sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
+
+    # Need to ln so that `sudo gcloud` works
+    sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
+  else
+    echo "gcloud not installed, please install it."
+    exit 1
+  fi
+fi
+
+echo "Authenticating service account with GCP..."
+
+gcloud --quiet components update
+
+if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
+  echo "Using service account..."
+  echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+
+  export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
+  gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS || exit 1
+fi
+
+gcloud config set project "${GCP_PROJECT}" || exit 1
+
+echo "Need sudo to install docker-credential-gcr, requesting password..."
+sudo gcloud components install docker-credential-gcr || exit 1
+
+if [[ `command -v docker-credential-gcr` == "" ]]; then
+  # It should be installed, so check if it is in the temp dir.
+  if [ -d /opt/google-cloud-sdk/bin ]; then
+    export PATH=$PATH:/opt/google-cloud-sdk/bin
+  else
+    echo "Not able to find docker-credential-gcr, you may need to add the GCP SDK to your PATH."
+    exit 1
+  fi
+fi
+
+docker-credential-gcr configure-docker || exit 1
+
+if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
+  docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io || exit 1
+fi
+
+echo "Building mixer image..."
 export ISTIO="${GOPATH}/src/istio.io"
 
 if [ ! -d "${ISTIO}/istio" ]; then
@@ -42,7 +88,7 @@ fi
 
 cd "${ISTIO}/istio"
 
-make docker.mixer
+make docker.mixer || exit 1
 
 IMAGE_ID=$(docker images istio/mixer --format "{{.ID}}" | head -n1)
 
@@ -51,5 +97,10 @@ if [[ "${IMAGE_ID}" == "" ]]; then
   exit 1
 fi
 
-docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}"
-gcloud docker -- push "${TARGET_DOCKER_IMAGE}"
+docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
+echo "Pushing to GCR..."
+gcloud docker -- push "${TARGET_DOCKER_IMAGE}" || exit 1
+
+if [[ "${MAKE_PUBLIC}" == "1" ]]; then
+  gsutil iam ch allUsers:objectViewer "gs://artifacts.${GCP_PROJECT}.appspot.com/"
+fi

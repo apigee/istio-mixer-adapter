@@ -32,13 +32,10 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio ./install/setup_gcloud_for_ci.sh
-          name: Install gcloud
-      - run:
           command: INSTALL_PROTOC=1 ./install/local_install.sh
           name: Run local install script
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 ./install/build_mixer_docker.sh
+          command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 INSTALL_GCLOUD=1 MAKE_PUBLIC=1 ./install/build_mixer_docker.sh
           name: Build and push Docker image
 
 workflows:
@@ -49,7 +46,7 @@ workflows:
   nightly:
     triggers:
       - schedule:
-          cron: "0,15,30,45 * * * *"
+          cron: "0 7 * * *"
           filters:
             branches:
               only:

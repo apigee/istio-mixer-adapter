@@ -1,0 +1,118 @@
+# Defines the base structures and data map for the Apigee mixer adapter.
+# In general, these are static and should not need to be modified.
+# However, certain specific behaviors such as where to retrieve an API Key
+# could be changed here.
+---
+# declares the Apigee adapter
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1beta1
+metadata:
+  name: apigees.config.istio.io
+  labels:
+    package: apigee
+    istio: mixer-adapter
+spec:
+  group: config.istio.io
+  names:
+    kind: apigee
+    plural: apigees
+    singular: apigee
+  scope: Namespaced
+  version: v1alpha2
+---
+# define template 'analytics'
+kind: CustomResourceDefinition
+apiVersion: apiextensions.k8s.io/v1beta1
+metadata:
+ name: analytics.config.istio.io
+ labels:
+   package: analytics
+   istio: mixer-instance
+spec:
+ group: config.istio.io
+ names:
+   kind: analytics
+   plural: analytics
+   singular: analytics
+ scope: Namespaced
+ version: v1alpha2
+---
+# instance configuration for template 'apigee.analytics'
+apiVersion: config.istio.io/v1alpha2
+kind: analytics
+metadata:
+  name: apigee
+  namespace: istio-system
+spec:
+  api_key: request.api_key | request.headers["x-api-key"] | ""
+  api_proxy: api.service | destination.service | ""
+  response_status_code: response.code | 0
+  client_ip: source.ip | ip("0.0.0.0")
+  request_verb: request.method | ""
+  request_uri: request.path | ""
+  request_path: request.path | ""
+  useragent: request.useragent | ""
+  client_received_start_timestamp: request.time
+  client_received_end_timestamp: request.time
+  target_sent_start_timestamp: request.time
+  target_sent_end_timestamp: request.time
+  target_received_start_timestamp: response.time
+  target_received_end_timestamp: response.time
+  client_sent_start_timestamp: response.time
+  client_sent_end_timestamp: response.time
+  api_claims: # from jwt
+    encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
+    # api_product_list: request.auth.claims["api_product_list"] | ""
+    # audience: request.auth.claims["audience"] | ""
+    # access_token: request.auth.claims["access_token"] | ""
+    # client_id: request.auth.claims["client_id"] | ""
+    # application_name: request.auth.claims["application_name"] | ""
+    # scopes: request.auth.claims["scopes"] | ""
+    # exp: request.auth.claims["exp"] | ""
+---
+# Bind Istio authorization template attributes to Apigee adapter
+apiVersion: config.istio.io/v1alpha2
+kind: authorization
+metadata:
+  name: apigee
+  namespace: istio-system
+spec:
+  subject:
+    user: ""
+    groups: ""
+    properties:
+      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
+      api_key: request.api_key | request.headers["x-api-key"] | ""
+      # api_product_list: request.auth.claims["api_product_list"] | ""
+      # audience: request.auth.claims["audience"] | ""
+      # access_token: request.auth.claims["access_token"] | ""
+      # client_id: request.auth.claims["client_id"] | ""
+      # application_name: request.auth.claims["application_name"] | ""
+      # scopes: request.auth.claims["scopes"] | ""
+      # exp: request.auth.claims["exp"] | ""
+  action:
+    namespace: destination.namespace | "default"
+    service: api.service | destination.service | ""
+    path: api.operation | request.path | ""
+    method: request.method | ""
+---
+# instance configuration for template 'apigee.quota'
+apiVersion: config.istio.io/v1alpha2
+kind: quota
+metadata:
+  name: apigee
+  namespace: istio-system
+spec:
+  dimensions:
+    api: api.service | destination.service | ""
+    path: request.path | ""
+    api_key: request.api_key | request.headers["x-api-key"] | ""
+    claims: # from jwt
+      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
+      # api_product_list: request.auth.claims["api_product_list"] | ""
+      # audience: request.auth.claims["audience"] | ""
+      # access_token: request.auth.claims["access_token"] | ""
+      # client_id: request.auth.claims["client_id"] | ""
+      # application_name: request.auth.claims["application_name"] | ""
+      # scopes: request.auth.claims["scopes"] | ""
+      # exp: request.auth.claims["exp"] | ""
