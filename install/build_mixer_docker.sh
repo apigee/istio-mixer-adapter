@@ -3,8 +3,7 @@
 echo "Checking environment settings..."
 
 if [[ $GCLOUD_SERVICE_KEY == "" ]]; then
-  echo "GCLOUD_SERVICE_KEY not set, please set it."
-  exit 1
+  echo "GCLOUD_SERVICE_KEY not set, not using service account."
 fi
 
 if [[ $GCP_PROJECT == "" ]]; then
@@ -48,12 +47,16 @@ fi
 
 echo "Authenticating service account with GCP..."
 
-echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
-
-export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
-
 gcloud --quiet components update
-gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS || exit 1
+
+if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
+  echo "Using service account..."
+  echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
+
+  export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
+  gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS || exit 1
+fi
+
 gcloud config set project "${GCP_PROJECT}" || exit 1
 
 echo "Need sudo to install docker-credential-gcr, requesting password..."
@@ -71,7 +74,9 @@ fi
 
 docker-credential-gcr configure-docker || exit 1
 
-docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io || exit 1
+if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
+  docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io || exit 1
+fi
 
 echo "Building mixer image..."
 export ISTIO="${GOPATH}/src/istio.io"
