@@ -45,12 +45,10 @@ if [[ `command -v gcloud` == "" ]]; then
   fi
 fi
 
-echo "Authenticating service account with GCP..."
-
 gcloud --quiet components update
 
 if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
-  echo "Using service account..."
+  echo "Authenticating service account with GCP..."
   echo $GCLOUD_SERVICE_KEY | base64 --decode --ignore-garbage > ${HOME}/gcloud-service-key.json
 
   export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
@@ -59,22 +57,22 @@ fi
 
 gcloud config set project "${GCP_PROJECT}" || exit 1
 
-echo "Need sudo to install docker-credential-gcr, requesting password..."
-sudo gcloud components install docker-credential-gcr || exit 1
-
-if [[ `command -v docker-credential-gcr` == "" ]]; then
-  # It should be installed, so check if it is in the temp dir.
-  if [ -d /opt/google-cloud-sdk/bin ]; then
-    export PATH=$PATH:/opt/google-cloud-sdk/bin
-  else
-    echo "Not able to find docker-credential-gcr, you may need to add the GCP SDK to your PATH."
-    exit 1
-  fi
-fi
-
-docker-credential-gcr configure-docker || exit 1
-
 if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
+  echo "Need sudo to install docker-credential-gcr, requesting password..."
+  sudo gcloud components install docker-credential-gcr || exit 1
+
+  if [[ `command -v docker-credential-gcr` == "" ]]; then
+    # It should be installed, so check if it is in the temp dir.
+    if [ -d /opt/google-cloud-sdk/bin ]; then
+      export PATH=$PATH:/opt/google-cloud-sdk/bin
+    else
+      echo "Not able to find docker-credential-gcr, you may need to add the GCP SDK to your PATH."
+      exit 1
+    fi
+  fi
+
+  docker-credential-gcr configure-docker || exit 1
+
   docker login -u _json_key -p "$(cat ${HOME}/gcloud-service-key.json)" https://gcr.io || exit 1
 fi
 
