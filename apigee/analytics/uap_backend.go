@@ -21,12 +21,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path"
+	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -51,12 +51,13 @@ type pushKey struct {
 }
 
 type uapBackend struct {
-	spool  chan *pushRequest
-	close  chan bool
-	buffer map[pushKey][]Record
-	client *http.Client
-	now    func() time.Time
-	log    adapter.Logger
+	spool      chan *pushRequest
+	close      chan bool
+	buffer     map[pushKey][]Record
+	bufferLock sync.Mutex
+	client     *http.Client
+	now        func() time.Time
+	log        adapter.Logger
 
 	// This needs to be a unique value for this instance of/ mixer, otherwise
 	// different mixers have a small probability of clobbering one another.
@@ -71,8 +72,6 @@ type pushRequest struct {
 
 func newUAPBackend() Manager {
 	return &uapBackend{
-		// TODO(robbrit): Use two goroutines to push results so that we don't lock
-		// SendRecords when we are pushing.
 		spool:  make(chan *pushRequest, defaultSpoolSize),
 		buffer: map[pushKey][]Record{},
 		close:  make(chan bool),
@@ -90,9 +89,14 @@ func (ub *uapBackend) Start(env adapter.Env) {
 	env.ScheduleDaemon(func() {
 		ub.pollingLoop()
 	})
+	env.ScheduleDaemon(func() {
+		ub.flushLoop()
+	})
 }
 
 func (ub *uapBackend) Close() {
+	// We have two goroutines, so close twice.
+	ub.close <- true
 	ub.close <- true
 	if err := ub.flush(); err != nil {
 		ub.log.Errorf("Error pushing analytics: %s", err)
@@ -100,7 +104,6 @@ func (ub *uapBackend) Close() {
 }
 
 func (ub *uapBackend) pollingLoop() {
-	t := time.NewTimer(ub.collectionInterval)
 	for {
 		select {
 		case r := <-ub.spool:
@@ -112,27 +115,45 @@ func (ub *uapBackend) pollingLoop() {
 				r.auth.Secret(),
 				base.String(),
 			}
+			ub.bufferLock.Lock()
+			// TODO(robbrit): Write these records to a persistent store so that if
+			// the server dies here, we don't lose the records.
 			ub.buffer[pk] = append(ub.buffer[pk], r.req.Records...)
+			ub.bufferLock.Unlock()
 		case <-ub.close:
-			t.Stop()
 			return
+		}
+	}
+}
+
+func (ub *uapBackend) flushLoop() {
+	t := time.NewTimer(ub.collectionInterval)
+	for {
+		select {
 		case <-t.C:
 			if err := ub.flush(); err != nil {
 				ub.log.Errorf("Error pushing analytics: %s", err)
 			}
+		case <-ub.close:
+			t.Stop()
+			return
 		}
 	}
 }
 
 // flush sends any buffered data off to the server.
 func (ub *uapBackend) flush() error {
+	ub.bufferLock.Lock()
+	buff := ub.buffer
+	ub.buffer = map[pushKey][]Record{}
+	ub.bufferLock.Unlock()
+
 	var errOut error
-	for pk, rs := range ub.buffer {
+	for pk, rs := range buff {
 		if err := ub.push(pk, rs); err != nil {
 			errOut = multierror.Append(errOut, err)
 		}
 	}
-	ub.buffer = map[pushKey][]Record{}
 	return errOut
 }
 
@@ -144,16 +165,18 @@ func (ub *uapBackend) push(pk pushKey, records []Record) error {
 	}
 
 	buf := new(bytes.Buffer)
-	if err := json.NewEncoder(buf).Encode(records); err != nil {
+
+	// First, write gzipped JSON to the buffer.
+	gz := gzip.NewWriter(buf)
+	if err := json.NewEncoder(gz).Encode(records); err != nil {
 		return fmt.Errorf("JSON encode: %s", err)
 	}
-
-	gz, err := gzip.NewReader(buf)
-	if err != nil {
-		return fmt.Errorf("gzip.NewReader(): %s", err)
+	if err := gz.Flush(); err != nil {
+		return fmt.Errorf("gzip flush: %s", err)
 	}
 
-	req, err := http.NewRequest("PUT", url, gz)
+	// Now send the buffer to the server.
+	req, err := http.NewRequest("PUT", url, buf)
 	if err != nil {
 		return fmt.Errorf("http.NewRequest: %s", err)
 	}
@@ -177,7 +200,8 @@ func (ub *uapBackend) push(pk pushKey, records []Record) error {
 
 // signedURL constructs a signed URL that can be used to upload records.
 func (ub *uapBackend) signedURL(pk pushKey) (string, error) {
-	url := path.Join(pk.base, uapPath)
+	url := pk.base + uapPath
+	ub.log.Infof("Fetching from %s: %#v", url, pk)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
@@ -194,7 +218,7 @@ func (ub *uapBackend) signedURL(pk pushKey) (string, error) {
 
 	resp, err := ub.client.Do(req)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 	defer resp.Body.Close()
 
