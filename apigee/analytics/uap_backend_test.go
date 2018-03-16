@@ -77,23 +77,22 @@ func TestPushAnalytics(t *testing.T) {
 	fs := newFakeServer(t)
 	defer fs.Close()
 
+	t1 := "hi~test"
+	t2 := "otherorg~test"
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
 	m := newUAPBackend().(*uapBackend)
-
-	fp1 := "hi~test"
-	fp2 := "otherorg~test"
-
-	// This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-	ts := int64(1521221450)
 	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
 
 	wantRecords := map[string][]testRecordPush{
-		fp1: {
+		t1: {
 			{
 				records: []Record{{APIProxy: "proxy"}, {APIProduct: "product"}},
 				dir:     fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
 			},
 		},
-		fp2: {
+		t2: {
 			{
 				records: []Record{{RequestURI: "request URI"}},
 				dir:     fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
@@ -102,7 +101,6 @@ func TestPushAnalytics(t *testing.T) {
 	}
 
 	env := adaptertest.NewEnv(t)
-	m.collectionInterval = 50 * time.Millisecond
 	m.Start(env)
 	defer m.Close()
 
@@ -112,10 +110,10 @@ func TestPushAnalytics(t *testing.T) {
 	ctx := &auth.Context{Context: tc}
 
 	// Send them in batches to ensure we group them all together.
-	if err := m.SendRecords(ctx, wantRecords[fp1][0].records[:1]); err != nil {
+	if err := m.SendRecords(ctx, wantRecords[t1][0].records[:1]); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
-	if err := m.SendRecords(ctx, wantRecords[fp1][0].records[1:]); err != nil {
+	if err := m.SendRecords(ctx, wantRecords[t1][0].records[1:]); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
@@ -124,7 +122,7 @@ func TestPushAnalytics(t *testing.T) {
 	tc.SetOrganization("otherorg")
 	tc.SetEnvironment("test")
 	ctx = &auth.Context{Context: tc}
-	if err := m.SendRecords(ctx, wantRecords[fp2][0].records); err != nil {
+	if err := m.SendRecords(ctx, wantRecords[t2][0].records); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
@@ -135,6 +133,7 @@ func TestPushAnalytics(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
+	// Should have sent things out by now, check it out.
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
 	}
