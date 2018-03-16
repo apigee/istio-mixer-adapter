@@ -79,11 +79,11 @@ workflows:
   version: 2
   on-commit:
     jobs:
-      - build-test-image
+      - build-test-image:
           filters:
             branches:
               only: /master|only-image-master/
-      - build-and-test
+      - build-and-test:
           filters:
             branches:
               ignore: master
