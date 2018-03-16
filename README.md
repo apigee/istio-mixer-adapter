@@ -14,7 +14,7 @@ Before you install Istio into Kubernetes (step 5: Install Istio’s core compone
 
 Assuming Istio 0.6.0:
 
-Replace: `docker.io/istio/mixer:0.6.0` with: `docker.io/robbrit/istio-mixer:nightly`
+Replace: `docker.io/istio/mixer:0.6.0` with: `gcr.io/apigee-api-management-istio/istio-mixer:nightly`
 Replace: `zipkinURL` with `trace_zipkin_url`
 
 (note: after Istio 0.6.0, you shouldn't need the `zipkinURL` replacement anymore)
