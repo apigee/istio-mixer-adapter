@@ -82,7 +82,7 @@ workflows:
       - build-test-image:
           filters:
             branches:
-              only: /master|only-image-master/
+              only: master
       - build-and-test:
           filters:
             branches:
