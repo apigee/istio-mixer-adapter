@@ -71,13 +71,10 @@ func parseExp(claims map[string]interface{}) (time.Time, error) {
 
 // does nothing if claims is empty
 func (a *Context) setClaims(claims map[string]interface{}) error {
-	// todo: I'm not certain how Istio formats these claims values...
-
-	a.Log().Infof("setClaims: %v", claims)
-
 	if claims[clientIDClaim] == nil {
 		return nil
 	}
+	a.Log().Infof("setClaims: %v", claims)
 
 	products, err := parseArrayOfStrings(claims[apiProductListClaim])
 	if err != nil {
@@ -93,7 +90,6 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
-	a.Log().Infof("exp: %v", exp)
 
 	var ok bool
 	if a.ClientID, ok = claims[clientIDClaim].(string); !ok {
@@ -106,7 +102,6 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	a.Scopes = scopes
 	a.Expires = exp
 
-	a.Log().Infof("claims set: %v", a)
 	return nil
 }
 

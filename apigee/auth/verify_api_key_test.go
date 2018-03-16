@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -127,8 +126,6 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Printf("\nclaims: %v", claims)
-
 	if claims["client_id"].(string) != "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H" {
 		t.Errorf("bad client_id, got: %s, want: %s", claims["client_id"].(string), "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H")
 	}
@@ -179,8 +176,6 @@ func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		fmt.Printf("\nclaims: %v", claims)
 
 		if claims["client_id"].(string) != "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H" {
 			t.Errorf("bad client_id, got: %s, want: %s", claims["client_id"].(string), "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H")
@@ -249,8 +244,6 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		fmt.Printf("\nclaims: %v", claims)
 
 		if claims["client_id"].(string) != "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H" {
 			t.Errorf("bad client_id, got: %s, want: %s", claims["client_id"].(string), "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H")

@@ -128,9 +128,7 @@ func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, 
 	if err != nil {
 		return nil, fmt.Errorf("jwt.Parse(): %s", err)
 	}
-	claims := token.Claims.(jwt.MapClaims)
-	ctx.Log().Infof("claims: %v", claims)
-	return claims, nil
+	return token.Claims.(jwt.MapClaims), nil
 }
 
 func (a *jwtManager) getJWTKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
