@@ -106,7 +106,7 @@ func TestManager(t *testing.T) {
 		}
 	}
 
-	if len(pp.Products()["Name3"].Scopes) != 0 {
+	if len(pp.Products()["Name 3"].Scopes) != 0 {
 		t.Errorf("empty scopes should be removed")
 	}
 }

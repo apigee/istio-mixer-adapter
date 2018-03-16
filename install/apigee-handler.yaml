@@ -11,8 +11,8 @@ metadata:
   namespace: istio-system
 spec:
   apigee_base: https://edgemicroservices.apigee.net/edgemicro/
-  customer_base: https://theganyo1-eval-test.apigee.net/edgemicro-auth
-  org_name: theganyo1-eval
-  env_name: test
-  key: c350bf25849dd6288250caf4d36d25f8e1c5ad7d79d8195aaf09979239aca5c3
-  secret: af5966114656123f89d60d5a2e60e4d9c341da129c3b644bc9cb3420eca9e6f8
+  customer_base: REPLACE ME
+  org_name: REPLACE ME
+  env_name: REPLACE ME
+  key: REPLACE ME
+  secret: REPLACE ME

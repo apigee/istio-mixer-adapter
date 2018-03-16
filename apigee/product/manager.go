@@ -171,13 +171,15 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					for _, t := range targets {
 						product.Targets = append(product.Targets, strings.TrimSpace(t))
 					}
+
+					// server returns empty scopes as array with a single empty string, remove for consistency
+					if len(product.Scopes) == 1 && product.Scopes[0] == "" {
+						product.Scopes = []string{}
+					}
+
 					pm[product.Name] = product
 					break
 				}
-			}
-			// server returns empty scopes as array with a single empty string, remove for consistency
-			if len(product.Scopes) == 1 && product.Scopes[0] == "" {
-				product.Scopes = []string{}
 			}
 		}
 		p.products = pm
