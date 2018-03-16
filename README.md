@@ -1,79 +1,132 @@
 # Istio Apigee Adapter
 
-This workspace holds an Apigee adapter for Istio Mixer. It can be tested standalone as noted below.
-Instructions for building and running in Kubernetes are available here: [README-Kubernetes.MD]().
+This is the source repository for Apigee's Istio Mixer Adapter. This allows users of Istio to
+incorporate Apigee Authentication, Authorization, and Analytics policies to protect and
+report through the Apigee UI.
 
-Note: This repo should be in $GOPATH/src/github.com/apigee/istio-mixer-adapter
+# Installation and usage
 
-Note: You can only build Istio Docker images on Linux.
+## Install Istio with Apigee mixer
 
-## Building and testing standalone
+The quickest way to get started is to follow the [Istio Kubernetes Quick Start](https://istio.io/docs/setup/kubernetes/quick-start.html).
 
-1. Install protoc and dep prerequisites:
+Before you install Istio into Kubernetes (step 5: Install Istio’s core components), edit the `istio.yaml` or `istio-auth.yaml` file to point to the Apigee mixer instead of the Istio vanilla mixer.
 
-        [](https://developers.google.com/protocol-buffers/docs/downloads) 
-        [](https://github.com/golang/dep)
+Assuming Istio 0.6.0:
 
-2. Run install script.
+Replace: `docker.io/istio/mixer:0.6.0` with: `docker.io/robbrit/istio-mixer:nightly`
+Replace: `zipkinURL` with `trace_zipkin_url`
 
-        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/local_install.sh
+(note: after Istio 0.6.0, you shouldn't need the `zipkinURL` replacement anymore)
 
-## Testing in Mixer
+## Install your service
 
-### Configure mixer
+For the following, we'll assume you've installed Istio's [Hello World](https://github.com/istio/istio/tree/master/samples/helloworld).
 
-Run local mixer via install script:
+You should be able to access this service successfully:
 
-        export APIGEE_ORG=my-org
-        export APIGEE_ENV=my-env
-        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/run_local.sh
+    curl http://$HELLOWORLD_URL/hello
 
-### Sample commands
+## Set up Apigee
 
-#### Mixer run
+1. If you don't have one, get yourself an [Apigee Edge](https://login.apigee.com) account.
 
-#### do auth check
+2. [Install Edge Microgateway](https://docs.apigee.com/api-platform/microgateway/2.5.x/installing-edge-microgateway)
 
-    export API_KEY=<your api key>
+3. [Configure Edge Microgateway](https://docs.apigee.com/api-platform/microgateway/2.5.x/setting-and-configuring-edge-microgateway#Part1) - Just Part 1 and stop!
 
-    $GOPATH/out/darwin_amd64/release/mixc check \
-        --string_attributes="destination.service=svc.cluster.local,request.path="/"" \
-        --stringmap_attributes="request.headers=x-api-key:$API_KEY"
+At this point, you should have this information:
 
-You should see "Check status was OK" if the API key is valid. 
-If not, there's probably an issue with configuration.
+* organization name
+* environment name
+* key
+* secret
 
-    $GOPATH/out/darwin_amd64/release/mixc check \
-        --string_attributes="destination.service=svc.cluster.local,request.path="/"" \
-        --stringmap_attributes="request.headers=x-api-key:BAD_KEY"
+  apigee_base: https://edgemicroservices.apigee.net/edgemicro/
+  customer_base: https://theganyo1-eval-test.apigee.net/edgemicro-auth
+ 
+## Configure Istio and Apigee Mixer
 
-You should see "Check status was PERMISSION_DENIED".  
+In the [install]() directory, there are several .yaml files for configuring Istio.
 
-#### send an analytics record
+### Set your configuration 
 
-(Note: You'll likely want to adjust the timestamps.)
+Edit `install/apigee-handler.yaml` and replace the configuration values with your own:
 
-    $MIXER_DIR/bazel-bin/cmd/client/mixc report \
-        --string_attributes='destination.service=svc.cluster.local,request.path="/"' \
-        --stringmap_attributes="request.headers=x-api-key:$API_KEY" \
-        --timestamp_attributes="request.time=2017-01-01T01:00:00Z,response.time=2017-01-01T01:01:00Z"
+      customer_base: https://{your organization}-{your environment}.apigee.net/edgemicro-auth
+      org_name: {your organization name}
+      env_name: {your environment name}
+      key: {your key}
+      secret: {your secret}
 
+(note: the existing apigee_base shouldn't change)
 
-Analytics should show up in your org (may take several minutes depending on your account).
+Now, apply the Apigee configuration to Istio:
 
-## Deploying Mixer
+        kubectl apply -f apigee-definitions.yaml
+        kubectl apply -f apigee-handler.yaml
+        kubectl apply -f apigee-rule.yaml
+        kubectl apply -f api-spec.yaml
 
-Note from above: you can only do this on Linux.
+At this point, you should no longer be able to access your helloworld service:
 
-1. First, build the docker image:
+    curl http://$HELLOWORLD_URL/hello
+    
+Should receive:
 
-        export GCP_PROJECT=my-gcp-project
-        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/build_mixer_docker.sh
+    PERMISSION_DENIED:apigee-handler.apigee.istio-system:missing authentication
+    
+Let's fix that...
 
-2. Next, push to GKE:
+### Configure Apigee
 
-        export GCP_PROJECT=my-gcp-project
-        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/push_docker_to_gke.sh
+Create an [API Product](https://apigee.com/apiproducts) in your Apigee organization:
 
-3. Go to [Pantheon](https://pantheon.corp.google.com/kubernetes/workload), you
-   should see the mixer running there.
+* Give the API Product definition a name ("helloworld" is fine)
+* Make sure the correct environment is checked
+* Add a Path with the "+Custom Resource" button. Set it to "/".
+* Add an Attribute with the "+Custom Attribute" button. Set the key to "istio-services" and the value to "helloworld.default.svc.cluster.local". 
+* Save
+
+Create a [Developer](https://apigee.com/developers)
+* Use any values you want
+
+Create an [App](https://apigee.com/apps)
+* Give your App a name ("helloworld" is fine)
+* Select your developer
+* Add your API Product with the "+Product" button.
+* Save
+
+Still on the App page, you should now see a "Credentials" section. Click the "Show" button under the "Consumer Key" heading. Copy the key!
+
+### Access helloworld with your key
+
+You should now be able to access the helloworld service in Istio by passing the key you just copied from your Apigee app. Just send it as part of the header:
+    
+    curl http://$HELLOWORLD_URL/hello -H "x-api-key: {your consumer key}"
+
+This call should now be successful.
+
+### Bonus: Force JWT authentication
+
+Apply an Istio authentication policy:
+
+    istioctl create -f authentication-policy.yaml
+
+Calls to helloworld should now fail (with or without the API Key).
+
+    curl http://$HELLOWORLD_URL/hello
+    
+Should receive:
+
+    Required JWT token is missing
+
+Now get a JWT token:
+
+    curl https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey -d '{ "apiKey":"{your consumer key}" }' -H "Content-Type: application/json"
+
+Try again with your token:
+
+    curl http://$HELLOWORLD_URL/hello -H "Authorization: Bearer {your jwt token}"
+
+This call should now be successful.
