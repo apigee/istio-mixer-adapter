@@ -3,6 +3,27 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
+  build-and-test:
+    docker:
+      - image: circleci/golang:1.10
+    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
+    steps:
+      - checkout
+      - run:
+          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          name: Run local install script
+        # test needs dep ensure to be run again, since the Mixer plugin install
+        # will have removed the vendor link.
+      - run: dep ensure
+      - run:
+          command: go test -coverprofile=/tmp/coverage.out ./...
+          name: Run tests
+      - run:
+          command: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
+          name: Build HTML coverage report
+      - store_artifacts:
+          path: /tmp/coverage.html
+
   build-test-image:
     docker:
       - image: circleci/golang:1.10
@@ -25,7 +46,13 @@ jobs:
           path: /tmp/coverage.html
       - setup_remote_docker
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 INSTALL_GCLOUD=1 MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:latest ./install/build_mixer_docker.sh
+          command: ./install/install_docker.sh
+          name: Install docker
+      - run:
+          command: ./install/install_gcloud.sh
+          name: Install gcloud
+      - run:
+          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:latest ./install/build_mixer_docker.sh
           name: Build and push Docker image with tag latest
 
   build-nightly:
@@ -39,7 +66,13 @@ jobs:
           command: INSTALL_PROTOC=1 ./install/local_install.sh
           name: Run local install script
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 INSTALL_GCLOUD=1 MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:nightly ./install/build_mixer_docker.sh
+          command: ./install/install_docker.sh
+          name: Install docker
+      - run:
+          command: ./install/install_gcloud.sh
+          name: Install gcloud
+      - run:
+          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:nightly ./install/build_mixer_docker.sh
           name: Build and push Docker image with tag nightly
 
 workflows:
@@ -47,14 +80,20 @@ workflows:
   on-commit:
     jobs:
       - build-test-image
+          filters:
+            branches:
+              only: /master|only-image-master/
+      - build-and-test
+          filters:
+            branches:
+              ignore: master
   nightly:
     triggers:
       - schedule:
           cron: "0 7 * * *"
           filters:
             branches:
-              only:
-                - master
+              only: master
     jobs:
       - build-test-image
       - build-nightly:

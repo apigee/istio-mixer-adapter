@@ -17,35 +17,17 @@ if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
 fi
 
 if [[ `command -v docker` == "" ]]; then
-  if [[ "${INSTALL_DOCKER}" == "1" ]]; then
-    # Docker not installed, install it
-    echo "Installing docker client..."
-    VER=17.12.1
-    wget -O /tmp/docker-$VER.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VER-ce.tgz || exit 1
-    tar -zx -C /tmp -f /tmp/docker-$VER.tgz
-    mv /tmp/docker/* /usr/bin/
-  else
-    # Don't install it, just complain.
-    echo "docker client not installed, please install it."
-    exit 1
-  fi
+  echo "docker client not installed, please install it: ./install/install_docker.sh"
+  exit 1
 fi
 
 if [[ `command -v gcloud` == "" ]]; then
-  if [[ "${INSTALL_GCLOUD}" == "1" ]]; then
-    echo "Installing gcloud..."
-    wget -O /tmp/gcloud.tar.gz https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-193.0.0-linux-x86_64.tar.gz || exit 1
-    sudo tar -zx -C /opt -f /tmp/gcloud.tar.gz
-
-    # Need to ln so that `sudo gcloud` works
-    sudo ln -s /opt/google-cloud-sdk/bin/gcloud /usr/bin/gcloud
-  else
-    echo "gcloud not installed, please install it."
-    exit 1
-  fi
+  echo "gcloud not installed, please install it: ./install/install_gcloud.sh"
+  exit 1
 fi
 
 gcloud --quiet components update
+gcloud config set project "${GCP_PROJECT}" || exit 1
 
 if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
   echo "Authenticating service account with GCP..."
@@ -53,11 +35,7 @@ if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
 
   export GOOGLE_APPLICATION_CREDENTIALS=${HOME}/gcloud-service-key.json
   gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS || exit 1
-fi
 
-gcloud config set project "${GCP_PROJECT}" || exit 1
-
-if [[ $GCLOUD_SERVICE_KEY != "" ]]; then
   echo "Need sudo to install docker-credential-gcr, requesting password..."
   sudo gcloud components install docker-credential-gcr || exit 1
 
