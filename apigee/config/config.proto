@@ -31,4 +31,6 @@ message Params {
     string env_name      = 4;
     string key           = 5;
     string secret        = 6;
+
+    bool use_uap = 7;
 }

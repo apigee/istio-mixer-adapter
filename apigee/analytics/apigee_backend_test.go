@@ -48,14 +48,14 @@ func TestAnalyticsSubmit(t *testing.T) {
 		RequestVerb:                  "PATCH",
 		RequestPath:                  "/test",
 		UserAgent:                    "007",
-		ClientReceivedStartTimestamp: startTime.Unix(),
-		ClientReceivedEndTimestamp:   startTime.Unix(),
-		ClientSentStartTimestamp:     startTime.Unix(),
-		ClientSentEndTimestamp:       startTime.Unix(),
-		TargetSentStartTimestamp:     startTime.Unix(),
-		TargetSentEndTimestamp:       startTime.Unix(),
-		TargetReceivedStartTimestamp: startTime.Unix(),
-		TargetReceivedEndTimestamp:   startTime.Unix(),
+		ClientReceivedStartTimestamp: TimeToUnix(startTime),
+		ClientReceivedEndTimestamp:   TimeToUnix(startTime),
+		ClientSentStartTimestamp:     TimeToUnix(startTime),
+		ClientSentEndTimestamp:       TimeToUnix(startTime),
+		TargetSentStartTimestamp:     TimeToUnix(startTime),
+		TargetSentEndTimestamp:       TimeToUnix(startTime),
+		TargetReceivedStartTimestamp: TimeToUnix(startTime),
+		TargetReceivedEndTimestamp:   TimeToUnix(startTime),
 	}
 	ts := makeTestServer(authContext, axRecord, t)
 	defer ts.Close()

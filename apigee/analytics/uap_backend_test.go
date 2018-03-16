@@ -1,3 +1,17 @@
+// Copyright 2018 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package analytics
 
 import (
@@ -16,11 +30,14 @@ import (
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 
+// a testRecordPush represents a single push of analytics to a given directory.
 type testRecordPush struct {
 	records []Record
 	dir     string
 }
 
+// A fakeServer wraps around an httptest.Server and tracks the things that have
+// been sent to it.
 type fakeServer struct {
 	records map[string][]testRecordPush
 	srv     *httptest.Server
@@ -81,7 +98,7 @@ func TestPushAnalytics(t *testing.T) {
 	t2 := "otherorg~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-	m := newUAPBackend().(*uapBackend)
+	m := newUAPManager().(*uapManager)
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 

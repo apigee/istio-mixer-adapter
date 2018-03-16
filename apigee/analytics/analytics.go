@@ -21,6 +21,11 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
+// TimeToUnix converts a time to a UNIX timestamp in milliseconds.
+func TimeToUnix(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
 // A Manager is how we interact with some Apigee analytics backend.
 type Manager interface {
 	Start(env adapter.Env)
@@ -28,15 +33,18 @@ type Manager interface {
 	SendRecords(auth *auth.Context, records []Record) error
 }
 
-// NewManager constructs a new analytics Manager. Call Close when you are done.
+// NewManager constructs a new analytics manager that uses the API gateway to
+// send analytics. Call Close when you are done.
 func NewManager(env adapter.Env) Manager {
-	// TODO(robbrit): Allow setting the backend based on a flag or config setting.
 	m := &apigeeBackend{}
 	m.Start(env)
 	return m
 }
 
-// TimeToUnix converts a time to a UNIX timestamp in milliseconds.
-func TimeToUnix(t time.Time) int64 {
-	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+// NewUAPManager constructs a new analytics manager that uploads analytics
+// directly to UAP. Call Close when you are done.
+func NewUAPManager(env adapter.Env) Manager {
+	m := newUAPManager()
+	m.Start(env)
+	return m
 }

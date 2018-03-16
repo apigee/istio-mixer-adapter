@@ -145,7 +145,12 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	pMan := product.NewManager(*customerBase, env.Logger(), env)
 	aMan := auth.NewManager(env)
-	anMan := analytics.NewManager(env)
+	var anMan analytics.Manager
+	if b.adapterConfig.UseUap {
+		anMan = analytics.NewUAPManager(env)
+	} else {
+		anMan = analytics.NewManager(env)
+	}
 
 	h := &handler{
 		env:          env,
@@ -223,14 +228,14 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		h.Log().Infof("HandleAnalytics: %#v", inst)
 
 		record := analytics.Record{
-			ClientReceivedStartTimestamp: inst.ClientReceivedStartTimestamp.Unix(),
-			ClientReceivedEndTimestamp:   inst.ClientReceivedStartTimestamp.Unix(),
-			ClientSentStartTimestamp:     inst.ClientSentStartTimestamp.Unix(),
-			ClientSentEndTimestamp:       inst.ClientSentEndTimestamp.Unix(),
-			TargetReceivedStartTimestamp: inst.TargetReceivedStartTimestamp.Unix(),
-			TargetReceivedEndTimestamp:   inst.TargetReceivedEndTimestamp.Unix(),
-			TargetSentStartTimestamp:     inst.TargetSentStartTimestamp.Unix(),
-			TargetSentEndTimestamp:       inst.TargetSentEndTimestamp.Unix(),
+			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
+			ClientSentEndTimestamp:       analytics.TimeToUnix(inst.ClientSentEndTimestamp),
+			TargetReceivedStartTimestamp: analytics.TimeToUnix(inst.TargetReceivedStartTimestamp),
+			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
+			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
+			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
 			APIProxy:                     inst.ApiProxy,
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
