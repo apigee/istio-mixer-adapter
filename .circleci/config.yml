@@ -3,7 +3,7 @@
 # Check https://circleci.com/docs/2.0/language-go/ for more details
 version: 2
 jobs:
-  build-and-test:
+  build-test-image:
     docker:
       - image: circleci/golang:1.10
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
@@ -21,22 +21,11 @@ jobs:
       - run:
           command: go tool cover -html=/tmp/coverage.out -o /tmp/coverage.html
           name: Build HTML coverage report
-      - store_artifacts:
-          path: /tmp/coverage.html
-
-  build-image:
-    docker:
-      - image: circleci/golang:1.10
-    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run:
-          command: INSTALL_PROTOC=1 ./install/local_install.sh
-          name: Run local install script
       - run:
           command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 INSTALL_GCLOUD=1 MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:latest ./install/build_mixer_docker.sh
-          name: Build and push Docker image
+          name: Build and push Docker image with tag latest
+      - store_artifacts:
+          path: /tmp/coverage.html
 
   build-nightly:
     docker:
@@ -50,16 +39,13 @@ jobs:
           name: Run local install script
       - run:
           command: GCP_PROJECT=apigee-api-management-istio INSTALL_DOCKER=1 INSTALL_GCLOUD=1 MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:nightly ./install/build_mixer_docker.sh
-          name: Build and push Docker image
+          name: Build and push Docker image with tag nightly
 
 workflows:
   version: 2
   on-commit:
     jobs:
-      - build-and-test
-      - build-image:
-          requires:
-            - build-and-test
+      - build-test-image
   nightly:
     triggers:
       - schedule:
@@ -69,7 +55,7 @@ workflows:
               only:
                 - master
     jobs:
-      - build-and-test
+      - build-test-image
       - build-nightly:
           requires:
-            - build-and-test
+            - build-test-image
