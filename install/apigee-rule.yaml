@@ -15,5 +15,5 @@ spec:
   - handler: apigee-handler.apigee
     instances:
     - apigee.authorization
-    - apigee.analytics
-    # - apigee.quota
+#    - apigee.analytics
+    - apigee.quota

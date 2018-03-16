@@ -62,7 +62,11 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 
 	err = ac.setClaims(claims)
 
-	ctx.Log().Infof("Authenticate complete: %v [%v]", ac, err)
+	if err == nil {
+		ctx.Log().Infof("Authenticate success: %v", ac)
+	} else {
+		ctx.Log().Infof("Authenticate error: %v [%v]", ac, err)
+	}
 	return ac, err
 }
 
