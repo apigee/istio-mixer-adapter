@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"strconv"
@@ -179,7 +180,7 @@ func TestResolveClaims(t *testing.T) {
 
 	want := map[string]string{}
 	for i, c := range auth.AllValidClaims {
-		input[c] = strconv.Itoa(i)
+		want[c] = strconv.Itoa(i)
 	}
 
 	jsonBytes, err := json.Marshal(want)
@@ -195,6 +196,12 @@ func TestResolveClaims(t *testing.T) {
 		{"map of strings", want},
 		{"encoded value", map[string]string{
 			encodedClaimsKey: encoded,
+		}},
+		{"encoded with invalid padding", map[string]string{
+			// This is a bug from production: edgemicro returns strings that are not
+			// padded with =, so the decode fails. Our encoded version is padded
+			// properly, strip off the = so that it is no longer valid.
+			encodedClaimsKey: strings.Replace(encoded, "=", "", -1),
 		}},
 	} {
 		t.Log(ea.desc)
