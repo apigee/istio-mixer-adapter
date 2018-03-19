@@ -14,7 +14,7 @@ Before you install Istio into Kubernetes (step 5: Install Istio’s core compone
 
 Assuming Istio 0.6.0:
 
-Replace: `docker.io/istio/mixer:0.6.0` with: `gcr.io/apigee-api-management-istio/istio-mixer:nightly`
+Replace: `docker.io/istio/mixer:0.6.0` with: `gcr.io/apigee-api-management-istio/istio-mixer:test`
 Replace: `zipkinURL` with `trace_zipkin_url`
 
 (note: after Istio 0.6.0, you shouldn't need the `zipkinURL` replacement anymore)
@@ -42,9 +42,6 @@ At this point, you should have this information:
 * key
 * secret
 
-  apigee_base: https://edgemicroservices.apigee.net/edgemicro/
-  customer_base: https://theganyo1-eval-test.apigee.net/edgemicro-auth
- 
 ## Configure Istio and Apigee Mixer
 
 In the [install]() directory, there are several .yaml files for configuring Istio.
@@ -59,7 +56,8 @@ Edit `install/apigee-handler.yaml` and replace the configuration values with you
       key: {your key}
       secret: {your secret}
 
-(note: the existing apigee_base shouldn't change)
+Note: If you're using Apigee OPDK, you'll need to point `customer_base` and `apigee_base` to your 
+local installation.
 
 Now, apply the Apigee configuration to Istio:
 
@@ -109,11 +107,22 @@ This call should now be successful.
 
 ### Bonus: Force JWT authentication
 
-Apply an Istio authentication policy:
+Update the Istio authentication policy file to set your correct URLs:
+
+      jwts:
+      - issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+      - issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/token
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+        
+The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above,
+adjust as appropriate if you are using OPDK.
+
+Now, apply your Istio authentication policy:
 
     istioctl create -f authentication-policy.yaml
 
-Calls to helloworld should now fail (with or without the API Key).
+Calls to helloworld should now fail (with or without the API Key):
 
     curl http://$HELLOWORLD_URL/hello
     
@@ -124,6 +133,10 @@ Should receive:
 Now get a JWT token:
 
     curl https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey -d '{ "apiKey":"{your consumer key}" }' -H "Content-Type: application/json"
+
+or
+
+    edgemicro token get -o {your organization} -e {your environment} -i {your key} -s {your secret}
 
 Try again with your token:
 

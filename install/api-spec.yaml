@@ -45,7 +45,7 @@ metadata:
   namespace: default
 spec:
   api_specs:
-  - name: helloworld
+  - name: helloworldapi
     namespace: default
   services:
   - name: helloworld
