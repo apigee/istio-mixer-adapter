@@ -214,7 +214,7 @@ func (h *handler) Close() error {
 	return nil
 }
 
-// important: This assumes that the Auth is the same for all records!
+// Handle processing and delivery of Analytics to Apigee
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
 
 	var authContext *auth.Context
@@ -241,6 +241,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 		}
 
+		// important: This assumes that the Auth is the same for all records!
 		if authContext == nil {
 			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, resolveClaims(h.Log(), inst.ApiClaims))
 			// ignore error, take whatever we have
@@ -253,6 +254,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return analytics.SendRecords(authContext, records)
 }
 
+// Handle Authentication and Authorization - NEVER RETURN ERROR!
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	h.Log().Infof("HandleAuthorization: Subject: %#v, Action: %#v", inst.Subject, inst.Action)
 
@@ -283,7 +285,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied(err.Error()),
-		}, err
+		}, nil
 	}
 
 	if authContext.ClientID == "" {
@@ -293,13 +295,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}, nil
 	}
 
-	return h.authorize(authContext, inst.Action.Service, inst.Action.Path)
-}
-
-// authorize: check service, path, scopes
-func (h *handler) authorize(authContext auth.Context, service, path string) (adapter.CheckResult, error) {
-
-	products := h.productMan.Resolve(authContext, service, path)
+	products := h.productMan.Resolve(authContext, inst.Action.Service, inst.Action.Path)
 	if len(products) > 0 {
 		return adapter.CheckResult{
 			Status: status.OK,
@@ -311,7 +307,7 @@ func (h *handler) authorize(authContext auth.Context, service, path string) (ada
 	}, nil
 }
 
-// Istio doesn't understand our Quotas, so it cannot be allowed to cache
+// Handle Quota checks - NEVER RETURN ERROR!
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
 	h.Log().Infof("HandleQuota: %#v args: %v", inst, args)
 
@@ -322,7 +318,8 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 
 	path := inst.Dimensions[pathAttribute].(string)
 	if path == "" {
-		return adapter.QuotaResult{}, fmt.Errorf("path attribute required")
+		h.Log().Errorf("path attribute required")
+		return adapter.QuotaResult{}, nil
 	}
 	apiKey := inst.Dimensions[apiKeyAttribute].(string)
 	api := inst.Dimensions[apiNameAttribute].(string)
@@ -331,15 +328,15 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 
 	claims, ok := inst.Dimensions[apiClaimsAttribute].(map[string]string)
 	if !ok {
-		return adapter.QuotaResult{}, fmt.Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
+		h.Log().Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
+		return adapter.QuotaResult{}, nil
 	}
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, resolveClaims(h.Log(), claims))
 	if err != nil {
-		return adapter.QuotaResult{}, err
+		h.Log().Errorf("auth error: %v", err)
+		return adapter.QuotaResult{}, nil
 	}
-
-	h.Log().Infof("auth: %v", authContext)
 
 	// get relevant products
 	prods := h.productMan.Resolve(authContext, api, path)
@@ -367,7 +364,8 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		}
 	}
 	if anyErr != nil {
-		return adapter.QuotaResult{}, anyErr
+		h.Log().Errorf("quota error: %v", anyErr)
+		return adapter.QuotaResult{}, nil
 	}
 	if exceeded > 0 {
 		return adapter.QuotaResult{
