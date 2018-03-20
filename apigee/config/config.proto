@@ -31,8 +31,4 @@ message Params {
     string env_name      = 4;
     string key           = 5;
     string secret        = 6;
-
-    // Experimental feature: push directly to UAP instead of EdgeMicro. Do not
-    // use unless you are willing to tolerate possible instability.
-    bool use_uap = 7;
 }

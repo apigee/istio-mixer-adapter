@@ -62,7 +62,7 @@ type (
 
 		productMan   *product.Manager
 		authMan      *auth.Manager
-		analyticsMan analytics.Manager
+		analyticsMan *analytics.Manager
 	}
 )
 
@@ -145,12 +145,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	pMan := product.NewManager(*customerBase, env.Logger(), env)
 	aMan := auth.NewManager(env)
-	var anMan analytics.Manager
-	if b.adapterConfig.UseUap {
-		anMan = analytics.NewUAPManager(env)
-	} else {
-		anMan = analytics.NewManager(env)
-	}
+	anMan := analytics.NewManager(env)
 
 	h := &handler{
 		env:          env,
@@ -212,9 +207,7 @@ func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 func (h *handler) Close() error {
 	h.productMan.Close()
 	h.authMan.Close()
-	if h.analyticsMan != nil {
-		h.analyticsMan.Close()
-	}
+	h.analyticsMan.Close()
 	return nil
 }
 

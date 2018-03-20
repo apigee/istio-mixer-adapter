@@ -98,7 +98,7 @@ func TestPushAnalytics(t *testing.T) {
 	t2 := "otherorg~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-	m := newUAPManager().(*uapManager)
+	m := newManager()
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 
