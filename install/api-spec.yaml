@@ -25,7 +25,7 @@ spec:
   attributes:
     attributes:
       api.service:
-        stringValue: helloworldapi
+        stringValue: helloworld.default.svc.cluster.local
       api.version:
         stringValue: v1
   patterns:

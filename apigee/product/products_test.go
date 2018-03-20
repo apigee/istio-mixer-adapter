@@ -93,22 +93,35 @@ func TestResolve(t *testing.T) {
 			Scopes:       []string{"scope2"},
 			Targets:      []string{"service2.istio", "shared.istio"},
 		},
+		"Name 3": {
+			Attributes: []Attribute{
+				{Name: servicesAttr, Value: "shared.istio"},
+			},
+			Environments: []string{"prod"},
+			Name:         "Name 3",
+			Resources:    []string{"/"},
+			Scopes:       []string{},
+			Targets:      []string{"shared.istio"},
+		},
 	}
 
-	products := []string{"Name 1", "Name 2"}
+	products := []string{"Name 1", "Name 2", "Name 3", "Invalid"}
 	scopes := []string{"scope1", "scope2"}
 	api := "shared.istio"
 	path := "/"
 
-	resolved := resolve(productsMap, products, scopes, api, path)
-	if len(resolved) != 2 {
-		t.Errorf("want: 2, got: %d", len(resolved))
+	resolved, failHints := resolve(productsMap, products, scopes, api, path)
+	if len(resolved) != 3 {
+		t.Errorf("want: 3, got: %v", failHints)
+	}
+	if len(failHints) != 1 {
+		t.Errorf("want: 1, got: %v", failHints)
 	}
 
 	scopes = []string{"scope2"}
-	resolved = resolve(productsMap, products, scopes, api, path)
-	if len(resolved) != 1 {
-		t.Errorf("want: 1, got: %d", len(resolved))
+	resolved, failHints = resolve(productsMap, products, scopes, api, path)
+	if len(resolved) != 2 {
+		t.Errorf("want: 2, got: %d", len(resolved))
 	} else {
 		got := resolved[0]
 		want := productsMap["Name 2"]
@@ -116,11 +129,17 @@ func TestResolve(t *testing.T) {
 			t.Errorf("\nwant: %v\n got: %v", want, got)
 		}
 	}
+	if len(failHints) != 2 {
+		t.Errorf("want: 2, got: %v", failHints)
+	}
 
 	products = []string{"Name 1"}
-	resolved = resolve(productsMap, products, scopes, api, path)
+	resolved, failHints = resolve(productsMap, products, scopes, api, path)
 	if len(resolved) != 0 {
 		t.Errorf("want: 0, got: %d", len(resolved))
+	}
+	if len(failHints) != 1 {
+		t.Errorf("want: 1, got: %v", failHints)
 	}
 }
 

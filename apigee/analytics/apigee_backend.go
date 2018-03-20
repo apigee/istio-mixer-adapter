@@ -41,7 +41,6 @@ type errorResponse struct {
 func (ab *apigeeBackend) Start(env adapter.Env) {}
 func (ab *apigeeBackend) Close()                {}
 
-// todo: select best APIProduct based on path, otherwise arbitrary
 func (ab *apigeeBackend) SendRecords(auth *auth.Context, records []Record) error {
 	axURL := auth.ApigeeBase()
 	axURL.Path = path.Join(axURL.Path, fmt.Sprintf(axPath, auth.Organization(), auth.Environment()))
@@ -63,7 +62,7 @@ func (ab *apigeeBackend) SendRecords(auth *auth.Context, records []Record) error
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	auth.Log().Infof("Sending to (%s): %s", axURL.String(), body)
+	auth.Log().Infof("sending %d analytics records to: %s", len(records), axURL.String())
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -81,14 +80,9 @@ func (ab *apigeeBackend) SendRecords(auth *auth.Context, records []Record) error
 		auth.Log().Infof("analytics accepted: %v", string(respBody))
 		return nil
 	default:
-		var errorResponse errorResponse
-		if err = json.Unmarshal(respBody, &errorResponse); err != nil {
-			auth.Log().Infof("analytics unmarshal error: %d, body: %v", resp.StatusCode, string(respBody))
-			return err
-		}
-		auth.Log().Errorf("analytics not sent. reason: %s, code: %s\n",
-			errorResponse.Reason, errorResponse.ErrorCode)
-		return fmt.Errorf("analytics not sent. reason: %s, code: %s",
-			errorResponse.Reason, errorResponse.ErrorCode)
+		auth.Log().Errorf("analytics not accepted. status: %d, body: %s",
+			resp.StatusCode, string(respBody))
+		return fmt.Errorf("analytics not accepted. status: %d, body: %s",
+			resp.StatusCode, string(respBody))
 	}
 }

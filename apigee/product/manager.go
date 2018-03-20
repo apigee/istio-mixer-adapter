@@ -171,12 +171,20 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					for _, t := range targets {
 						product.Targets = append(product.Targets, strings.TrimSpace(t))
 					}
+
+					// server returns empty scopes as array with a single empty string, remove for consistency
+					if len(product.Scopes) == 1 && product.Scopes[0] == "" {
+						product.Scopes = []string{}
+					}
+
 					pm[product.Name] = product
 					break
 				}
 			}
 		}
 		p.products = pm
+
+		log.Infof("retrieved %d products, kept %d", len(res.APIProducts), len(pm))
 
 		// don't block, default means there is existing signal
 		select {
@@ -221,35 +229,53 @@ type quitSignalError error
 
 // Resolve determines the valid products for a given API.
 func (p *Manager) Resolve(ac auth.Context, api, path string) []APIProduct {
-	validProducts := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
-	ac.Log().Infof("Resolve api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
+	validProducts, failHints := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
+	ac.Log().Infof("Resolved api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
+	if len(validProducts) == 0 {
+		ac.Log().Infof("Resolved hints: %s", strings.Join(failHints, ", "))
+	}
 	return validProducts
 }
 
-// todo: naive impl, optimize
-func resolve(pMap map[string]APIProduct, products, scopes []string, api, path string) (result []APIProduct) {
+func resolve(pMap map[string]APIProduct, products, scopes []string, api,
+	path string) (result []APIProduct, failHints []string) {
 
 	for _, name := range products {
-		apiProduct := pMap[name]
+		apiProduct, ok := pMap[name]
+		if !ok {
+			failHints = append(failHints, fmt.Sprintf("%s missing", name))
+			continue
+		}
 		if !apiProduct.isValidScopes(scopes) {
+			failHints = append(failHints, fmt.Sprintf("%s missing scopes: %s", name, scopes))
 			continue
 		}
 		if !apiProduct.isValidPath(path) {
+			failHints = append(failHints, fmt.Sprintf("%s missing path: %s", name, path))
 			continue
 		}
-		for _, target := range apiProduct.Targets {
-			if target == api {
-				result = append(result, apiProduct)
-				break
-			}
+		if !apiProduct.isValidTarget(api) {
+			failHints = append(failHints, fmt.Sprintf("%s missing target: %s", name, api))
+			continue
+		}
+		result = append(result, apiProduct)
+	}
+	return result, failHints
+}
+
+// true if valid target for API Product
+func (p *APIProduct) isValidTarget(api string) bool {
+	for _, target := range p.Targets {
+		if target == api {
+			return true
 		}
 	}
-	return result
+	return false
 }
 
 // true if valid path for API Product
-func (d *APIProduct) isValidPath(requestPath string) bool {
-	for _, resource := range d.Resources {
+func (p *APIProduct) isValidPath(requestPath string) bool {
+	for _, resource := range p.Resources {
 		reg, err := makeResourceRegex(resource)
 		if err == nil && reg.MatchString(requestPath) {
 			return true
@@ -258,9 +284,12 @@ func (d *APIProduct) isValidPath(requestPath string) bool {
 	return false
 }
 
-// true if any intersect of scopes
-func (d *APIProduct) isValidScopes(scopes []string) bool {
-	for _, ds := range d.Scopes {
+// true if any intersect of scopes (or no product scopes)
+func (p *APIProduct) isValidScopes(scopes []string) bool {
+	if len(p.Scopes) == 0 {
+		return true
+	}
+	for _, ds := range p.Scopes {
 		for _, s := range scopes {
 			if ds == s {
 				return true

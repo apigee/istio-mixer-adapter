@@ -37,6 +37,7 @@ func buildRequest(auth *auth.Context, records []Record) (*request, error) {
 		records[i].AccessToken = auth.AccessToken
 		records[i].ClientID = auth.ClientID
 
+		// todo: select best APIProduct based on path, otherwise arbitrary
 		if len(auth.APIProducts) > 0 {
 			records[i].APIProduct = auth.APIProducts[0]
 		}

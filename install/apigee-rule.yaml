@@ -16,4 +16,4 @@ spec:
     instances:
     - apigee.authorization
     - apigee.analytics
-    # - apigee.quota
+#    - apigee.quota
