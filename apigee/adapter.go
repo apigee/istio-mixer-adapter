@@ -405,7 +405,8 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 		}
 
 		if len(encoded)%4 != 0 {
-			// Weird base64 bug, need to pad with =.
+			// Encoded base64 must always have a length divisble by 4, or DecodeString
+			// will fail. Pad with "=" to make it happy.
 			encoded += strings.Repeat("=", 4-(len(encoded)%4))
 		}
 		decoded, err := base64.StdEncoding.DecodeString(encoded)
