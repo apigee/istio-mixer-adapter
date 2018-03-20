@@ -391,7 +391,7 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]interface{} {
 	var claims = map[string]interface{}{}
 	for _, k := range auth.AllValidClaims {
-		if v, ok := claims[k]; ok {
+		if v, ok := claimsIn[k]; ok {
 			claims[k] = v
 		}
 	}
@@ -399,19 +399,17 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 		return claims
 	}
 
-	var err error
 	if encoded, ok := claimsIn[encodedClaimsKey]; ok {
 		if encoded == "" {
 			return claims
 		}
-		var decoded []byte
-		decoded, err = base64.StdEncoding.DecodeString(encoded)
 
-		// hack: weird truncation issue coming from Istio, add suffix and try again
-		if err != nil && strings.HasPrefix(err.Error(), "illegal base64 data") {
-			decoded, err = base64.StdEncoding.DecodeString(encoded + "o=")
+		if len(encoded)%4 != 0 {
+			// Encoded base64 must always have a length divisble by 4, or DecodeString
+			// will fail. Pad with "=" to make it happy.
+			encoded += strings.Repeat("=", 4-(len(encoded)%4))
 		}
-
+		decoded, err := base64.StdEncoding.DecodeString(encoded)
 		if err == nil {
 			err = json.Unmarshal(decoded, &claims)
 		}
