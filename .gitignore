@@ -32,3 +32,6 @@ bin/protoc-*
 # Vim
 *.swp
 *.swo
+
+# Generated proto files
+template/analytics/template_handler_service.*
