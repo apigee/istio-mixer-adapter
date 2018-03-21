@@ -71,6 +71,8 @@ echo "If this fails it is possible things have changed, try deleting your" \
   "vendor directory and Gopkg.lock and attempting again."
 dep ensure || exit 1
 go generate ./... || exit 1
+# Run dep ensure again in case generate added new deps.
+dep ensure || exit 1
 go build ./... || exit 1
 go test ./... || exit 1
 
