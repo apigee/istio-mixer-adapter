@@ -70,6 +70,12 @@ echo "Running dep ensure..."
 echo "If this fails it is possible things have changed, try deleting your" \
   "vendor directory and Gopkg.lock and attempting again."
 dep ensure || exit 1
+# HACK: the first generate will fail sometimes, because the generation process
+# adds dependencies that were ignored by dep ensure. We need to run dep ensure
+# again after the first generate so that it goes and gets new dependencies, and
+# then run generate again.
+go generate ./...
+dep ensure
 go generate ./... || exit 1
 go build ./... || exit 1
 go test ./... || exit 1

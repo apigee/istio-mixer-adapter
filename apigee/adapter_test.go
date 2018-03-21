@@ -30,7 +30,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
-	rpc "istio.io/gogo-genproto/googleapis/google/rpc"
+	"github.com/gogo/googleapis/google/rpc"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
