@@ -13,9 +13,31 @@ required = [
 
 [[constraint]]
   name = "istio.io/api"
-  revision = "a11fc3a78b68ede57ad46fb4d1f7fe5742325489"
+  branch = "master"
 
 [[override]]
   name = "github.com/gogo/protobuf"
   version = "=0.5"
 
+[[override]]
+  name = "github.com/prometheus/client_golang"
+  version = "v0.9.0-pre1"
+
+### Pruning settings
+[prune]
+  unused-packages = true
+  go-tests = true
+  non-go = true
+  [[prune.project]]
+    name = "istio.io/api"
+    non-go = false
+    unused-packages = false
+  [[prune.project]]
+    name = "github.com/gogo/googleapis"
+    non-go = false
+    unused-packages = false
+  [[prune.project]]
+    name = "github.com/gogo/protobuf"
+    non-go = false
+    unused-packages = false
+###
