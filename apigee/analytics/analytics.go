@@ -140,6 +140,11 @@ func (m *Manager) flush() error {
 	var errOut error
 	for pk, rs := range buff {
 		if err := m.push(pk, rs); err != nil {
+			// On a failure, push records back into the buffer so that we attempt to
+			// push them again later.
+			// TODO(robbrit): Do we always want to reload records? What if the records
+			// are corrupt?
+			m.loadRecords(pk, rs)
 			errOut = multierror.Append(errOut, err)
 		}
 	}
@@ -211,6 +216,10 @@ func (m *Manager) signedURL(pk pushKey) (string, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("non-200 status returned from %s: %s", url, resp.Status)
+	}
+
 	var data struct {
 		URL string `json:"url"`
 	}
@@ -253,14 +262,18 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 		base.String(),
 	}
 
+	m.loadRecords(pk, records)
+
+	return nil
+}
+
+func (m *Manager) loadRecords(pk pushKey, records []Record) {
 	m.bufferLock.Lock()
 	// TODO(robbrit): Write these records to a persistent store so that if the
 	// server dies here, we don't lose the records. If we do that, move it into a
 	// different goroutine so that writing the files doesn't slow other things.
 	m.buffer[pk] = append(m.buffer[pk], records...)
 	m.bufferLock.Unlock()
-
-	return nil
 }
 
 // validate confirms that a record has correct values in it.

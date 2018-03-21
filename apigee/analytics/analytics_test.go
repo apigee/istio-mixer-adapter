@@ -22,6 +22,7 @@ import (
 	"net/http/httptest"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,8 +40,10 @@ type testRecordPush struct {
 // A fakeServer wraps around an httptest.Server and tracks the things that have
 // been sent to it.
 type fakeServer struct {
-	records map[string][]testRecordPush
-	srv     *httptest.Server
+	records     map[string][]testRecordPush
+	srv         *httptest.Server
+	failAuth    bool
+	failedCalls int
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -54,6 +57,12 @@ func newFakeServer(t *testing.T) *fakeServer {
 func (fs *fakeServer) handler(t *testing.T) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/analytics", func(w http.ResponseWriter, r *http.Request) {
+		if fs.failAuth {
+			// UAP gives a 404 response when we don't auth properly.
+			fs.failedCalls++
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		// Give them a signed URL. Include the file path they picked so that we can
 		// confirm they are sending the right one.
 		url := "%s/signed-url-1234?relative_file_path=%s&tenant=%s"
@@ -83,6 +92,10 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// This matches every other route - we should not hit this one.
+		t.Fatalf("Unknown route %s hit", r.URL.Path)
+	})
 	return m
 }
 
@@ -91,6 +104,8 @@ func (fs *fakeServer) Records() map[string][]testRecordPush { return fs.records 
 func (fs *fakeServer) URL() string                          { return fs.srv.URL }
 
 func TestPushAnalytics(t *testing.T) {
+	t.Parallel()
+
 	fs := newFakeServer(t)
 	defer fs.Close()
 
@@ -134,7 +149,7 @@ func TestPushAnalytics(t *testing.T) {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
-	// Send one more with a different org on a "different" day>
+	// Send one more with a different org.
 	tc = authtest.NewContext(fs.URL(), env)
 	tc.SetOrganization("otherorg")
 	tc.SetEnvironment("test")
@@ -153,5 +168,53 @@ func TestPushAnalytics(t *testing.T) {
 	// Should have sent things out by now, check it out.
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
+	}
+}
+
+func TestAuthFailure(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	fs.failAuth = true
+	defer fs.Close()
+
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	m := newManager()
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
+
+	records := []Record{{APIProxy: "proxy"}, {APIProduct: "product"}}
+
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	if err := m.flush(); err != nil {
+		if !strings.Contains(err.Error(), "non-200 status") {
+			t.Errorf("unexpected err on flush(): %s", err)
+		}
+	} else {
+		t.Errorf("expected 404 error on flush()")
+	}
+
+	// Should have triggered the process by now, but we don't want any records sent.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+	if fs.failedCalls == 0 {
+		t.Errorf("Should have hit signedURL endpoint at least once.")
 	}
 }
