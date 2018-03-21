@@ -181,8 +181,6 @@ if [ "$opttemplate" = true ]; then
     die "template generation failure: $err";
   fi
 
-  rm $templatePG
-
   exit 0
 fi
 
