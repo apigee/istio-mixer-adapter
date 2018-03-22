@@ -175,6 +175,14 @@ func TestPushAnalytics(t *testing.T) {
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
 	}
+
+	// Should have deleted everything.
+	files, err := ioutil.ReadDir(d)
+	if err != nil {
+		t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+	} else if len(files) > 0 {
+		t.Errorf("got %d records on disk, want 0", len(files))
+	}
 }
 
 func TestAuthFailure(t *testing.T) {
@@ -231,5 +239,13 @@ func TestAuthFailure(t *testing.T) {
 	}
 	if fs.failedCalls == 0 {
 		t.Errorf("Should have hit signedURL endpoint at least once.")
+	}
+
+	// All the files should still be there.
+	files, err := ioutil.ReadDir(d)
+	if err != nil {
+		t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+	} else if len(files) != 1 {
+		t.Errorf("got %d records on disk, want 1", len(files))
 	}
 }
