@@ -143,9 +143,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	pMan := product.NewManager(*customerBase, env.Logger(), env)
-	aMan := auth.NewManager(env)
-	anMan := analytics.NewManager(env, analytics.Options{
+	productMan := product.NewManager(*customerBase, env.Logger(), env)
+	authMan := auth.NewManager(env)
+	analyticsMan := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
 	})
 
@@ -157,9 +157,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		envName:      b.adapterConfig.EnvName,
 		key:          b.adapterConfig.Key,
 		secret:       b.adapterConfig.Secret,
-		productMan:   pMan,
-		authMan:      aMan,
-		analyticsMan: anMan,
+		productMan:   productMan,
+		authMan:      authMan,
+		analyticsMan: analyticsMan,
 	}
 
 	return h, nil
