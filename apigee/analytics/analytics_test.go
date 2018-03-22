@@ -18,8 +18,10 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path"
 	"reflect"
 	"strings"
@@ -113,7 +115,15 @@ func TestPushAnalytics(t *testing.T) {
 	t2 := "otherorg~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-	m := newManager()
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m := newManager(Options{
+		BufferPath: d,
+	})
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 
@@ -141,11 +151,7 @@ func TestPushAnalytics(t *testing.T) {
 	tc.SetEnvironment("test")
 	ctx := &auth.Context{Context: tc}
 
-	// Send them in batches to ensure we group them all together.
-	if err := m.SendRecords(ctx, wantRecords[t1][0].records[:1]); err != nil {
-		t.Errorf("Error on SendRecords(): %s", err)
-	}
-	if err := m.SendRecords(ctx, wantRecords[t1][0].records[1:]); err != nil {
+	if err := m.SendRecords(ctx, wantRecords[t1][0].records); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
@@ -179,7 +185,16 @@ func TestAuthFailure(t *testing.T) {
 	defer fs.Close()
 
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-	m := newManager()
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m := newManager(Options{
+		BufferPath: d,
+	})
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 
@@ -202,12 +217,12 @@ func TestAuthFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	if err := m.flush(); err != nil {
+	if err := m.upload(); err != nil {
 		if !strings.Contains(err.Error(), "non-200 status") {
-			t.Errorf("unexpected err on flush(): %s", err)
+			t.Errorf("unexpected err on upload(): %s", err)
 		}
 	} else {
-		t.Errorf("expected 404 error on flush()")
+		t.Errorf("expected 404 error on upload()")
 	}
 
 	// Should have triggered the process by now, but we don't want any records sent.

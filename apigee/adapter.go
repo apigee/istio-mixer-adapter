@@ -145,7 +145,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	pMan := product.NewManager(*customerBase, env.Logger(), env)
 	aMan := auth.NewManager(env)
-	anMan := analytics.NewManager(env)
+	anMan := analytics.NewManager(env, analytics.Options{
+		BufferPath: b.adapterConfig.BufferPath,
+	})
 
 	h := &handler{
 		env:          env,

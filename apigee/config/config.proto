@@ -31,4 +31,7 @@ message Params {
     string env_name      = 4;
     string key           = 5;
     string secret        = 6;
+
+    // Path to where analytics records are persisted before uploading to Apigee.
+    string buffer_path = 7;
 }

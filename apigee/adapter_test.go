@@ -18,9 +18,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -95,13 +97,21 @@ func TestHandleAnalytics(t *testing.T) {
 
 	ctx := context.Background()
 
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
 	h := &handler{
 		env:          env,
 		apigeeBase:   *baseURL,
 		customerBase: *baseURL,
 		orgName:      "org",
 		envName:      "env",
-		analyticsMan: analytics.NewManager(env),
+		analyticsMan: analytics.NewManager(env, analytics.Options{
+			BufferPath: d,
+		}),
 	}
 
 	inst := []*analyticsT.Instance{
