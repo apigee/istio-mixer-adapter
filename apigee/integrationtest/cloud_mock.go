@@ -54,7 +54,6 @@ func CloudMockHandler(t *testing.T) http.HandlerFunc {
 
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/jwkPublicKeys"):
-			// Handling the JWK verifier
 			key, err := jwk.New(&privateKey.PublicKey)
 			if err != nil {
 				t.Fatal(err)
@@ -73,11 +72,19 @@ func CloudMockHandler(t *testing.T) http.HandlerFunc {
 			json.NewEncoder(w).Encode(jwks)
 
 		case strings.HasPrefix(r.URL.Path, "/verifyApiKey"):
+			keyReq := apiKeyRequest{}
+			json.NewDecoder(r.Body).Decode(&keyReq)
+			if keyReq.APIKey != "goodkey" {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(401)
+				w.Write([]byte(`{"fault":{"faultstring":"Invalid ApiKey","detail":{"errorcode":"oauth.v2.InvalidApiKey"}}}`))
+				return
+			}
+
 			jwt, err := generateJWT(privateKey)
 			if err != nil {
 				t.Fatal(err)
 			}
-
 			jwtResponse := apiKeyResponse{Token: jwt}
 
 			w.Header().Set("Content-Type", "application/json")
@@ -141,4 +148,8 @@ type apiResponse struct {
 
 type apiKeyResponse struct {
 	Token string `json:"token"`
+}
+
+type apiKeyRequest struct {
+	APIKey string `json:"apiKey"`
 }

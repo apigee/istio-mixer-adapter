@@ -19,63 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/apigee/istio-mixer-adapter/apigee"
 	mixer "istio.io/api/mixer/v1"
-	"istio.io/istio/mixer/pkg/adapter"
 	integration "istio.io/istio/mixer/pkg/adapter/test"
-	quotaT "istio.io/istio/mixer/template/quota"
 )
-
-const (
-	adapterConfig = `
-apiVersion: config.istio.io/v1alpha2
-kind: apigee
-metadata:
-  name: apigee-handler
-  namespace: istio-system
-spec:
-  apigee_base: __SERVER_BASE_URL__
-  customer_base: __SERVER_BASE_URL__
-  org_name: org
-  env_name: env
-  key: key
-  secret: secret
-
----
-
-apiVersion: config.istio.io/v1alpha2
-kind: rule
-metadata:
-  name: apigee-rule
-  namespace: istio-system
-spec:
-  actions:
-  - handler: apigee-handler.apigee
-    instances:
-    - apigee.quota
-
----
-
-# instance configuration for template 'apigee.quota'
-apiVersion: config.istio.io/v1alpha2
-kind: quota
-metadata:
-  name: apigee
-  namespace: istio-system
-spec:
-  dimensions:
-    api: api.service | destination.service | ""
-    path: request.path | ""
-    api_key: request.api_key | request.headers["x-api-key"] | ""
-    encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
-`
-)
-
-func testGetInfo() adapter.Info {
-	info := apigee.GetInfo()
-	info.SupportedTemplates = []string{quotaT.TemplateName}
-	return info
-}
 
 /*
    api: api.service | destination.service | ""
@@ -89,11 +35,11 @@ func TestQuota(t *testing.T) {
 		quotas map[string]mixer.CheckRequest_QuotaParams
 		want   string
 	}{
-		"Request 30": {
+		"Good request": {
 			attrs: map[string]interface{}{
 				"api.service":     "service",
 				"request.path":    "/path",
-				"request.api_key": "key",
+				"request.api_key": "goodkey",
 			},
 			quotas: map[string]mixer.CheckRequest_QuotaParams{
 				"key1": {
@@ -122,11 +68,10 @@ func TestQuota(t *testing.T) {
 	ts := httptest.NewServer(CloudMockHandler(t))
 	defer ts.Close()
 
-	for id, c := range cases {
-		serviceCfg := adapterConfig
-		serviceCfg = strings.Replace(serviceCfg, "__SERVER_BASE_URL__", ts.URL, -1)
+	serviceCfg := strings.Replace(adapterConfigForQuota(), "__SERVER_BASE_URL__", ts.URL, -1)
 
-		t.Logf("**Executing test case '%s'**", id)
+	for id, c := range cases {
+		t.Logf("** Executing test case '%s' **", id)
 		integration.RunTest(
 			t,
 			testGetInfo,
