@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -52,6 +53,12 @@ func TestValidateBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
 	b := GetInfo().NewBuilder().(*builder)
 
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
@@ -62,6 +69,7 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
+		BufferPath:   d,
 	})
 
 	if err := b.Validate(); err != nil {
@@ -103,19 +111,28 @@ func TestHandleAnalytics(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	analyticsMan, err := analytics.NewManager(env, analytics.Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("analytics.NewManager: %s", err)
+	}
+
 	h := &handler{
 		env:          env,
 		apigeeBase:   *baseURL,
 		customerBase: *baseURL,
 		orgName:      "org",
 		envName:      "env",
-		analyticsMan: analytics.NewManager(env, analytics.Options{
-			BufferPath: d,
-		}),
+		analyticsMan: analyticsMan,
 	}
 
 	inst := []*analyticsT.Instance{
-		{Name: "name"},
+		{
+			Name: "name",
+			ClientReceivedStartTimestamp: time.Now(),
+			ClientReceivedEndTimestamp:   time.Now(),
+		},
 	}
 
 	err = h.HandleAnalytics(ctx, inst)

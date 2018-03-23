@@ -145,9 +145,12 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	productMan := product.NewManager(*customerBase, env.Logger(), env)
 	authMan := auth.NewManager(env)
-	analyticsMan := analytics.NewManager(env, analytics.Options{
+	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	h := &handler{
 		env:          env,

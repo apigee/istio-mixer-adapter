@@ -121,23 +121,50 @@ func TestPushAnalytics(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
-	m := newManager(Options{
-		BufferPath: d,
+	m, err := newManager(Options{
+		BufferPath:   d,
+		AnalyticsURL: fs.URL() + "/analytics",
 	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 
 	wantRecords := map[string][]testRecordPush{
 		t1: {
 			{
-				records: []Record{{APIProxy: "proxy"}, {APIProduct: "product"}},
-				dir:     fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				records: []Record{
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProxy:                     "proxy",
+					},
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProduct:                   "product",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
 			},
 		},
 		t2: {
 			{
-				records: []Record{{RequestURI: "request URI"}},
-				dir:     fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				records: []Record{
+					{
+						Organization:                 "otherorg",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						RequestURI:                   "request URI",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
 			},
 		},
 	}
@@ -200,13 +227,32 @@ func TestAuthFailure(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
-	m := newManager(Options{
-		BufferPath: d,
+	m, err := newManager(Options{
+		BufferPath:   d,
+		AnalyticsURL: fs.URL() + "/analytics",
 	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 50 * time.Millisecond
 
-	records := []Record{{APIProxy: "proxy"}, {APIProduct: "product"}}
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
+	}
 
 	env := adaptertest.NewEnv(t)
 	m.log = env.Logger()

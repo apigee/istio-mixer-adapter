@@ -17,7 +17,9 @@ package analytics
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -32,12 +34,12 @@ import (
 )
 
 const (
-	axRecordType     = "APIAnalytics"
-	uapPath          = "/analytics"
-	httpTimeout      = 60 * time.Second
-	defaultSpoolSize = 100
-	pathFmt          = "date=%s/time=%d-%d/"
-	fileFmt          = "%s_%d_%s_writer_0.json.gz"
+	axRecordType        = "APIAnalytics"
+	defaultAnalyticsURL = "https://hybrid-eap.apigee.com/edgex/analytics"
+	httpTimeout         = 60 * time.Second
+	defaultSpoolSize    = 100
+	pathFmt             = "date=%s/time=%d-%d/"
+	fileFmt             = "%s_%d_%s_writer_0.json.gz"
 	// collection interval is not configurable at the moment because UAP can
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
@@ -58,7 +60,7 @@ type recordData struct {
 	Key            string
 	Secret         string
 	Base           string
-	EncodedRecords []byte
+	EncodedRecords string
 }
 
 // A Manager is a way for Istio to interact with Apigee's analytics platform.
@@ -69,6 +71,7 @@ type Manager struct {
 	log                adapter.Logger
 	collectionInterval time.Duration
 	bufferPath         string
+	analyticsURL       string
 
 	// This needs to be a unique value for this instance of mixer, otherwise
 	// different mixers have a small probability of clobbering one another.
@@ -79,19 +82,39 @@ type Manager struct {
 type Options struct {
 	// BufferPath is the directory where the adapter will buffer analytics records.
 	BufferPath string
+	// AnalyticsURL is where analytics get uploaded to.
+	AnalyticsURL string
 }
 
 // NewManager constructs and starts a new Manager. Call Close when you are done.
-func NewManager(env adapter.Env, opts Options) *Manager {
-	m := newManager(opts)
+func NewManager(env adapter.Env, opts Options) (*Manager, error) {
+	m, err := newManager(opts)
+	if err != nil {
+		return nil, err
+	}
 	m.Start(env)
-	return m
+	return m, nil
 }
 
-func newManager(opts Options) *Manager {
+func newManager(opts Options) (*Manager, error) {
 	if opts.BufferPath == "" {
 		opts.BufferPath = defaultBufferPath
 	}
+	if opts.AnalyticsURL == "" {
+		opts.AnalyticsURL = defaultAnalyticsURL
+	}
+
+	if _, err := os.Stat(opts.BufferPath); err != nil {
+		if os.IsNotExist(err) {
+			// Attempt to create it.
+			if err := os.MkdirAll(opts.BufferPath, os.ModeDir); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("stat buffer path: %s", err)
+		}
+	}
+
 	return &Manager{
 		close: make(chan bool),
 		client: &http.Client{
@@ -100,8 +123,9 @@ func newManager(opts Options) *Manager {
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
 		bufferPath:         opts.BufferPath,
+		analyticsURL:       opts.AnalyticsURL,
 		instanceID:         uuid.New().String(),
-	}
+	}, nil
 }
 
 // Start starts the manager.
@@ -148,6 +172,7 @@ func (m *Manager) upload() error {
 	}
 
 	var errOut error
+	var success int
 	for _, fi := range files {
 		fullName := path.Join(m.bufferPath, fi.Name())
 		f, err := os.Open(fullName)
@@ -166,8 +191,11 @@ func (m *Manager) upload() error {
 			errOut = multierror.Append(errOut, err)
 		} else if err := os.Remove(fullName); err != nil {
 			errOut = multierror.Append(errOut, fmt.Errorf("rm %s: %s", fullName, err))
+		} else {
+			success++
 		}
 	}
+	m.log.Infof("Uploaded %d analytics records.", success)
 	return errOut
 }
 
@@ -178,7 +206,12 @@ func (m *Manager) push(rd *recordData, filename string) error {
 		return fmt.Errorf("signedURL: %s", err)
 	}
 
-	buf := bytes.NewBuffer(rd.EncodedRecords)
+	b, err := base64.StdEncoding.DecodeString(rd.EncodedRecords)
+	if err != nil {
+		return fmt.Errorf("base64 decode: %s", err)
+	}
+
+	buf := bytes.NewBuffer(b)
 	req, err := http.NewRequest("PUT", url, buf)
 	if err != nil {
 		return fmt.Errorf("http.NewRequest: %s", err)
@@ -203,8 +236,7 @@ func (m *Manager) push(rd *recordData, filename string) error {
 
 // signedURL constructs a signed URL that can be used to upload records.
 func (m *Manager) signedURL(rd *recordData, filename string) (string, error) {
-	url := rd.Base + uapPath
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", m.analyticsURL, nil)
 	if err != nil {
 		return "", err
 	}
@@ -225,7 +257,7 @@ func (m *Manager) signedURL(rd *recordData, filename string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("non-200 status returned from %s: %s", url, resp.Status)
+		return "", fmt.Errorf("non-200 status returned from %s: %s", m.analyticsURL, resp.Status)
 	}
 
 	var data struct {
@@ -248,25 +280,32 @@ func (m *Manager) uploadDir() string {
 
 // SendRecords sends the records asynchronously to the UAP primary server.
 func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
+	r, err := buildRequest(ctx, records)
+	if r == nil || err != nil {
+		return err
+	}
+
 	for _, record := range records {
 		if err := m.validate(record); err != nil {
 			return fmt.Errorf("validate(%v): %s", record, err)
 		}
 	}
 
-	r, err := buildRequest(ctx, records)
-	if r == nil || err != nil {
-		return err
-	}
-
 	// Encode records into gzipped JSON
 	buf := new(bytes.Buffer)
-	gz := gzip.NewWriter(buf)
+	b64 := base64.NewEncoder(base64.StdEncoding, buf)
+	gz := gzip.NewWriter(b64)
 	if err := json.NewEncoder(gz).Encode(records); err != nil {
 		return fmt.Errorf("JSON encode: %s", err)
 	}
 	if err := gz.Flush(); err != nil {
-		return fmt.Errorf("gzip upload: %s", err)
+		return fmt.Errorf("gzip flush: %s", err)
+	}
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("gzip close: %s", err)
+	}
+	if err := b64.Close(); err != nil {
+		return fmt.Errorf("b64 close: %s", err)
 	}
 
 	base := ctx.ApigeeBase()
@@ -276,7 +315,7 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 		ctx.Key(),
 		ctx.Secret(),
 		base.String(),
-		buf.Bytes(),
+		buf.String(),
 	}
 
 	u, err := uuid.NewRandom()
@@ -298,9 +337,35 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 }
 
 // validate confirms that a record has correct values in it.
-func (m *Manager) validate(record Record) error {
-	// TODO(robbrit): What validation do we need?
-	return nil
+func (m *Manager) validate(r Record) error {
+	var err error
+
+	// Validate that certain fields are set.
+	if r.Organization == "" {
+		err = multierror.Append(err, errors.New("missing Organization"))
+	}
+	if r.Environment == "" {
+		err = multierror.Append(err, errors.New("missing Environment"))
+	}
+	if r.ClientReceivedStartTimestamp == 0 {
+		err = multierror.Append(err, errors.New("missing ClientReceivedStartTimestamp"))
+	}
+	if r.ClientReceivedEndTimestamp == 0 {
+		err = multierror.Append(err, errors.New("missing ClientReceivedEndTimestamp"))
+	}
+	if r.ClientReceivedStartTimestamp > r.ClientReceivedEndTimestamp {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp > ClientReceivedEndTimestamp"))
+	}
+
+	// Validate that timestamps make sense.
+	ts := time.Unix(r.ClientReceivedStartTimestamp/1000, 0)
+	if ts.After(m.now()) {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be in the future"))
+	}
+	if ts.Before(m.now().Add(-90 * 24 * time.Hour)) {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be more than 90 days old"))
+	}
+	return err
 }
 
 func buildRequest(auth *auth.Context, records []Record) (*request, error) {
@@ -319,6 +384,8 @@ func buildRequest(auth *auth.Context, records []Record) (*request, error) {
 		records[i].DeveloperApp = auth.Application
 		records[i].AccessToken = auth.AccessToken
 		records[i].ClientID = auth.ClientID
+		records[i].Organization = auth.Organization()
+		records[i].Environment = auth.Environment()
 
 		// todo: select best APIProduct based on path, otherwise arbitrary
 		if len(auth.APIProducts) > 0 {
