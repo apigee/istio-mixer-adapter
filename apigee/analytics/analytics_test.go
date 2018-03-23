@@ -121,8 +121,11 @@ func TestPushAnalytics(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	// Use a subdirectory to ensure that we can set up the directory properly.
+	bufferPath := path.Join(d, "subdir")
+
 	m, err := newManager(Options{
-		BufferPath:   d,
+		BufferPath:   bufferPath,
 		AnalyticsURL: fs.URL() + "/analytics",
 	})
 	if err != nil {
@@ -204,11 +207,14 @@ func TestPushAnalytics(t *testing.T) {
 	}
 
 	// Should have deleted everything.
-	files, err := ioutil.ReadDir(d)
+	files, err := ioutil.ReadDir(bufferPath)
 	if err != nil {
-		t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		t.Errorf("ioutil.ReadDir(%s): %s", bufferPath, err)
 	} else if len(files) > 0 {
 		t.Errorf("got %d records on disk, want 0", len(files))
+		for _, f := range files {
+			t.Log(path.Join(bufferPath, f.Name()))
+		}
 	}
 }
 

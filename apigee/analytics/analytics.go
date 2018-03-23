@@ -34,23 +34,14 @@ import (
 )
 
 const (
-	axRecordType        = "APIAnalytics"
-	defaultAnalyticsURL = "https://hybrid-eap.apigee.com/edgex/analytics"
-	httpTimeout         = 60 * time.Second
-	defaultSpoolSize    = 100
-	pathFmt             = "date=%s/time=%d-%d/"
-	fileFmt             = "%s_%d_%s_writer_0.json.gz"
+	axRecordType = "APIAnalytics"
+	httpTimeout  = 60 * time.Second
+	pathFmt      = "date=%s/time=%d-%d/"
 	// collection interval is not configurable at the moment because UAP can
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
-	defaultBufferPath         = "/tmp/apigee-ax/buffer/"
 )
-
-// TimeToUnix converts a time to a UNIX timestamp in milliseconds.
-func TimeToUnix(t time.Time) int64 {
-	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
-}
 
 // recordData is a struct that wraps some buffered records with the inf
 // needed to upload to UAP.
@@ -59,7 +50,6 @@ type recordData struct {
 	Env            string
 	Key            string
 	Secret         string
-	Base           string
 	EncodedRecords string
 }
 
@@ -72,10 +62,6 @@ type Manager struct {
 	collectionInterval time.Duration
 	bufferPath         string
 	analyticsURL       string
-
-	// This needs to be a unique value for this instance of mixer, otherwise
-	// different mixers have a small probability of clobbering one another.
-	instanceID string
 }
 
 // Options allows us to specify options for how this analytics manager will run.
@@ -97,17 +83,10 @@ func NewManager(env adapter.Env, opts Options) (*Manager, error) {
 }
 
 func newManager(opts Options) (*Manager, error) {
-	if opts.BufferPath == "" {
-		opts.BufferPath = defaultBufferPath
-	}
-	if opts.AnalyticsURL == "" {
-		opts.AnalyticsURL = defaultAnalyticsURL
-	}
-
+	// Ensure that the buffer path exists and we can access it.
 	if _, err := os.Stat(opts.BufferPath); err != nil {
 		if os.IsNotExist(err) {
-			// Attempt to create it.
-			if err := os.MkdirAll(opts.BufferPath, os.ModeDir); err != nil {
+			if err := os.MkdirAll(opts.BufferPath, os.FileMode(0700)); err != nil {
 				return nil, err
 			}
 		} else {
@@ -124,7 +103,6 @@ func newManager(opts Options) (*Manager, error) {
 		collectionInterval: defaultCollectionInterval,
 		bufferPath:         opts.BufferPath,
 		analyticsURL:       opts.AnalyticsURL,
-		instanceID:         uuid.New().String(),
 	}, nil
 }
 
@@ -173,6 +151,7 @@ func (m *Manager) upload() error {
 
 	var errOut error
 	var success int
+	// TODO(someone): If this is slow, use a pool of goroutines to upload.
 	for _, fi := range files {
 		fullName := path.Join(m.bufferPath, fi.Name())
 		f, err := os.Open(fullName)
@@ -280,22 +259,40 @@ func (m *Manager) uploadDir() string {
 
 // SendRecords sends the records asynchronously to the UAP primary server.
 func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
-	r, err := buildRequest(ctx, records)
-	if r == nil || err != nil {
-		return err
-	}
+	// First ensure that all the records have some additional fields in them.
+	for i := range records {
+		records[i].RecordType = axRecordType
 
-	for _, record := range records {
-		if err := m.validate(record); err != nil {
-			return fmt.Errorf("validate(%v): %s", record, err)
+		// populate from auth context
+		records[i].DeveloperEmail = ctx.DeveloperEmail
+		records[i].DeveloperApp = ctx.Application
+		records[i].AccessToken = ctx.AccessToken
+		records[i].ClientID = ctx.ClientID
+		records[i].Organization = ctx.Organization()
+		records[i].Environment = ctx.Environment()
+
+		// todo: select best APIProduct based on path, otherwise arbitrary
+		if len(ctx.APIProducts) > 0 {
+			records[i].APIProduct = ctx.APIProducts[0]
 		}
 	}
 
-	// Encode records into gzipped JSON
+	// Validate the records.
+	goodRecords := []Record{}
+	for _, record := range records {
+		if err := m.validate(record); err != nil {
+			m.log.Errorf("invalid record %v: %s", record, err)
+			continue
+		}
+		goodRecords = append(goodRecords, record)
+	}
+
+	// Records are stored as JSON on disk, with one field containing all the
+	// info that will be uploaded to the server.
 	buf := new(bytes.Buffer)
 	b64 := base64.NewEncoder(base64.StdEncoding, buf)
 	gz := gzip.NewWriter(b64)
-	if err := json.NewEncoder(gz).Encode(records); err != nil {
+	if err := json.NewEncoder(gz).Encode(goodRecords); err != nil {
 		return fmt.Errorf("JSON encode: %s", err)
 	}
 	if err := gz.Flush(); err != nil {
@@ -308,13 +305,11 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 		return fmt.Errorf("b64 close: %s", err)
 	}
 
-	base := ctx.ApigeeBase()
 	rd := &recordData{
 		ctx.Organization(),
 		ctx.Environment(),
 		ctx.Key(),
 		ctx.Secret(),
-		base.String(),
 		buf.String(),
 	}
 
@@ -366,36 +361,4 @@ func (m *Manager) validate(r Record) error {
 		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be more than 90 days old"))
 	}
 	return err
-}
-
-func buildRequest(auth *auth.Context, records []Record) (*request, error) {
-	if auth == nil || len(records) == 0 {
-		return nil, nil
-	}
-	if auth.Organization() == "" || auth.Environment() == "" {
-		return nil, fmt.Errorf("organization and environment are required in auth: %v", auth)
-	}
-
-	for i := range records {
-		records[i].RecordType = axRecordType
-
-		// populate from auth context
-		records[i].DeveloperEmail = auth.DeveloperEmail
-		records[i].DeveloperApp = auth.Application
-		records[i].AccessToken = auth.AccessToken
-		records[i].ClientID = auth.ClientID
-		records[i].Organization = auth.Organization()
-		records[i].Environment = auth.Environment()
-
-		// todo: select best APIProduct based on path, otherwise arbitrary
-		if len(auth.APIProducts) > 0 {
-			records[i].APIProduct = auth.APIProducts[0]
-		}
-	}
-
-	return &request{
-		Organization: auth.Organization(),
-		Environment:  auth.Environment(),
-		Records:      records,
-	}, nil
 }

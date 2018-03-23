@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -118,9 +119,19 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 			quotaT.TemplateName,
 		},
-		DefaultConfig: &config.Params{},
-		NewBuilder:    func() adapter.HandlerBuilder { return &builder{} },
+		DefaultConfig: &config.Params{
+			BufferPath:   "/tmp/apigee-ax/buffer/",
+			AnalyticsUrl: "https://hybrid-eap.apigee.com/edgex/analytics",
+		},
+		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
+}
+
+////////////////// timeToUnix //////////////////////////
+
+// timeToUnix converts a time to a UNIX timestamp in milliseconds.
+func timeToUnix(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
 ////////////////// adapter.Builder //////////////////////////
@@ -146,7 +157,8 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	productMan := product.NewManager(*customerBase, env.Logger(), env)
 	authMan := auth.NewManager(env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		BufferPath: b.adapterConfig.BufferPath,
+		BufferPath:   b.adapterConfig.BufferPath,
+		AnalyticsURL: b.adapterConfig.AnalyticsUrl,
 	})
 	if err != nil {
 		return nil, err
@@ -226,14 +238,14 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		h.Log().Infof("HandleAnalytics: %#v", inst)
 
 		record := analytics.Record{
-			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
-			ClientSentEndTimestamp:       analytics.TimeToUnix(inst.ClientSentEndTimestamp),
-			TargetReceivedStartTimestamp: analytics.TimeToUnix(inst.TargetReceivedStartTimestamp),
-			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
-			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
-			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
+			ClientReceivedStartTimestamp: timeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientReceivedEndTimestamp:   timeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientSentStartTimestamp:     timeToUnix(inst.ClientSentStartTimestamp),
+			ClientSentEndTimestamp:       timeToUnix(inst.ClientSentEndTimestamp),
+			TargetReceivedStartTimestamp: timeToUnix(inst.TargetReceivedStartTimestamp),
+			TargetReceivedEndTimestamp:   timeToUnix(inst.TargetReceivedEndTimestamp),
+			TargetSentStartTimestamp:     timeToUnix(inst.TargetSentStartTimestamp),
+			TargetSentEndTimestamp:       timeToUnix(inst.TargetSentEndTimestamp),
 			APIProxy:                     inst.ApiProxy,
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,

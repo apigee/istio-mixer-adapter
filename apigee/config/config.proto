@@ -34,4 +34,6 @@ message Params {
 
     // Path to where analytics records are persisted before uploading to Apigee.
     string buffer_path = 7;
+    // URL for where analytics should get sent to.
+    string analytics_url = 8;
 }
