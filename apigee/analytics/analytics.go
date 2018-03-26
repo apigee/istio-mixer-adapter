@@ -15,9 +15,7 @@
 package analytics
 
 import (
-	"bytes"
 	"compress/gzip"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -37,20 +36,28 @@ const (
 	axRecordType = "APIAnalytics"
 	httpTimeout  = 60 * time.Second
 	pathFmt      = "date=%s/time=%d-%d/"
+	bufferMode   = os.FileMode(0700)
+	tempDir      = "temp"
+	stagingDir   = "staging"
+
 	// collection interval is not configurable at the moment because UAP can
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
 )
 
-// recordData is a struct that wraps some buffered records with the inf
-// needed to upload to UAP.
-type recordData struct {
-	Org            string
-	Env            string
-	Key            string
-	Secret         string
-	EncodedRecords string
+// A bucket keeps track of all the things we need to read/write the analytics
+// files.
+type bucket struct {
+	filename string
+	gz       *gzip.Writer
+	f        *os.File
+}
+
+// A cred keeps track of the key/secret for a given bucket.
+type cred struct {
+	key    string
+	secret string
 }
 
 // A Manager is a way for Istio to interact with Apigee's analytics platform.
@@ -60,8 +67,12 @@ type Manager struct {
 	now                func() time.Time
 	log                adapter.Logger
 	collectionInterval time.Duration
-	bufferPath         string
+	tempDir            string
+	stagingDir         string
 	analyticsURL       string
+	bucketsLock        sync.RWMutex
+	buckets            map[string]bucket // Map from dirname -> bucket.
+	creds              sync.Map          // Map from dirname -> cred.
 }
 
 // Options allows us to specify options for how this analytics manager will run.
@@ -84,15 +95,18 @@ func NewManager(env adapter.Env, opts Options) (*Manager, error) {
 
 func newManager(opts Options) (*Manager, error) {
 	// Ensure that the buffer path exists and we can access it.
-	if _, err := os.Stat(opts.BufferPath); err != nil {
-		if os.IsNotExist(err) {
-			if err := os.MkdirAll(opts.BufferPath, os.FileMode(0700)); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("stat buffer path: %s", err)
-		}
+	td := path.Join(opts.BufferPath, tempDir)
+	sd := path.Join(opts.BufferPath, stagingDir)
+	if err := os.MkdirAll(td, bufferMode); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %s", td, err)
 	}
+	if err := os.MkdirAll(sd, bufferMode); err != nil {
+		return nil, fmt.Errorf("mkdir %s: %s", sd, err)
+	}
+
+	// TODO(someone): a crash recovery here, check the temp dir for existing
+	// files, make sure they have proper gzip footers, and then dump them into the
+	// staging dir.
 
 	return &Manager{
 		close: make(chan bool),
@@ -101,8 +115,11 @@ func newManager(opts Options) (*Manager, error) {
 		},
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
-		bufferPath:         opts.BufferPath,
+		tempDir:            td,
+		stagingDir:         sd,
 		analyticsURL:       opts.AnalyticsURL,
+		buckets:            map[string]bucket{},
+		creds:              sync.Map{},
 	}, nil
 }
 
@@ -120,7 +137,7 @@ func (m *Manager) Close() {
 		return
 	}
 	m.close <- true
-	if err := m.upload(); err != nil {
+	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
 	}
 }
@@ -132,7 +149,7 @@ func (m *Manager) uploadLoop() {
 	for {
 		select {
 		case <-t.C:
-			if err := m.upload(); err != nil {
+			if err := m.uploadAll(); err != nil {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
 		case <-m.close:
@@ -142,92 +159,149 @@ func (m *Manager) uploadLoop() {
 	}
 }
 
-// upload sends any buffered data to UAP.
-func (m *Manager) upload() error {
-	files, err := ioutil.ReadDir(m.bufferPath)
+// commitStaging moves anything in the temp dir to the staging dir.
+func (m *Manager) commitStaging() error {
+	subdirs, err := ioutil.ReadDir(m.tempDir)
 	if err != nil {
-		return fmt.Errorf("ReadDir(%s): %s", m.bufferPath, err)
+		return fmt.Errorf("ReadDir(%s): %s", m.tempDir, err)
+	}
+
+	var errs error
+	for _, subdir := range subdirs {
+		sn := subdir.Name()
+
+		m.bucketsLock.Lock()
+		if b, ok := m.buckets[sn]; ok {
+			// Remove the bucket, this shouldn't be an issue since the file will still
+			// be there and we can pick it up the next iteration.
+			delete(m.buckets, sn)
+			if err := b.gz.Close(); err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("gzip.Close %s: %s", sn, err))
+			} else if err := b.f.Close(); err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("file.Close %s: %s", sn, err))
+			}
+		}
+		m.bucketsLock.Unlock()
+
+		// Copy over all the files in the temp dir to the staging dir.
+		old := path.Join(m.tempDir, sn)
+		new := path.Join(m.stagingDir, sn)
+		files, err := ioutil.ReadDir(old)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("ioutil.ReadDir(%s): %s", old, err))
+			continue
+		}
+		if err := os.MkdirAll(new, bufferMode); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", new, err))
+			continue
+		}
+		for _, f := range files {
+			oldf := path.Join(old, f.Name())
+			newf := path.Join(new, f.Name())
+			if err := os.Rename(oldf, newf); err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldf, err))
+				continue
+			}
+		}
+	}
+	return errs
+}
+
+// uploadAll commits everything from staging and then uploads it.
+func (m *Manager) uploadAll() error {
+	if err := m.commitStaging(); err != nil {
+		m.log.Errorf("Error moving analytics into staging dir: %s", err)
+		// Don't return here, we may have committed some dirs and will want to
+		// upload them.
+	}
+
+	subdirs, err := ioutil.ReadDir(m.stagingDir)
+	if err != nil {
+		return fmt.Errorf("ReadDir(%s): %s", m.stagingDir, err)
 	}
 
 	var errOut error
-	var success int
 	// TODO(someone): If this is slow, use a pool of goroutines to upload.
-	for _, fi := range files {
-		fullName := path.Join(m.bufferPath, fi.Name())
-		f, err := os.Open(fullName)
-		if err != nil {
+	for _, subdir := range subdirs {
+		if err := m.upload(subdir.Name()); err != nil {
 			errOut = multierror.Append(errOut, err)
-			continue
-		}
-
-		var rd recordData
-		if err := json.NewDecoder(f).Decode(&rd); err != nil {
-			errOut = multierror.Append(errOut, fmt.Errorf("json.Decode(): %s", err))
-			continue
-		}
-
-		if err := m.push(&rd, fi.Name()); err != nil {
-			errOut = multierror.Append(errOut, err)
-		} else if err := os.Remove(fullName); err != nil {
-			errOut = multierror.Append(errOut, fmt.Errorf("rm %s: %s", fullName, err))
-		} else {
-			success++
 		}
 	}
-	m.log.Infof("Uploaded %d analytics records.", success)
 	return errOut
 }
 
-// push sends records to UAP.
-func (m *Manager) push(rd *recordData, filename string) error {
-	url, err := m.signedURL(rd, filename)
+// upload sends all the files in a given staging subdir to UAP.
+func (m *Manager) upload(subdir string) error {
+	p := path.Join(m.stagingDir, subdir)
+	files, err := ioutil.ReadDir(p)
 	if err != nil {
-		return fmt.Errorf("signedURL: %s", err)
+		return fmt.Errorf("ls %s: %s", p, err)
 	}
+	var errs error
+	for _, fi := range files {
+		url, err := m.signedURL(subdir, fi.Name())
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("signedURL: %s", err))
+			continue
+		}
+		fn := path.Join(p, fi.Name())
+		f, err := os.Open(fn)
+		if err != nil {
+			errs = multierror.Append(errs, err)
+			continue
+		}
 
-	b, err := base64.StdEncoding.DecodeString(rd.EncodedRecords)
-	if err != nil {
-		return fmt.Errorf("base64 decode: %s", err)
+		req, err := http.NewRequest("PUT", url, f)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("http.NewRequest: %s", err))
+			continue
+		}
+
+		req.Header.Set("Expect", "100-continue")
+		req.Header.Set("Content-Type", "application/x-gzip")
+		req.Header.Set("x-amz-server-side-encryption", "AES256")
+		req.ContentLength = fi.Size()
+
+		resp, err := m.client.Do(req)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("client.Do(): %s", err))
+			continue
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 200 {
+			errs = multierror.Append(errs, fmt.Errorf("push %s/%s to store returned %v", p, fi.Name(), resp.Status))
+			continue
+		}
+
+		if err := os.Remove(fn); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("rm %s: %s", fn, err))
+			continue
+		}
 	}
-
-	buf := bytes.NewBuffer(b)
-	req, err := http.NewRequest("PUT", url, buf)
-	if err != nil {
-		return fmt.Errorf("http.NewRequest: %s", err)
-	}
-
-	req.Header.Set("Expect", "100-continue")
-	req.Header.Set("Content-Type", "application/x-gzip")
-	req.Header.Set("x-amz-server-side-encryption", "AES256")
-	req.ContentLength = int64(buf.Len())
-
-	resp, err := m.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("client.Do(): %s", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("push to store returned %v", resp.Status)
-	}
-	return nil
+	return errs
 }
 
 // signedURL constructs a signed URL that can be used to upload records.
-func (m *Manager) signedURL(rd *recordData, filename string) (string, error) {
+func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	req, err := http.NewRequest("GET", m.analyticsURL, nil)
 	if err != nil {
 		return "", err
 	}
 
 	q := req.URL.Query()
-	q.Add("tenant", fmt.Sprintf("%s~%s", rd.Org, rd.Env))
+	q.Add("tenant", subdir)
 	q.Add("relative_file_path", path.Join(m.uploadDir(), filename))
 	q.Add("file_content_type", "application/x-gzip")
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
 
-	req.SetBasicAuth(rd.Key, rd.Secret)
+	credsI, ok := m.creds.Load(subdir)
+	if !ok {
+		return "", fmt.Errorf("no auth creds for %s", subdir)
+	}
+	creds := credsI.(cred)
+
+	req.SetBasicAuth(creds.key, creds.secret)
 
 	resp, err := m.client.Do(req)
 	if err != nil {
@@ -257,9 +331,8 @@ func (m *Manager) uploadDir() string {
 	return fmt.Sprintf(pathFmt, d, start, end)
 }
 
-// SendRecords sends the records asynchronously to the UAP primary server.
-func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
-	// First ensure that all the records have some additional fields in them.
+// ensureFields makes sure all the records in a list have the fields they need.
+func (m *Manager) ensureFields(ctx *auth.Context, records []Record) {
 	for i := range records {
 		records[i].RecordType = axRecordType
 
@@ -276,6 +349,11 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 			records[i].APIProduct = ctx.APIProducts[0]
 		}
 	}
+}
+
+// SendRecords sends the records asynchronously to the UAP primary server.
+func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
+	m.ensureFields(ctx, records)
 
 	// Validate the records.
 	goodRecords := []Record{}
@@ -287,47 +365,56 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 		goodRecords = append(goodRecords, record)
 	}
 
-	// Records are stored as JSON on disk, with one field containing all the
-	// info that will be uploaded to the server.
-	buf := new(bytes.Buffer)
-	b64 := base64.NewEncoder(base64.StdEncoding, buf)
-	gz := gzip.NewWriter(b64)
+	// Write records to the file on disk.
+	d := m.bucketDir(ctx)
+	m.bucketsLock.RLock()
+	if _, ok := m.buckets[d]; !ok {
+		m.bucketsLock.RUnlock()
+		if err := m.createBucket(ctx, d); err != nil {
+			return err
+		}
+		m.bucketsLock.RLock()
+	}
+	defer m.bucketsLock.RUnlock()
+
+	gz := m.buckets[d].gz
 	if err := json.NewEncoder(gz).Encode(goodRecords); err != nil {
 		return fmt.Errorf("JSON encode: %s", err)
 	}
 	if err := gz.Flush(); err != nil {
-		return fmt.Errorf("gzip flush: %s", err)
+		return fmt.Errorf("gzip.Flush(): %s", err)
 	}
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("gzip close: %s", err)
-	}
-	if err := b64.Close(); err != nil {
-		return fmt.Errorf("b64 close: %s", err)
-	}
+	return nil
+}
 
-	rd := &recordData{
-		ctx.Organization(),
-		ctx.Environment(),
-		ctx.Key(),
-		ctx.Secret(),
-		buf.String(),
-	}
+func (m *Manager) bucketDir(ctx *auth.Context) string {
+	return fmt.Sprintf("%s~%s", ctx.Organization(), ctx.Environment())
+}
+
+func (m *Manager) createBucket(ctx *auth.Context, d string) error {
+	m.bucketsLock.Lock()
+	defer m.bucketsLock.Unlock()
 
 	u, err := uuid.NewRandom()
 	if err != nil {
 		return fmt.Errorf("uuid.Random(): %s", err)
 	}
 
-	fn := path.Join(m.bufferPath, u.String()+".json.gz")
+	p := path.Join(m.tempDir, d)
 
-	f, err := os.Create(fn)
+	if err := os.MkdirAll(p, bufferMode); err != nil {
+		return fmt.Errorf("mkdir %s: %s", p, err)
+	}
+
+	fn := u.String() + ".json.gz"
+
+	f, err := os.Create(path.Join(p, fn))
 	if err != nil {
 		return err
 	}
-	if err := json.NewEncoder(f).Encode(rd); err != nil {
-		return fmt.Errorf("json.Encode(): %s", err)
-	}
 
+	m.buckets[d] = bucket{fn, gzip.NewWriter(f), f}
+	m.creds.Store(d, cred{ctx.Key(), ctx.Secret()})
 	return nil
 }
 

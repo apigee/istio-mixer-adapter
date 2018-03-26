@@ -45,6 +45,7 @@ type fakeServer struct {
 	records     map[string][]testRecordPush
 	srv         *httptest.Server
 	failAuth    bool
+	failUpload  bool
 	failedCalls int
 }
 
@@ -73,6 +74,11 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		})
 	})
 	m.HandleFunc("/signed-url-1234", func(w http.ResponseWriter, r *http.Request) {
+		if fs.failUpload {
+			fs.failedCalls++
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
 		gz, err := gzip.NewReader(r.Body)
 		if err != nil {
 			t.Fatalf("Error on gzip.NewReader: %s", err)
@@ -207,13 +213,20 @@ func TestPushAnalytics(t *testing.T) {
 	}
 
 	// Should have deleted everything.
-	files, err := ioutil.ReadDir(bufferPath)
-	if err != nil {
-		t.Errorf("ioutil.ReadDir(%s): %s", bufferPath, err)
-	} else if len(files) > 0 {
-		t.Errorf("got %d records on disk, want 0", len(files))
-		for _, f := range files {
-			t.Log(path.Join(bufferPath, f.Name()))
+	for _, p := range []string{
+		"/temp/hi~test/",
+		"/temp/otherorg~test/",
+		"/staging/hi~test/",
+		"/staging/otherorg~test/",
+	} {
+		files, err := ioutil.ReadDir(bufferPath + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
+		} else if len(files) > 0 {
+			t.Errorf("got %d records on disk, want 0", len(files))
+			for _, f := range files {
+				t.Log(path.Join(bufferPath, f.Name()))
+			}
 		}
 	}
 }
@@ -277,7 +290,7 @@ func TestAuthFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	if err := m.upload(); err != nil {
+	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "non-200 status") {
 			t.Errorf("unexpected err on upload(): %s", err)
 		}
@@ -294,10 +307,179 @@ func TestAuthFailure(t *testing.T) {
 	}
 
 	// All the files should still be there.
-	files, err := ioutil.ReadDir(d)
+	for p, wantCount := range map[string]int{
+		"/temp/hi~test/":    0,
+		"/staging/hi~test/": 1,
+	} {
+		files, err := ioutil.ReadDir(d + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
+		}
+	}
+}
+
+func TestUploadFailure(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	fs.failUpload = true
+	defer fs.Close()
+
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
 	if err != nil {
-		t.Errorf("ioutil.ReadDir(%s): %s", d, err)
-	} else if len(files) != 1 {
-		t.Errorf("got %d records on disk, want 1", len(files))
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath:   d,
+		AnalyticsURL: fs.URL() + "/analytics",
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
+
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	if err := m.uploadAll(); err != nil {
+		if !strings.Contains(err.Error(), "404 Not Found") {
+			t.Errorf("unexpected err on upload(): %s", err)
+		}
+	} else {
+		t.Errorf("expected 404 error on upload()")
+	}
+
+	// Should have triggered the process by now, but we don't want any records sent.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+	if fs.failedCalls == 0 {
+		t.Errorf("Should have hit signedURL endpoint at least once.")
+	}
+
+	// All the files should still be there.
+	for p, wantCount := range map[string]int{
+		"/temp/hi~test/":    0,
+		"/staging/hi~test/": 1,
+	} {
+		files, err := ioutil.ReadDir(d + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
+		}
+	}
+}
+
+func TestValidationFailure(t *testing.T) {
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	for _, test := range []struct {
+		desc      string
+		record    Record
+		wantError string
+	}{
+		{"good record", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, ""},
+		{"missing org", Record{
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, "missing Organization"},
+		{"missing env", Record{
+			Organization:                 "hi",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, "missing Environment"},
+		{"missing start timestamp", Record{
+			Organization:               "hi",
+			Environment:                "test",
+			ClientReceivedEndTimestamp: ts * 1000,
+		}, "missing ClientReceivedStartTimestamp"},
+		{"missing end timestamp", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+		}, "missing ClientReceivedEndTimestamp"},
+		{"end < start", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts*1000 - 1,
+		}, "ClientReceivedStartTimestamp > ClientReceivedEndTimestamp"},
+		{"in the future", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: (ts + 1) * 1000,
+			ClientReceivedEndTimestamp:   (ts + 1) * 1000,
+		}, "in the future"},
+		{"too old", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: (ts - 91*24*3600) * 1000,
+			ClientReceivedEndTimestamp:   (ts - 91*24*3600) * 1000,
+		}, "more than 90 days old"},
+	} {
+		t.Log(test.desc)
+
+		m := Manager{}
+		m.now = func() time.Time { return time.Unix(ts, 0) }
+
+		gotErr := m.validate(test.record)
+		if test.wantError == "" {
+			if gotErr != nil {
+				t.Errorf("got error %s, want none", gotErr)
+			}
+			continue
+		}
+		if gotErr == nil {
+			t.Errorf("got nil error, want one containing %s", test.wantError)
+			continue
+		}
+
+		if !strings.Contains(gotErr.Error(), test.wantError) {
+			t.Errorf("error %s should contain '%s'", gotErr, test.wantError)
+		}
 	}
 }
