@@ -68,7 +68,7 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Res
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	auth.Log().Infof("Sending to (%s): %s\n", quotaURL.String(), body)
+	auth.Log().Infof("Sending to (%s): %s", quotaURL.String(), body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -85,11 +85,13 @@ func Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) (Res
 	case 200:
 		var quotaResult Result
 		if err = json.Unmarshal(respBody, &quotaResult); err != nil {
-			err = auth.Log().Errorf("Error unmarshalling: %s\n", string(respBody))
+			err = auth.Log().Errorf("Error unmarshalling: %s", string(respBody))
+		} else {
+			auth.Log().Infof("Quota result: %#v", quotaResult)
 		}
 		return quotaResult, err
 
 	default:
-		return Result{}, auth.Log().Errorf("quota apply failed. result: %s\n", string(respBody))
+		return Result{}, auth.Log().Errorf("quota apply failed. result: %s", string(respBody))
 	}
 }
