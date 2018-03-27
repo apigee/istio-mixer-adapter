@@ -44,4 +44,8 @@ required = [
     name = "github.com/gogo/protobuf"
     non-go = false
     unused-packages = false
+  [[prune.project]]
+    name = "istio.io/istio"
+    non-go = false
+    unused-packages = false
 ###

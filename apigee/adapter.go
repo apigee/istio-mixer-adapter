@@ -272,16 +272,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	h.Log().Infof("HandleAuthorization: Subject: %#v, Action: %#v", inst.Subject, inst.Action)
 
-	// Mixer template says this is map[string]interface{}, but won't allow non-string values...
-	// so, we'll have to take the entire properties value as the claims since we can't nest a map
-	// also, need to convert to map[string]string for processing by resolveClaims()
-	c := map[string]string{}
-	for k, v := range inst.Subject.Properties {
-		if vstr, ok := v.(string); ok {
-			c[k] = vstr
-		}
-	}
-	claims := resolveClaims(h.Log(), c)
+	claims := resolveClaimsInterface(h.Log(), inst.Subject.Properties)
 
 	var apiKey string
 	if k, ok := inst.Subject.Properties[apiKeyAttribute]; ok {
@@ -338,15 +329,9 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	apiKey := inst.Dimensions[apiKeyAttribute].(string)
 	api := inst.Dimensions[apiNameAttribute].(string)
 
-	h.Log().Infof("api: %v, key: %v, path: %v", api, apiKey, path)
+	claims := resolveClaimsInterface(h.Log(), inst.Dimensions)
 
-	claims, ok := inst.Dimensions[apiClaimsAttribute].(map[string]string)
-	if !ok {
-		h.Log().Errorf("wrong claims type: %v", inst.Dimensions[apiClaimsAttribute])
-		return adapter.QuotaResult{}, nil
-	}
-
-	authContext, err := h.authMan.Authenticate(h, apiKey, resolveClaims(h.Log(), claims))
+	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
 	if err != nil {
 		h.Log().Errorf("auth error: %v", err)
 		return adapter.QuotaResult{}, nil
@@ -437,4 +422,15 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 	}
 
 	return claims
+}
+
+// convert map[string]interface{} to string[string]string so we can call real resolveClaims
+func resolveClaimsInterface(log adapter.Logger, claimsIn map[string]interface{}) map[string]interface{} {
+	c := map[string]string{}
+	for k, v := range claimsIn {
+		if vstr, ok := v.(string); ok {
+			c[k] = vstr
+		}
+	}
+	return resolveClaims(log, c)
 }
