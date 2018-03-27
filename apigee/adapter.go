@@ -120,8 +120,7 @@ func GetInfo() adapter.Info {
 			quotaT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
-			BufferPath:   "/tmp/apigee-ax/buffer/",
-			AnalyticsUrl: "https://hybrid-eap.apigee.com/edgex/analytics",
+			BufferPath: "/tmp/apigee-ax/buffer/",
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
@@ -157,8 +156,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	productMan := product.NewManager(*customerBase, env.Logger(), env)
 	authMan := auth.NewManager(env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		BufferPath:   b.adapterConfig.BufferPath,
-		AnalyticsURL: b.adapterConfig.AnalyticsUrl,
+		BufferPath: b.adapterConfig.BufferPath,
 	})
 	if err != nil {
 		return nil, err

@@ -131,8 +131,7 @@ func TestPushAnalytics(t *testing.T) {
 	bufferPath := path.Join(d, "subdir")
 
 	m, err := newManager(Options{
-		BufferPath:   bufferPath,
-		AnalyticsURL: fs.URL() + "/analytics",
+		BufferPath: bufferPath,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -247,8 +246,7 @@ func TestAuthFailure(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	m, err := newManager(Options{
-		BufferPath:   d,
-		AnalyticsURL: fs.URL() + "/analytics",
+		BufferPath: d,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -336,8 +334,7 @@ func TestUploadFailure(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	m, err := newManager(Options{
-		BufferPath:   d,
-		AnalyticsURL: fs.URL() + "/analytics",
+		BufferPath: d,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -497,8 +494,7 @@ func TestCrashRecovery(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	m, err := newManager(Options{
-		BufferPath:   d,
-		AnalyticsURL: fs.URL() + "/analytics",
+		BufferPath: d,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)

@@ -34,12 +34,13 @@ import (
 )
 
 const (
-	axRecordType = "APIAnalytics"
-	httpTimeout  = 60 * time.Second
-	pathFmt      = "date=%s/time=%d-%d/"
-	bufferMode   = os.FileMode(0700)
-	tempDir      = "temp"
-	stagingDir   = "staging"
+	analyticsPath = "/analytics"
+	axRecordType  = "APIAnalytics"
+	httpTimeout   = 60 * time.Second
+	pathFmt       = "date=%s/time=%d-%d/"
+	bufferMode    = os.FileMode(0700)
+	tempDir       = "temp"
+	stagingDir    = "staging"
 
 	// collection interval is not configurable at the moment because UAP can
 	// become unstable if all the Istio adapters are spamming it faster than
@@ -59,6 +60,7 @@ type bucket struct {
 type cred struct {
 	key    string
 	secret string
+	base   string
 }
 
 // A Manager is a way for Istio to interact with Apigee's analytics platform.
@@ -80,8 +82,6 @@ type Manager struct {
 type Options struct {
 	// BufferPath is the directory where the adapter will buffer analytics records.
 	BufferPath string
-	// AnalyticsURL is where analytics get uploaded to.
-	AnalyticsURL string
 }
 
 // NewManager constructs and starts a new Manager. Call Close when you are done.
@@ -114,7 +114,6 @@ func newManager(opts Options) (*Manager, error) {
 		collectionInterval: defaultCollectionInterval,
 		tempDir:            td,
 		stagingDir:         sd,
-		analyticsURL:       opts.AnalyticsURL,
 		buckets:            map[string]bucket{},
 		creds:              sync.Map{},
 	}, nil
@@ -368,7 +367,13 @@ func (m *Manager) upload(subdir string) error {
 
 // signedURL constructs a signed URL that can be used to upload records.
 func (m *Manager) signedURL(subdir, filename string) (string, error) {
-	req, err := http.NewRequest("GET", m.analyticsURL, nil)
+	credsI, ok := m.creds.Load(subdir)
+	if !ok {
+		return "", fmt.Errorf("no auth creds for %s", subdir)
+	}
+	creds := credsI.(cred)
+
+	req, err := http.NewRequest("GET", creds.base+analyticsPath, nil)
 	if err != nil {
 		return "", err
 	}
@@ -379,12 +384,6 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	q.Add("file_content_type", "application/x-gzip")
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
-
-	credsI, ok := m.creds.Load(subdir)
-	if !ok {
-		return "", fmt.Errorf("no auth creds for %s", subdir)
-	}
-	creds := credsI.(cred)
 
 	req.SetBasicAuth(creds.key, creds.secret)
 
@@ -499,7 +498,8 @@ func (m *Manager) createBucket(ctx *auth.Context, d string) error {
 	}
 
 	m.buckets[d] = bucket{fn, gzip.NewWriter(f), f}
-	m.creds.Store(d, cred{ctx.Key(), ctx.Secret()})
+	base := ctx.ApigeeBase()
+	m.creds.Store(d, cred{ctx.Key(), ctx.Secret(), base.String()})
 	return nil
 }
 
