@@ -15,6 +15,7 @@
 package analytics
 
 import (
+	"bufio"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
@@ -104,10 +105,6 @@ func newManager(opts Options) (*Manager, error) {
 		return nil, fmt.Errorf("mkdir %s: %s", sd, err)
 	}
 
-	// TODO(someone): a crash recovery here, check the temp dir for existing
-	// files, make sure they have proper gzip footers, and then dump them into the
-	// staging dir.
-
 	return &Manager{
 		close: make(chan bool),
 		client: &http.Client{
@@ -123,9 +120,97 @@ func newManager(opts Options) (*Manager, error) {
 	}, nil
 }
 
+// crashRecovery cleans up the temp and staging dirs post-crash. This function
+// assumes that both the temp and staging dirs exist and are accessible.
+func (m *Manager) crashRecovery() error {
+	dirs, err := ioutil.ReadDir(m.tempDir)
+	if err != nil {
+		return err
+	}
+	var errs error
+	for _, d := range dirs {
+		bucket := d.Name()
+		files, err := ioutil.ReadDir(path.Join(m.tempDir, bucket))
+		if err != nil {
+			errs = multierror.Append(errs, err)
+			continue
+		}
+
+		for _, fi := range files {
+			old := path.Join(m.tempDir, bucket, fi.Name())
+			new := path.Join(m.stagingDir, bucket, fi.Name())
+			// Check if it is a valid gzip file.
+			f, err := os.Open(old)
+			if err != nil {
+				errs = multierror.Append(errs, err)
+				continue
+			}
+			gz, err := gzip.NewReader(f)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("gzip.NewReader(%s): %s", fi.Name(), err))
+				continue
+			}
+			if _, err := ioutil.ReadAll(gz); err != nil {
+				// File couldn't be read, attempt recovery.
+				if err.Error() != "unexpected EOF" {
+					errs = multierror.Append(errs, fmt.Errorf("readall(%s): %s", fi.Name(), err))
+				} else if err := m.recoverFile(old, new); err != nil {
+					errs = multierror.Append(errs, err)
+				}
+				continue
+			}
+			if err := os.Rename(old, new); err != nil {
+				errs = multierror.Append(errs, err)
+				continue
+			}
+		}
+	}
+	return errs
+}
+
+// recoverFile recovers gzipped data in a file and puts it into a new file.
+func (m *Manager) recoverFile(old, new string) error {
+	in, err := os.Open(old)
+	if err != nil {
+		return fmt.Errorf("open %s: %s", old, err)
+	}
+	br := bufio.NewReader(in)
+	gzr, err := gzip.NewReader(br)
+	if err != nil {
+		return fmt.Errorf("gzip.NewReader(%s): %s", old, err)
+	}
+	defer gzr.Close()
+
+	out, err := os.Create(new)
+	if err != nil {
+		return fmt.Errorf("create %s: %s", new, err)
+	}
+	defer out.Close()
+	gzw := gzip.NewWriter(out)
+	defer gzw.Close()
+
+	// The size of this buffer is arbitrary and doesn't really matter.
+	b := make([]byte, 1000)
+	for {
+		if _, err := gzr.Read(b); err != nil {
+			if err.Error() != "unexpected EOF" && err.Error() != "EOF" {
+				return fmt.Errorf("scan %s: %s", old, err)
+			}
+			break
+		}
+		gzw.Write(b)
+	}
+	return nil
+}
+
 // Start starts the manager.
 func (m *Manager) Start(env adapter.Env) {
 	m.log = env.Logger()
+
+	if err := m.crashRecovery(); err != nil {
+		m.log.Errorf("Error(s) recovering crashed data: %s", err)
+	}
+
 	env.ScheduleDaemon(func() {
 		m.uploadLoop()
 	})

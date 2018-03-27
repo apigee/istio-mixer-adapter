@@ -483,3 +483,104 @@ func TestValidationFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestCrashRecovery(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath:   d,
+		AnalyticsURL: fs.URL() + "/analytics",
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	// Set logger so we can log things while debugging.
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	// Put two files into the temp dir:
+	// - a good gzip file
+	// - a corrupted gzip file
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	rec := Record{
+		Organization:                 "hi",
+		Environment:                  "test",
+		ClientReceivedStartTimestamp: ts * 1000,
+		ClientReceivedEndTimestamp:   ts * 1000,
+	}
+
+	bucket := path.Join(m.tempDir, "hi~test")
+	targetBucket := path.Join(m.stagingDir, "hi~test")
+	if err := os.MkdirAll(bucket, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(targetBucket, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	goodFile := path.Join(bucket, "good.json.gz")
+	brokeFile := path.Join(bucket, "broke.json.gz")
+
+	f, err := os.Create(goodFile)
+	if err != nil {
+		t.Fatalf("error creating good file: %s", err)
+	}
+	gz := gzip.NewWriter(f)
+	json.NewEncoder(gz).Encode(&rec)
+	gz.Flush()
+	gz.Close()
+	f.Close()
+
+	f, _ = os.Create(brokeFile)
+	gz = gzip.NewWriter(f)
+	json.NewEncoder(gz).Encode(&rec)
+	// Close the file, but don't close the gzip to ensure it's broken.
+	gz.Flush()
+	f.Close()
+
+	// Now attempt recovery.
+	if err := m.crashRecovery(); err != nil {
+		t.Fatal(err)
+	}
+
+	// We should have two proper gzip files in the staging dir.
+	files, err := ioutil.ReadDir(targetBucket)
+	if err != nil {
+		t.Fatalf("ls %s: %s", targetBucket, err)
+	}
+
+	if len(files) != 2 {
+		t.Errorf("got %d files in staging, want 2:", len(files))
+		for _, fi := range files {
+			t.Log(fi.Name())
+		}
+	}
+	for _, fi := range files {
+		// Confirm that it's a valid gzip file.
+		f, err := os.Open(path.Join(targetBucket, fi.Name()))
+		if err != nil {
+			t.Fatalf("error opening %s: %s", fi.Name(), err)
+		}
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			t.Errorf("gzip error %s: %s", fi.Name(), err)
+		}
+		var got Record
+		if err := json.NewDecoder(gz).Decode(&got); err != nil {
+			t.Errorf("json decode error %s: %s", fi.Name(), err)
+		}
+
+		if got != rec {
+			t.Errorf("file %s: got %v, want %v", fi.Name(), got, rec)
+		}
+	}
+}
