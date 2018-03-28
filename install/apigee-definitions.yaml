@@ -62,15 +62,8 @@ spec:
   client_sent_end_timestamp: response.time
   api_claims: # from jwt
     encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
-    # api_product_list: request.auth.claims["api_product_list"] | ""
-    # audience: request.auth.claims["audience"] | ""
-    # access_token: request.auth.claims["access_token"] | ""
-    # client_id: request.auth.claims["client_id"] | ""
-    # application_name: request.auth.claims["application_name"] | ""
-    # scopes: request.auth.claims["scopes"] | ""
-    # exp: request.auth.claims["exp"] | ""
 ---
-# Bind Istio authorization template attributes to Apigee adapter
+# instance configuration for template 'apigee.authorization'
 apiVersion: config.istio.io/v1alpha2
 kind: authorization
 metadata:
@@ -81,15 +74,8 @@ spec:
     user: ""
     groups: ""
     properties:
-      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
       api_key: request.api_key | request.headers["x-api-key"] | ""
-      # api_product_list: request.auth.claims["api_product_list"] | ""
-      # audience: request.auth.claims["audience"] | ""
-      # access_token: request.auth.claims["access_token"] | ""
-      # client_id: request.auth.claims["client_id"] | ""
-      # application_name: request.auth.claims["application_name"] | ""
-      # scopes: request.auth.claims["scopes"] | ""
-      # exp: request.auth.claims["exp"] | ""
+      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
   action:
     namespace: destination.namespace | "default"
     service: api.service | destination.service | ""
@@ -108,10 +94,33 @@ spec:
     path: request.path | ""
     api_key: request.api_key | request.headers["x-api-key"] | ""
     encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
-    # api_product_list: request.auth.claims["api_product_list"] | ""
-    # audience: request.auth.claims["audience"] | ""
-    # access_token: request.auth.claims["access_token"] | ""
-    # client_id: request.auth.claims["client_id"] | ""
-    # application_name: request.auth.claims["application_name"] | ""
-    # scopes: request.auth.claims["scopes"] | ""
-    # exp: request.auth.claims["exp"] | ""
+---
+# Deny any request with header 'sec-istio-auth-userinfo'
+apiVersion: "config.istio.io/v1alpha2"
+kind: denier
+metadata:
+  name: restricted-header
+  namespace: istio-system
+spec:
+  status:
+    code: 401
+    message: "Restricted header: sec-istio-auth-userinfo"
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: checknothing
+metadata:
+  name: restricted-header
+  namespace: istio-system
+spec:
+---
+apiVersion: "config.istio.io/v1alpha2"
+kind: rule
+metadata:
+  name: restricted-header
+  namespace: istio-system
+spec:
+  match: destination.labels["istio"] == "ingress" && request.headers["sec-istio-auth-userinfo"] != ""
+  actions:
+  - handler: restricted-header.denier
+    instances:
+    - restricted-header.checknothing
