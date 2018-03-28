@@ -10,7 +10,7 @@ metadata:
   name: apigee-rule
   namespace: istio-system
 spec:
-  match: destination.service != "istio-ingress.istio-system.svc.cluster.local"
+  match: destination.labels["istio"] != "ingress"
   actions:
   - handler: apigee-handler.apigee
     instances:
