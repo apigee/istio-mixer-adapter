@@ -59,7 +59,7 @@ func newFakeServer(t *testing.T) *fakeServer {
 
 func (fs *fakeServer) handler(t *testing.T) http.Handler {
 	m := http.NewServeMux()
-	m.HandleFunc("/analytics", func(w http.ResponseWriter, r *http.Request) {
+	m.HandleFunc("/analytics/", func(w http.ResponseWriter, r *http.Request) {
 		if fs.failAuth {
 			// UAP gives a 404 response when we don't auth properly.
 			fs.failedCalls++

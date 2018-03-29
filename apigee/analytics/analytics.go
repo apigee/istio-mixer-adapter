@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,7 +35,7 @@ import (
 )
 
 const (
-	analyticsPath = "/analytics"
+	analyticsPath = "/analytics/organization/%s/environment/%s"
 	axRecordType  = "APIAnalytics"
 	httpTimeout   = 60 * time.Second
 	pathFmt       = "date=%s/time=%d-%d/"
@@ -135,9 +136,16 @@ func (m *Manager) crashRecovery() error {
 			continue
 		}
 
+		// Ensure the staging directory exists.
+		p := path.Join(m.stagingDir, bucket)
+		if err := os.MkdirAll(p, bufferMode); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", p, err))
+			continue
+		}
+
 		for _, fi := range files {
 			old := path.Join(m.tempDir, bucket, fi.Name())
-			new := path.Join(m.stagingDir, bucket, fi.Name())
+			new := path.Join(p, fi.Name())
 			// Check if it is a valid gzip file.
 			f, err := os.Open(old)
 			if err != nil {
@@ -229,7 +237,7 @@ func (m *Manager) Close() {
 // uploadLoop runs a timer that periodically pushes everything in the buffer
 // directory to the server.
 func (m *Manager) uploadLoop() {
-	t := time.NewTimer(m.collectionInterval)
+	t := time.NewTicker(m.collectionInterval)
 	for {
 		select {
 		case <-t.C:
@@ -237,6 +245,7 @@ func (m *Manager) uploadLoop() {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
 		case <-m.close:
+			m.log.Infof("analytics close signal received, shutting down")
 			t.Stop()
 			return
 		}
@@ -251,6 +260,7 @@ func (m *Manager) commitStaging() error {
 	}
 
 	var errs error
+	successes := 0
 	for _, subdir := range subdirs {
 		sn := subdir.Name()
 
@@ -286,8 +296,10 @@ func (m *Manager) commitStaging() error {
 				errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldf, err))
 				continue
 			}
+			successes++
 		}
 	}
+	m.log.Infof("committed %d analytics packages to staging to be uploaded", successes)
 	return errs
 }
 
@@ -311,6 +323,7 @@ func (m *Manager) uploadAll() error {
 			errOut = multierror.Append(errOut, err)
 		}
 	}
+	m.log.Infof("completed analytics upload, going back to sleep")
 	return errOut
 }
 
@@ -322,6 +335,7 @@ func (m *Manager) upload(subdir string) error {
 		return fmt.Errorf("ls %s: %s", p, err)
 	}
 	var errs error
+	successes := 0
 	for _, fi := range files {
 		url, err := m.signedURL(subdir, fi.Name())
 		if err != nil {
@@ -361,8 +375,18 @@ func (m *Manager) upload(subdir string) error {
 			errs = multierror.Append(errs, fmt.Errorf("rm %s: %s", fn, err))
 			continue
 		}
+		successes++
 	}
+	m.log.Infof("uploaded %d analytics packages.", successes)
 	return errs
+}
+
+func (m *Manager) orgEnvFromSubdir(subdir string) (string, string) {
+	s := strings.Split(subdir, "~")
+	if len(s) == 2 {
+		return s[0], s[1]
+	}
+	return "", ""
 }
 
 // signedURL constructs a signed URL that can be used to upload records.
@@ -373,7 +397,14 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	}
 	creds := credsI.(cred)
 
-	req, err := http.NewRequest("GET", creds.base+analyticsPath, nil)
+	org, env := m.orgEnvFromSubdir(subdir)
+	if org == "" || env == "" {
+		return "", fmt.Errorf("invalid subdir %s", subdir)
+	}
+
+	p := creds.base + fmt.Sprintf(analyticsPath, org, env)
+
+	req, err := http.NewRequest("GET", p, nil)
 	if err != nil {
 		return "", err
 	}
