@@ -44,8 +44,8 @@ type testRecordPush struct {
 type fakeServer struct {
 	records     map[string][]testRecordPush
 	srv         *httptest.Server
-	failAuth    bool
-	failUpload  bool
+	failAuth    func() int
+	failUpload  int
 	failedCalls int
 }
 
@@ -53,6 +53,7 @@ func newFakeServer(t *testing.T) *fakeServer {
 	fs := &fakeServer{
 		records: map[string][]testRecordPush{},
 	}
+	fs.failAuth = func() int { return 0 }
 	fs.srv = httptest.NewServer(fs.handler(t))
 	return fs
 }
@@ -60,10 +61,9 @@ func newFakeServer(t *testing.T) *fakeServer {
 func (fs *fakeServer) handler(t *testing.T) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/analytics/", func(w http.ResponseWriter, r *http.Request) {
-		if fs.failAuth {
-			// UAP gives a 404 response when we don't auth properly.
+		if c := fs.failAuth(); c != 0 {
 			fs.failedCalls++
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(c)
 			return
 		}
 		// Give them a signed URL. Include the file path they picked so that we can
@@ -74,9 +74,9 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		})
 	})
 	m.HandleFunc("/signed-url-1234", func(w http.ResponseWriter, r *http.Request) {
-		if fs.failUpload {
+		if fs.failUpload != 0 {
 			fs.failedCalls++
-			w.WriteHeader(http.StatusNotFound)
+			w.WriteHeader(fs.failUpload)
 			return
 		}
 		gz, err := gzip.NewReader(r.Body)
@@ -234,7 +234,7 @@ func TestAuthFailure(t *testing.T) {
 	t.Parallel()
 
 	fs := newFakeServer(t)
-	fs.failAuth = true
+	fs.failAuth = func() int { return http.StatusUnauthorized }
 	defer fs.Close()
 
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
@@ -289,11 +289,11 @@ func TestAuthFailure(t *testing.T) {
 	}
 
 	if err := m.uploadAll(); err != nil {
-		if !strings.Contains(err.Error(), "non-200 status") {
+		if !strings.Contains(err.Error(), "code 401") {
 			t.Errorf("unexpected err on upload(): %s", err)
 		}
 	} else {
-		t.Errorf("expected 404 error on upload()")
+		t.Errorf("expected 401 error on upload()")
 	}
 
 	// Should have triggered the process by now, but we don't want any records sent.
@@ -322,7 +322,7 @@ func TestUploadFailure(t *testing.T) {
 	t.Parallel()
 
 	fs := newFakeServer(t)
-	fs.failUpload = true
+	fs.failUpload = http.StatusInternalServerError
 	defer fs.Close()
 
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
@@ -377,11 +377,11 @@ func TestUploadFailure(t *testing.T) {
 	}
 
 	if err := m.uploadAll(); err != nil {
-		if !strings.Contains(err.Error(), "404 Not Found") {
+		if !strings.Contains(err.Error(), "500 Internal Server Error") {
 			t.Errorf("unexpected err on upload(): %s", err)
 		}
 	} else {
-		t.Errorf("expected 404 error on upload()")
+		t.Errorf("expected 500 error on upload()")
 	}
 
 	// Should have triggered the process by now, but we don't want any records sent.
@@ -577,6 +577,91 @@ func TestCrashRecovery(t *testing.T) {
 
 		if got != rec {
 			t.Errorf("file %s: got %v, want %v", fi.Name(), got, rec)
+		}
+	}
+}
+
+func TestShortCircuit(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+
+	// Test plan: create 10 files containing one record. The first upload attempt
+	// will return a non-short-circuit error, all after that will return an auth
+	// failure (which short-circuits).
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	rec := Record{
+		Organization:                 "hi",
+		Environment:                  "test",
+		ClientReceivedStartTimestamp: ts * 1000,
+		ClientReceivedEndTimestamp:   ts * 1000,
+		APIProxy:                     "proxy",
+	}
+	callCount := 10
+
+	m.log = adaptertest.NewEnv(t).Logger()
+	m.creds.Store("hi~test", cred{"key", "secret", fs.URL()})
+
+	p := path.Join(d, "temp/hi~test")
+	if err := os.MkdirAll(p, 0777); err != nil {
+		t.Fatalf("could not create temp dir: %s", err)
+	}
+
+	for i := 0; i < callCount; i++ {
+		f, err := os.Create(path.Join(p, fmt.Sprintf("%d.json.gz", i)))
+		if err != nil {
+			t.Fatalf("unexpected error on create: %s", err)
+		}
+
+		gz := gzip.NewWriter(f)
+		json.NewEncoder(gz).Encode([]Record{rec})
+		gz.Close()
+		f.Close()
+	}
+
+	fs.failAuth = func() int {
+		fs.failAuth = func() int { return http.StatusUnauthorized }
+		return http.StatusTeapot
+	}
+	err = m.uploadAll()
+	if err == nil {
+		t.Errorf("got nil error, want one")
+	} else if !strings.Contains(err.Error(), "code 401") && !strings.Contains(err.Error(), "code 418") {
+		t.Errorf("got error %s on upload, want 401/418", err)
+	}
+
+	// We should not have sent any records because of auth failures.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+	if fs.failedCalls != 2 {
+		t.Errorf("Should hit signedURL endpoint exactly twice")
+	}
+
+	// All the files should be sitting in staging.
+	for p, wantCount := range map[string]int{
+		"/temp/hi~test/":    0,
+		"/staging/hi~test/": callCount,
+	} {
+		files, err := ioutil.ReadDir(d + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
 		}
 	}
 }
