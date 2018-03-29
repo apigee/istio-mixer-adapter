@@ -43,6 +43,11 @@ const (
 	tempDir       = "temp"
 	stagingDir    = "staging"
 
+	// This is a list of errors that the signedURL endpoint will return.
+	errUnauth     = "401 Unauthorized" // Auth credentials are wrong.
+	errNotFound   = "404 Not Found"    // Base URL is wrong.
+	errApigeeDown = "code 50"          // Internal Apigee issue.
+
 	// collection interval is not configurable at the moment because UAP can
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
@@ -305,6 +310,15 @@ func (m *Manager) commitStaging() error {
 	return errs
 }
 
+// shortCircuitErr checks if we should bail early on this error (i.e. an error
+// that will be the same for all requests, like an auth fail or Apigee is down).
+func (m *Manager) shortCircuitErr(err error) bool {
+	s := err.Error()
+	return strings.Contains(s, errUnauth) ||
+		strings.Contains(s, errNotFound) ||
+		strings.Contains(s, errApigeeDown)
+}
+
 // uploadAll commits everything from staging and then uploads it.
 func (m *Manager) uploadAll() error {
 	if err := m.commitStaging(); err != nil {
@@ -323,6 +337,9 @@ func (m *Manager) uploadAll() error {
 	for _, subdir := range subdirs {
 		if err := m.upload(subdir.Name()); err != nil {
 			errOut = multierror.Append(errOut, err)
+			if m.shortCircuitErr(err) {
+				return errOut
+			}
 		}
 	}
 	return errOut
@@ -341,6 +358,9 @@ func (m *Manager) upload(subdir string) error {
 		url, err := m.signedURL(subdir, fi.Name())
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("signedURL: %s", err))
+			if m.shortCircuitErr(err) {
+				return errs
+			}
 			continue
 		}
 		fn := path.Join(p, fi.Name())
@@ -428,7 +448,7 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("non-200 status returned from %s: %s", m.analyticsURL, resp.Status)
+		return "", fmt.Errorf("status (code %d) returned from %s: %s", resp.StatusCode, m.analyticsURL, resp.Status)
 	}
 
 	var data struct {
