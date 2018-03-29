@@ -600,7 +600,9 @@ func TestShortCircuit(t *testing.T) {
 		t.Fatalf("newManager: %s", err)
 	}
 
-	// Just upload the same record N times.
+	// Test plan: create 10 files containing one record. The first upload attempt
+	// will return a non-short-circuit error, all after that will return an auth
+	// failure (which short-circuits).
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 	rec := Record{
 		Organization:                 "hi",
@@ -631,15 +633,9 @@ func TestShortCircuit(t *testing.T) {
 		f.Close()
 	}
 
-	// To test short-circuiting, first do an error that does not short-circuit,
-	// and afterwards give errors that do short-circuit.
-	var teapotSent bool
 	fs.failAuth = func() int {
-		if !teapotSent {
-			teapotSent = true
-			return http.StatusTeapot
-		}
-		return http.StatusUnauthorized
+		fs.failAuth = func() int { return http.StatusUnauthorized }
+		return http.StatusTeapot
 	}
 	err = m.uploadAll()
 	if err == nil {
@@ -648,7 +644,7 @@ func TestShortCircuit(t *testing.T) {
 		t.Errorf("got error %s on upload, want 401/418", err)
 	}
 
-	// Should have triggered the process by now, but we don't want any records sent.
+	// We should not have sent any records because of auth failures.
 	if len(fs.Records()) > 0 {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
@@ -656,7 +652,7 @@ func TestShortCircuit(t *testing.T) {
 		t.Errorf("Should hit signedURL endpoint exactly twice")
 	}
 
-	// All the files should still be there.
+	// All the files should be sitting in staging.
 	for p, wantCount := range map[string]int{
 		"/temp/hi~test/":    0,
 		"/staging/hi~test/": callCount,
