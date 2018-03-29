@@ -5,6 +5,7 @@ package auth
 
 import (
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"github.com/apigee/istio-mixer-adapter/apigee/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -40,8 +41,12 @@ func (a *Manager) Close() {
 // Authenticate constructs an Apigee context from an existing context and either
 // a set of JWT claims, or an Apigee API key.
 func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
-
-	ctx.Log().Infof("Authenticate: key: %v, claims: %v", apiKey, claims)
+	redacts := []interface{}{
+		claims["access_token"],
+		claims["client_id"],
+	}
+	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
+	ctx.Log().Infof("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
 	var ac = Context{Context: ctx}
 	if claims != nil {
@@ -62,10 +67,12 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 
 	err = ac.setClaims(claims)
 
+	redacts = []interface{}{ac.AccessToken, ac.ClientID}
+	redactedAC := util.SprintfRedacts(redacts, "%v", ac)
 	if err == nil {
-		ctx.Log().Infof("Authenticate success: %v", ac)
+		ctx.Log().Infof("Authenticate success: %s", redactedAC)
 	} else {
-		ctx.Log().Infof("Authenticate error: %v [%v]", ac, err)
+		ctx.Log().Infof("Authenticate error: %s [%v]", redactedAC, err)
 	}
 	return ac, err
 }

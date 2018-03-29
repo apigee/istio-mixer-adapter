@@ -32,6 +32,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	"github.com/apigee/istio-mixer-adapter/apigee/product"
 	"github.com/apigee/istio-mixer-adapter/apigee/quota"
+	"github.com/apigee/istio-mixer-adapter/apigee/util"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"
@@ -40,11 +41,10 @@ import (
 )
 
 const (
-	encodedClaimsKey   = "encoded_claims"
-	apiClaimsAttribute = "api_claims"
-	apiKeyAttribute    = "api_key"
-	apiNameAttribute   = "api"
-	pathAttribute      = "path"
+	encodedClaimsKey = "encoded_claims"
+	apiKeyAttribute  = "api_key"
+	apiNameAttribute = "api"
+	pathAttribute    = "path"
 )
 
 type (
@@ -142,6 +142,12 @@ func (b *builder) SetAdapterConfig(cfg adapter.Config) {
 
 // Implements adapter.HandlerBuilder
 func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handler, error) {
+	redacts := []interface{}{
+		b.adapterConfig.Key,
+		b.adapterConfig.Secret,
+	}
+	redactedConfig := util.SprintfRedacts(redacts, "%#v", *b.adapterConfig)
+	env.Logger().Infof("Handler config: %#v", redactedConfig)
 
 	apigeeBase, err := url.Parse(b.adapterConfig.ApigeeBase)
 	if err != nil {
@@ -228,13 +234,12 @@ func (h *handler) Close() error {
 
 // Handle processing and delivery of Analytics to Apigee
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
+	h.Log().Infof("HandleAnalytics: %d instances", len(instances))
 
 	var authContext *auth.Context
 	var records []analytics.Record
 
 	for _, inst := range instances {
-		h.Log().Infof("HandleAnalytics: %#v", inst)
-
 		record := analytics.Record{
 			ClientReceivedStartTimestamp: timeToUnix(inst.ClientReceivedStartTimestamp),
 			ClientReceivedEndTimestamp:   timeToUnix(inst.ClientReceivedStartTimestamp),
@@ -268,14 +273,16 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 
 // Handle Authentication and Authorization - NEVER RETURN ERROR!
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	h.Log().Infof("HandleAuthorization: Subject: %#v, Action: %#v", inst.Subject, inst.Action)
+	redacts := []interface{}{
+		inst.Subject.Properties[apiKeyAttribute],
+		inst.Subject.Properties[encodedClaimsKey],
+	}
+	redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
+	h.Log().Infof("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 
 	claims := resolveClaimsInterface(h.Log(), inst.Subject.Properties)
 
-	var apiKey string
-	if k, ok := inst.Subject.Properties[apiKeyAttribute]; ok {
-		apiKey = k.(string)
-	}
+	apiKey, _ := inst.Subject.Properties[apiKeyAttribute].(string)
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
 	if err != nil {
@@ -312,7 +319,12 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 // Handle Quota checks - NEVER RETURN ERROR!
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
-	h.Log().Infof("HandleQuota: %#v args: %v", inst, args)
+	redacts := []interface{}{
+		inst.Dimensions[apiKeyAttribute],
+		inst.Dimensions[encodedClaimsKey],
+	}
+	redactedInst := util.SprintfRedacts(redacts, "%#v", *inst)
+	h.Log().Infof("HandleQuota: %#v args: %v", redactedInst, args)
 
 	// skip < 0 to eliminate Istio prefetch returns
 	if args.QuotaAmount <= 0 {
