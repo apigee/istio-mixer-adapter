@@ -19,6 +19,7 @@ import (
 	"strings"
 )
 
+// SprintfRedacts truncates secret strings to len(5)
 func SprintfRedacts(redacts []interface{}, format string, a ...interface{}) string {
 	s := fmt.Sprintf(format, a)
 	for _, r := range redacts {
@@ -30,6 +31,7 @@ func SprintfRedacts(redacts []interface{}, format string, a ...interface{}) stri
 	return s
 }
 
+// Truncate truncates secret strings to arbitrary length and adds "..." as indication
 func Truncate(in string, end int) string {
 	out := in
 	if len(out) > end {
