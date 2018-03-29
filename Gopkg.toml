@@ -9,6 +9,7 @@ required = [
   "github.com/lestrrat/go-jwx",
   "github.com/lestrrat/go-pdebug",
   "github.com/dgrijalva/jwt-go",
+  "github.com/hashicorp/go-multierror"
 ]
 
 [[constraint]]
@@ -22,10 +23,6 @@ required = [
 [[override]]
   name = "github.com/prometheus/client_golang"
   version = "v0.9.0-pre1"
-
-[[constraint]]
-  name = "github.com/hashicorp/go-multierror"
-  branch = "master"
 
 ### Pruning settings
 [prune]

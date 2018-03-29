@@ -299,7 +299,9 @@ func (m *Manager) commitStaging() error {
 			successes++
 		}
 	}
-	m.log.Infof("committed %d analytics packages to staging to be uploaded", successes)
+	if successes > 0 {
+		m.log.Infof("committed %d analytics packages to staging to be uploaded", successes)
+	}
 	return errs
 }
 
@@ -323,7 +325,6 @@ func (m *Manager) uploadAll() error {
 			errOut = multierror.Append(errOut, err)
 		}
 	}
-	m.log.Infof("completed analytics upload, going back to sleep")
 	return errOut
 }
 
@@ -377,7 +378,9 @@ func (m *Manager) upload(subdir string) error {
 		}
 		successes++
 	}
-	m.log.Infof("uploaded %d analytics packages.", successes)
+	if successes > 0 {
+		m.log.Infof("uploaded %d analytics packages.", successes)
+	}
 	return errs
 }
 
