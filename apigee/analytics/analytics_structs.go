@@ -38,6 +38,8 @@ type Record struct {
 	AccessToken                  string `json:"access_token,omitempty"`
 	ClientID                     string `json:"client_id,omitempty"`
 	APIProduct                   string `json:"api_product,omitempty"`
+	Organization                 string `json:"organization"`
+	Environment                  string `json:"environment"`
 }
 
 type request struct {

@@ -9,6 +9,7 @@ required = [
   "github.com/lestrrat/go-jwx",
   "github.com/lestrrat/go-pdebug",
   "github.com/dgrijalva/jwt-go",
+  "github.com/hashicorp/go-multierror"
 ]
 
 [[constraint]]

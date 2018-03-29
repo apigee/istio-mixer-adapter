@@ -18,18 +18,21 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
-	"strconv"
-
+	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
-	"github.com/apigee/istio-mixer-adapter/template/analytics"
+	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"github.com/gogo/googleapis/google/rpc"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
@@ -50,6 +53,12 @@ func TestValidateBuild(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
 	b := GetInfo().NewBuilder().(*builder)
 
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
@@ -60,6 +69,7 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
+		BufferPath:   d,
 	})
 
 	if err := b.Validate(); err != nil {
@@ -67,7 +77,7 @@ func TestValidateBuild(t *testing.T) {
 	}
 
 	// invoke the empty set methods for coverage
-	b.SetAnalyticsTypes(map[string]*analytics.Type{})
+	b.SetAnalyticsTypes(map[string]*analyticsT.Type{})
 	b.SetQuotaTypes(map[string]*quota.Type{})
 	b.SetAuthorizationTypes(map[string]*authorization.Type{})
 
@@ -91,18 +101,38 @@ func TestHandleAnalytics(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	env := test.NewEnv(t)
+
 	ctx := context.Background()
 
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	analyticsMan, err := analytics.NewManager(env, analytics.Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("analytics.NewManager: %s", err)
+	}
+
 	h := &handler{
-		env:          test.NewEnv(t),
+		env:          env,
 		apigeeBase:   *baseURL,
 		customerBase: *baseURL,
 		orgName:      "org",
 		envName:      "env",
+		analyticsMan: analyticsMan,
 	}
 
-	inst := []*analytics.Instance{
-		{Name: "name"},
+	inst := []*analyticsT.Instance{
+		{
+			Name: "name",
+			ClientReceivedStartTimestamp: time.Now(),
+			ClientReceivedEndTimestamp:   time.Now(),
+		},
 	}
 
 	err = h.HandleAnalytics(ctx, inst)

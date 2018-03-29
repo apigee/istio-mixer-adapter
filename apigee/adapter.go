@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
@@ -60,8 +61,9 @@ type (
 		key          string
 		secret       string
 
-		productMan *product.Manager
-		authMan    *auth.Manager
+		productMan   *product.Manager
+		authMan      *auth.Manager
+		analyticsMan *analytics.Manager
 	}
 )
 
@@ -117,9 +119,18 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 			quotaT.TemplateName,
 		},
-		DefaultConfig: &config.Params{},
-		NewBuilder:    func() adapter.HandlerBuilder { return &builder{} },
+		DefaultConfig: &config.Params{
+			BufferPath: "/tmp/apigee-ax/buffer/",
+		},
+		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
+}
+
+////////////////// timeToUnix //////////////////////////
+
+// timeToUnix converts a time to a UNIX timestamp in milliseconds.
+func timeToUnix(t time.Time) int64 {
+	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
 }
 
 ////////////////// adapter.Builder //////////////////////////
@@ -142,12 +153,11 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	pMan := product.NewManager(*customerBase, env.Logger(), env)
-	if err != nil {
-		return nil, err
-	}
-
-	aMan := auth.NewManager(env)
+	productMan := product.NewManager(*customerBase, env.Logger(), env)
+	authMan := auth.NewManager(env)
+	analyticsMan, err := analytics.NewManager(env, analytics.Options{
+		BufferPath: b.adapterConfig.BufferPath,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -160,8 +170,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		envName:      b.adapterConfig.EnvName,
 		key:          b.adapterConfig.Key,
 		secret:       b.adapterConfig.Secret,
-		productMan:   pMan,
-		authMan:      aMan,
+		productMan:   productMan,
+		authMan:      authMan,
+		analyticsMan: analyticsMan,
 	}
 
 	return h, nil
@@ -211,6 +222,7 @@ func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 func (h *handler) Close() error {
 	h.productMan.Close()
 	h.authMan.Close()
+	h.analyticsMan.Close()
 	return nil
 }
 
@@ -224,14 +236,14 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		h.Log().Infof("HandleAnalytics: %#v", inst)
 
 		record := analytics.Record{
-			ClientReceivedStartTimestamp: analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientReceivedEndTimestamp:   analytics.TimeToUnix(inst.ClientReceivedStartTimestamp),
-			ClientSentStartTimestamp:     analytics.TimeToUnix(inst.ClientSentStartTimestamp),
-			ClientSentEndTimestamp:       analytics.TimeToUnix(inst.ClientSentEndTimestamp),
-			TargetReceivedStartTimestamp: analytics.TimeToUnix(inst.TargetReceivedStartTimestamp),
-			TargetReceivedEndTimestamp:   analytics.TimeToUnix(inst.TargetReceivedEndTimestamp),
-			TargetSentStartTimestamp:     analytics.TimeToUnix(inst.TargetSentStartTimestamp),
-			TargetSentEndTimestamp:       analytics.TimeToUnix(inst.TargetSentEndTimestamp),
+			ClientReceivedStartTimestamp: timeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientReceivedEndTimestamp:   timeToUnix(inst.ClientReceivedStartTimestamp),
+			ClientSentStartTimestamp:     timeToUnix(inst.ClientSentStartTimestamp),
+			ClientSentEndTimestamp:       timeToUnix(inst.ClientSentEndTimestamp),
+			TargetReceivedStartTimestamp: timeToUnix(inst.TargetReceivedStartTimestamp),
+			TargetReceivedEndTimestamp:   timeToUnix(inst.TargetReceivedEndTimestamp),
+			TargetSentStartTimestamp:     timeToUnix(inst.TargetSentStartTimestamp),
+			TargetSentEndTimestamp:       timeToUnix(inst.TargetSentEndTimestamp),
 			APIProxy:                     inst.ApiProxy,
 			RequestURI:                   inst.RequestUri,
 			RequestPath:                  inst.RequestPath,
@@ -251,7 +263,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		records = append(records, record)
 	}
 
-	return analytics.SendRecords(authContext, records)
+	return h.analyticsMan.SendRecords(authContext, records)
 }
 
 // Handle Authentication and Authorization - NEVER RETURN ERROR!

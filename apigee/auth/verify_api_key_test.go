@@ -20,14 +20,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
-	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
@@ -110,16 +109,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	ts := httptest.NewServer(goodHandler(apiKey, t))
 	defer ts.Close()
 
-	serverURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := &testContext{
-		apigeeBase:   *serverURL,
-		customerBase: *serverURL,
-		log:          test.NewEnv(t),
-	}
+	ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 
 	claims, err := v.Verify(ctx, apiKey)
 	if err != nil {
@@ -160,16 +150,7 @@ func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	serverURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := &testContext{
-		apigeeBase:   *serverURL,
-		customerBase: *serverURL,
-		log:          test.NewEnv(t),
-	}
+	ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 
 	for i := 0; i < 5; i++ {
 		claims, err := v.Verify(ctx, apiKey)
@@ -189,8 +170,7 @@ func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 	// Clear the cache.
 	v.(*keyVerifierImpl).cache.RemoveAll()
 
-	_, err = v.Verify(ctx, apiKey)
-	if err == nil {
+	if _, err := v.Verify(ctx, apiKey); err == nil {
 		t.Errorf("expected error result on cleared cache")
 	}
 }
@@ -227,16 +207,7 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	serverURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	ctx := &testContext{
-		apigeeBase:   *serverURL,
-		customerBase: *serverURL,
-		log:          test.NewEnv(t),
-	}
+	ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 
 	for i := 0; i < 5; i++ {
 		t.Logf("run %d", i)
@@ -258,8 +229,7 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	// now going to make an HTTP request that will fail.
 	time.Sleep(200 * time.Millisecond)
 
-	_, err = v.Verify(ctx, apiKey)
-	if err == nil {
+	if _, err := v.Verify(ctx, apiKey); err == nil {
 		t.Errorf("expected error result on cleared cache")
 	}
 }
@@ -274,15 +244,7 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
 
-	serverURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx := &testContext{
-		apigeeBase:   *serverURL,
-		customerBase: *serverURL,
-		log:          test.NewEnv(t),
-	}
+	ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 	success, err := v.Verify(ctx, "badKey")
 
 	if success != nil {
@@ -303,11 +265,7 @@ func TestVerifyAPIKeyError(t *testing.T) {
 	defer jwtMan.stop()
 	v := newVerifier(jwtMan, keyVerifierOpts{})
 
-	ctx := &testContext{
-		apigeeBase:   url.URL{},
-		customerBase: url.URL{},
-		log:          test.NewEnv(t),
-	}
+	ctx := authtest.NewContext("", test.NewEnv(t))
 	success, err := v.Verify(ctx, "badKey")
 
 	if err == nil {
@@ -345,36 +303,4 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 	t, e := token.SignedString(privateKey)
 
 	return t, e
-}
-
-type testContext struct {
-	apigeeBase   url.URL
-	customerBase url.URL
-	orgName      string
-	envName      string
-	key          string
-	secret       string
-	log          adapter.Logger
-}
-
-func (h *testContext) Log() adapter.Logger {
-	return h.log
-}
-func (h *testContext) ApigeeBase() url.URL {
-	return h.apigeeBase
-}
-func (h *testContext) CustomerBase() url.URL {
-	return h.customerBase
-}
-func (h *testContext) Organization() string {
-	return h.orgName
-}
-func (h *testContext) Environment() string {
-	return h.envName
-}
-func (h *testContext) Key() string {
-	return h.key
-}
-func (h *testContext) Secret() string {
-	return h.secret
 }

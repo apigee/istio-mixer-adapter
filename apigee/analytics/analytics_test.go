@@ -15,210 +15,568 @@
 package analytics
 
 import (
+	"compress/gzip"
 	"encoding/json"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"istio.io/istio/mixer/pkg/adapter"
-	"istio.io/istio/mixer/pkg/adapter/test"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"os"
+	"path"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
+	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 
-func TestAnalyticsSubmit(t *testing.T) {
-
-	startTime := time.Now()
-	context := &TestContext{
-		orgName: "org",
-		envName: "env",
-		log:     test.NewEnv(t),
-	}
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
-	axRecord := Record{
-		ResponseStatusCode:           201,
-		RequestVerb:                  "PATCH",
-		RequestPath:                  "/test",
-		UserAgent:                    "007",
-		ClientReceivedStartTimestamp: TimeToUnix(startTime),
-		ClientReceivedEndTimestamp:   TimeToUnix(startTime),
-		ClientSentStartTimestamp:     TimeToUnix(startTime),
-		ClientSentEndTimestamp:       TimeToUnix(startTime),
-		TargetSentStartTimestamp:     TimeToUnix(startTime),
-		TargetSentEndTimestamp:       TimeToUnix(startTime),
-		TargetReceivedStartTimestamp: TimeToUnix(startTime),
-		TargetReceivedEndTimestamp:   TimeToUnix(startTime),
-	}
-	ts := makeTestServer(authContext, axRecord, t)
-	defer ts.Close()
-	baseURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	context.apigeeBase = *baseURL
-	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
-	if err != nil {
-		t.Error(err)
-	}
-	// todo: check record sent
+// a testRecordPush represents a single push of analytics to a given directory.
+type testRecordPush struct {
+	records []Record
+	dir     string
 }
 
-func TestBadServerBase(t *testing.T) {
-
-	context := &TestContext{
-		orgName:      "org",
-		envName:      "env",
-		apigeeBase:   url.URL{},
-		customerBase: url.URL{},
-		log:          test.NewEnv(t),
-	}
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
-	axRecord := Record{}
-	ts := makeTestServer(authContext, axRecord, t)
-	defer ts.Close()
-	err := SendRecords(authContext, []Record{axRecord})
-	if err == nil {
-		t.Errorf("should get bad base error")
-	}
+// A fakeServer wraps around an httptest.Server and tracks the things that have
+// been sent to it.
+type fakeServer struct {
+	records     map[string][]testRecordPush
+	srv         *httptest.Server
+	failAuth    bool
+	failUpload  bool
+	failedCalls int
 }
 
-func TestMissingOrg(t *testing.T) {
-
-	context := &TestContext{
-		orgName: "",
-		envName: "env",
-		log:     test.NewEnv(t),
+func newFakeServer(t *testing.T) *fakeServer {
+	fs := &fakeServer{
+		records: map[string][]testRecordPush{},
 	}
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
-	axRecord := Record{}
-	ts := makeTestServer(authContext, axRecord, t)
-	defer ts.Close()
-	baseURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	context.apigeeBase = *baseURL
-	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
-	if err == nil || !strings.Contains(err.Error(), "organization") {
-		t.Errorf("should get missing organization error, got: %s", err)
-	}
+	fs.srv = httptest.NewServer(fs.handler(t))
+	return fs
 }
 
-func TestMissingEnv(t *testing.T) {
-
-	context := &TestContext{
-		orgName: "org",
-		envName: "",
-		log:     test.NewEnv(t),
-	}
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
-	axRecord := Record{}
-	ts := makeTestServer(authContext, axRecord, t)
-	defer ts.Close()
-	baseURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-	context.apigeeBase = *baseURL
-	context.customerBase = *baseURL
-	err = SendRecords(authContext, []Record{axRecord})
-	if err == nil || !strings.Contains(err.Error(), "environment") {
-		t.Errorf("should get missing environment error, got: %s", err)
-	}
-}
-
-func makeTestServer(auth *auth.Context, rec Record, t *testing.T) *httptest.Server {
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		decoder := json.NewDecoder(r.Body)
-		var axRequest request
-		err := decoder.Decode(&axRequest)
-		if err != nil {
-			t.Error(err)
-		}
-		defer r.Body.Close()
-
-		auth.Context.Log().Errorf("axRequest: %#v", axRequest)
-
-		if axRequest.Organization != auth.Organization() {
-			t.Errorf("bad orgName")
-		}
-		if axRequest.Environment != auth.Environment() {
-			t.Errorf("bad envName")
-		}
-		if len(axRequest.Records) != 1 {
-			t.Errorf("record missing")
+func (fs *fakeServer) handler(t *testing.T) http.Handler {
+	m := http.NewServeMux()
+	m.HandleFunc("/analytics/", func(w http.ResponseWriter, r *http.Request) {
+		if fs.failAuth {
+			// UAP gives a 404 response when we don't auth properly.
+			fs.failedCalls++
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-
-		axRecord := axRequest.Records[0]
-		if axRecord.AccessToken == "" {
-			t.Errorf("access_token missing")
+		// Give them a signed URL. Include the file path they picked so that we can
+		// confirm they are sending the right one.
+		url := "%s/signed-url-1234?relative_file_path=%s&tenant=%s"
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"url": fmt.Sprintf(url, fs.srv.URL, r.FormValue("relative_file_path"), r.FormValue("tenant")),
+		})
+	})
+	m.HandleFunc("/signed-url-1234", func(w http.ResponseWriter, r *http.Request) {
+		if fs.failUpload {
+			fs.failedCalls++
+			w.WriteHeader(http.StatusNotFound)
+			return
 		}
-		if axRecord.ClientReceivedStartTimestamp != rec.ClientReceivedStartTimestamp {
-			t.Errorf("client_received_start_timestamp expected: %v, got: %v",
-				rec.ClientReceivedStartTimestamp, axRecord.ClientReceivedStartTimestamp)
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			t.Fatalf("Error on gzip.NewReader: %s", err)
+		}
+		defer gz.Close()
+		defer r.Body.Close()
+
+		rec := []Record{}
+		if err := json.NewDecoder(gz).Decode(&rec); err != nil {
+			t.Fatalf("Error decoding JSON sent to signed URL: %s", err)
+		}
+		tenant := r.FormValue("tenant")
+		fp := r.FormValue("relative_file_path")
+		fs.records[tenant] = append(fs.records[tenant], testRecordPush{
+			records: rec,
+			dir:     path.Dir(fp),
+		})
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+	m.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// This matches every other route - we should not hit this one.
+		t.Fatalf("Unknown route %s hit", r.URL.Path)
+	})
+	return m
+}
+
+func (fs *fakeServer) Close()                               { fs.srv.Close() }
+func (fs *fakeServer) Records() map[string][]testRecordPush { return fs.records }
+func (fs *fakeServer) URL() string                          { return fs.srv.URL }
+
+func TestPushAnalytics(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	t1 := "hi~test"
+	t2 := "otherorg~test"
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	// Use a subdirectory to ensure that we can set up the directory properly.
+	bufferPath := path.Join(d, "subdir")
+
+	m, err := newManager(Options{
+		BufferPath: bufferPath,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
+
+	wantRecords := map[string][]testRecordPush{
+		t1: {
+			{
+				records: []Record{
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProxy:                     "proxy",
+					},
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProduct:                   "product",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			},
+		},
+		t2: {
+			{
+				records: []Record{
+					{
+						Organization:                 "otherorg",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						RequestURI:                   "request URI",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			},
+		},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.Start(env)
+	defer m.Close()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, wantRecords[t1][0].records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Send one more with a different org.
+	tc = authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("otherorg")
+	tc.SetEnvironment("test")
+	ctx = &auth.Context{Context: tc}
+	if err := m.SendRecords(ctx, wantRecords[t2][0].records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	time.Sleep(100 * time.Millisecond)
+
+	// Should have sent things out by now, check it out.
+	if !reflect.DeepEqual(fs.Records(), wantRecords) {
+		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
+	}
+
+	// Should have deleted everything.
+	for _, p := range []string{
+		"/temp/hi~test/",
+		"/temp/otherorg~test/",
+		"/staging/hi~test/",
+		"/staging/otherorg~test/",
+	} {
+		files, err := ioutil.ReadDir(bufferPath + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
+		} else if len(files) > 0 {
+			t.Errorf("got %d records on disk, want 0", len(files))
+			for _, f := range files {
+				t.Log(path.Join(bufferPath, f.Name()))
+			}
+		}
+	}
+}
+
+func TestAuthFailure(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	fs.failAuth = true
+	defer fs.Close()
+
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
+
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	if err := m.uploadAll(); err != nil {
+		if !strings.Contains(err.Error(), "non-200 status") {
+			t.Errorf("unexpected err on upload(): %s", err)
+		}
+	} else {
+		t.Errorf("expected 404 error on upload()")
+	}
+
+	// Should have triggered the process by now, but we don't want any records sent.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+	if fs.failedCalls == 0 {
+		t.Errorf("Should have hit signedURL endpoint at least once.")
+	}
+
+	// All the files should still be there.
+	for p, wantCount := range map[string]int{
+		"/temp/hi~test/":    0,
+		"/staging/hi~test/": 1,
+	} {
+		files, err := ioutil.ReadDir(d + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
+		}
+	}
+}
+
+func TestUploadFailure(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	fs.failUpload = true
+	defer fs.Close()
+
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 50 * time.Millisecond
+
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	if err := m.uploadAll(); err != nil {
+		if !strings.Contains(err.Error(), "404 Not Found") {
+			t.Errorf("unexpected err on upload(): %s", err)
+		}
+	} else {
+		t.Errorf("expected 404 error on upload()")
+	}
+
+	// Should have triggered the process by now, but we don't want any records sent.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+	if fs.failedCalls == 0 {
+		t.Errorf("Should have hit signedURL endpoint at least once.")
+	}
+
+	// All the files should still be there.
+	for p, wantCount := range map[string]int{
+		"/temp/hi~test/":    0,
+		"/staging/hi~test/": 1,
+	} {
+		files, err := ioutil.ReadDir(d + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
+		}
+	}
+}
+
+func TestValidationFailure(t *testing.T) {
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	for _, test := range []struct {
+		desc      string
+		record    Record
+		wantError string
+	}{
+		{"good record", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, ""},
+		{"missing org", Record{
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, "missing Organization"},
+		{"missing env", Record{
+			Organization:                 "hi",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, "missing Environment"},
+		{"missing start timestamp", Record{
+			Organization:               "hi",
+			Environment:                "test",
+			ClientReceivedEndTimestamp: ts * 1000,
+		}, "missing ClientReceivedStartTimestamp"},
+		{"missing end timestamp", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+		}, "missing ClientReceivedEndTimestamp"},
+		{"end < start", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts*1000 - 1,
+		}, "ClientReceivedStartTimestamp > ClientReceivedEndTimestamp"},
+		{"in the future", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: (ts + 1) * 1000,
+			ClientReceivedEndTimestamp:   (ts + 1) * 1000,
+		}, "in the future"},
+		{"too old", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: (ts - 91*24*3600) * 1000,
+			ClientReceivedEndTimestamp:   (ts - 91*24*3600) * 1000,
+		}, "more than 90 days old"},
+	} {
+		t.Log(test.desc)
+
+		m := Manager{}
+		m.now = func() time.Time { return time.Unix(ts, 0) }
+
+		gotErr := m.validate(test.record)
+		if test.wantError == "" {
+			if gotErr != nil {
+				t.Errorf("got error %s, want none", gotErr)
+			}
+			continue
+		}
+		if gotErr == nil {
+			t.Errorf("got nil error, want one containing %s", test.wantError)
+			continue
 		}
 
-		w.WriteHeader(200)
-	}))
-
+		if !strings.Contains(gotErr.Error(), test.wantError) {
+			t.Errorf("error %s should contain '%s'", gotErr, test.wantError)
+		}
+	}
 }
 
-type TestContext struct {
-	apigeeBase   url.URL
-	customerBase url.URL
-	orgName      string
-	envName      string
-	key          string
-	secret       string
-	log          adapter.Logger
-}
+func TestCrashRecovery(t *testing.T) {
+	t.Parallel()
 
-func (h *TestContext) Log() adapter.Logger {
-	return h.log
-}
-func (h *TestContext) ApigeeBase() url.URL {
-	return h.apigeeBase
-}
-func (h *TestContext) CustomerBase() url.URL {
-	return h.customerBase
-}
-func (h *TestContext) Organization() string {
-	return h.orgName
-}
-func (h *TestContext) Environment() string {
-	return h.envName
-}
-func (h *TestContext) Key() string {
-	return h.key
-}
-func (h *TestContext) Secret() string {
-	return h.secret
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	m, err := newManager(Options{
+		BufferPath: d,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	// Set logger so we can log things while debugging.
+	env := adaptertest.NewEnv(t)
+	m.log = env.Logger()
+
+	// Put two files into the temp dir:
+	// - a good gzip file
+	// - a corrupted gzip file
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	rec := Record{
+		Organization:                 "hi",
+		Environment:                  "test",
+		ClientReceivedStartTimestamp: ts * 1000,
+		ClientReceivedEndTimestamp:   ts * 1000,
+	}
+
+	bucket := path.Join(m.tempDir, "hi~test")
+	targetBucket := path.Join(m.stagingDir, "hi~test")
+	if err := os.MkdirAll(bucket, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(targetBucket, 0700); err != nil {
+		t.Fatal(err)
+	}
+
+	goodFile := path.Join(bucket, "good.json.gz")
+	brokeFile := path.Join(bucket, "broke.json.gz")
+
+	f, err := os.Create(goodFile)
+	if err != nil {
+		t.Fatalf("error creating good file: %s", err)
+	}
+	gz := gzip.NewWriter(f)
+	json.NewEncoder(gz).Encode(&rec)
+	gz.Flush()
+	gz.Close()
+	f.Close()
+
+	f, _ = os.Create(brokeFile)
+	gz = gzip.NewWriter(f)
+	json.NewEncoder(gz).Encode(&rec)
+	// Close the file, but don't close the gzip to ensure it's broken.
+	gz.Flush()
+	f.Close()
+
+	// Now attempt recovery.
+	if err := m.crashRecovery(); err != nil {
+		t.Fatal(err)
+	}
+
+	// We should have two proper gzip files in the staging dir.
+	files, err := ioutil.ReadDir(targetBucket)
+	if err != nil {
+		t.Fatalf("ls %s: %s", targetBucket, err)
+	}
+
+	if len(files) != 2 {
+		t.Errorf("got %d files in staging, want 2:", len(files))
+		for _, fi := range files {
+			t.Log(fi.Name())
+		}
+	}
+	for _, fi := range files {
+		// Confirm that it's a valid gzip file.
+		f, err := os.Open(path.Join(targetBucket, fi.Name()))
+		if err != nil {
+			t.Fatalf("error opening %s: %s", fi.Name(), err)
+		}
+		gz, err := gzip.NewReader(f)
+		if err != nil {
+			t.Errorf("gzip error %s: %s", fi.Name(), err)
+		}
+		var got Record
+		if err := json.NewDecoder(gz).Decode(&got); err != nil {
+			t.Errorf("json decode error %s: %s", fi.Name(), err)
+		}
+
+		if got != rec {
+			t.Errorf("file %s: got %v, want %v", fi.Name(), got, rec)
+		}
+	}
 }

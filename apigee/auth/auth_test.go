@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -61,9 +62,8 @@ func TestAuthenticate(t *testing.T) {
 		authMan.start()
 		defer authMan.Close()
 
-		_, err := authMan.Authenticate(&testContext{
-			log: adaptertest.NewEnv(t),
-		}, test.apiKey, test.claims)
+		ctx := authtest.NewContext("", adaptertest.NewEnv(t))
+		_, err := authMan.Authenticate(ctx, test.apiKey, test.claims)
 		if err != nil {
 			if !test.wantError {
 				t.Errorf("unexpected error: %s", err)
