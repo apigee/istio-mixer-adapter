@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Runs the mixer on the local machine.
+#
+# Prereqs:
+
 echo "Checking environment settings..."
 
 if [[ "${APIGEE_ORG}" == "" ]]; then

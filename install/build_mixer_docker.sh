@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# This script will take the compiled mixer, construct a Docker image for it,
+# and upload it to GCR.
+#
+# Prereqs:
+# - run the local_install.sh script to build the mixer.
+# - docker is installed.
+# - gcloud is installed.
+# - GOPATH is set.
+#
+# Variables:
+# - GCLOUD_SERVICE_KEY - auth key for the service account (used in CI to build
+#   nightlies)
+# - GCP_PROJECT - which GCP_PROJECT to upload the image to.
+# - TARGET_DOCKER_IMAGE - the name of the docker image to build.
+
 echo "Checking environment settings..."
 
 if [[ $GCLOUD_SERVICE_KEY == "" ]]; then

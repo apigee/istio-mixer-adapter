@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script will install gcloud on the local machine. Not recommended for use
+# on development machines, it is mainly used for containers in CI.
+
 if [[ `command -v gcloud` != "" ]]; then
   echo "gcloud already installed."
   exit 0

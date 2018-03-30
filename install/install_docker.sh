@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script will install Docker on the local machine. Not recommended for use
+# on development machines, it is mainly used for containers in CI.
+
 if [[ `command -v docker` != "" ]]; then
   echo "Docker already installed."
   exit 0

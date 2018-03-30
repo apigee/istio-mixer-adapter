@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# This script builds the Mixer with the Apigee adapter on the local machine.
+# It will clone Istio if necessary.
+#
+# Prereqs:
+# - GOPATH is set.
+# - Apigee mixer adapter is checked out to:
+#   $GOPATH/src/github.com/apigee/istio-mixer-adapter
+# - on Mac: dep is installed.
+#
+# Variables:
+# - INSTALL_PROTOC - installs protoc if set to 1. Used for CI.
+
+
 echo "Installing all the things"
 
 if [[ "${GOPATH}" == "" ]]; then
