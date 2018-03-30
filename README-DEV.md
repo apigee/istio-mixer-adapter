@@ -68,12 +68,8 @@ Note from above: you can only do this on Linux.
 1. First, build the docker image:
 
         export GCP_PROJECT=my-gcp-project
+        export TARGET_DOCKER_IMAGE=gcr.io/my-gcp-project/istio-mixer:some-tag
         $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/build_mixer_docker.sh
 
-2. Next, push to GKE:
-
-        export GCP_PROJECT=my-gcp-project
-        $GOPATH/src/github.com/apigee/istio-mixer-adapter/install/push_docker_to_gke.sh
-
-3. Go to [Pantheon](https://pantheon.corp.google.com/kubernetes/workload), you
-   should see the mixer running there.
+2. Next, use that image in your GKE Istio setup. You can follow the directions
+   in the [README](README.md) to set up Istio.
