@@ -120,7 +120,6 @@ func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{},
 }
 
 func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
-	ctx.Log().Infof("verifyJWT: %v", raw)
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		return a.getJWTKey(ctx, token)
 	}

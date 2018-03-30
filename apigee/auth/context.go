@@ -74,7 +74,6 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	if claims[clientIDClaim] == nil {
 		return nil
 	}
-	a.Log().Infof("setClaims: %v", claims)
 
 	products, err := parseArrayOfStrings(claims[apiProductListClaim])
 	if err != nil {

@@ -29,6 +29,7 @@ import (
 	"github.com/lestrrat/go-jwx/jwk"
 )
 
+// CloudMockHandler provides a set of Mocked cloud APIs for integration tests
 func CloudMockHandler(t *testing.T) http.HandlerFunc {
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
