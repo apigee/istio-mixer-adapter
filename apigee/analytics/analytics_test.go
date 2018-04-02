@@ -24,6 +24,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -132,6 +133,7 @@ func TestPushAnalytics(t *testing.T) {
 
 	m, err := newManager(Options{
 		BufferPath: bufferPath,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -247,6 +249,7 @@ func TestAuthFailure(t *testing.T) {
 
 	m, err := newManager(Options{
 		BufferPath: d,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -335,6 +338,7 @@ func TestUploadFailure(t *testing.T) {
 
 	m, err := newManager(Options{
 		BufferPath: d,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -495,6 +499,7 @@ func TestCrashRecovery(t *testing.T) {
 
 	m, err := newManager(Options{
 		BufferPath: d,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -595,6 +600,7 @@ func TestShortCircuit(t *testing.T) {
 
 	m, err := newManager(Options{
 		BufferPath: d,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -662,6 +668,110 @@ func TestShortCircuit(t *testing.T) {
 			t.Errorf("ioutil.ReadDir(%s): %s", d, err)
 		} else if len(files) != wantCount {
 			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
+		}
+	}
+}
+
+func TestStagingSizeCap(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	// Let's pretend Apigee is down, so we end up backlogging.
+	fs.failUpload = http.StatusInternalServerError
+	defer fs.Close()
+
+	for _, test := range []struct {
+		desc     string
+		files    map[string][]string
+		wantStag []string
+	}{
+		{"too many files, clean some up",
+			map[string][]string{
+				tempDir:    []string{"6", "7"},
+				stagingDir: []string{"1", "2", "3", "4"},
+			},
+			[]string{"3", "4", "6", "7"},
+		},
+		{"under limit, don't delete",
+			map[string][]string{
+				tempDir:    []string{"6", "7"},
+				stagingDir: []string{"1", "2"},
+			},
+			[]string{"1", "2", "6", "7"},
+		},
+		{"clean up even if nothing in temp",
+			map[string][]string{
+				tempDir:    []string{},
+				stagingDir: []string{"1", "2", "3", "4", "5"},
+			},
+			[]string{"2", "3", "4", "5"},
+		},
+	} {
+		t.Log(test.desc)
+
+		d, err := ioutil.TempDir("", "")
+		if err != nil {
+			t.Fatalf("ioutil.TempDir(): %s", err)
+		}
+		defer os.RemoveAll(d)
+
+		m, err := newManager(Options{
+			BufferPath: d,
+			BufferSize: 4,
+		})
+		if err != nil {
+			t.Fatalf("newManager: %s", err)
+		}
+		m.log = adaptertest.NewEnv(t).Logger()
+		m.creds.Store("hi~test", cred{"key", "secret", fs.URL()})
+
+		// Add a bunch of files in staging and temp, and then try to commit.
+		ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+		rec := Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		}
+		for dir, files := range test.files {
+			p := path.Join(d, dir, "hi~test")
+			if err := os.MkdirAll(p, 0700); err != nil {
+				t.Fatalf("mkdir %s: %s", p, err)
+			}
+			for _, f := range files {
+				f, err := os.Create(path.Join(p, fmt.Sprintf("%s.json.gz", f)))
+				if err != nil {
+					t.Fatalf("unexpected error on create: %s", err)
+				}
+
+				gz := gzip.NewWriter(f)
+				json.NewEncoder(gz).Encode([]Record{rec})
+				gz.Close()
+				f.Close()
+			}
+		}
+
+		if err = m.uploadAll(); err == nil {
+			t.Fatalf("got nil error on upload, want one")
+		} else if !strings.Contains(err.Error(), "500 Internal Server Error") {
+			t.Fatalf("got error %s, want 500", err)
+		}
+
+		// Confirm that the files we want are in staging.
+		var got []string
+		fis, err := ioutil.ReadDir(path.Join(m.stagingDir, "hi~test"))
+		if err != nil {
+			t.Fatalf("ReadDir(%s): %s", m.stagingDir, err)
+		}
+		for _, fi := range fis {
+			got = append(got, strings.TrimSuffix(fi.Name(), ".json.gz"))
+		}
+
+		// Should delete the oldest ones: 1 and 2.
+		sort.Strings(got)
+		if !reflect.DeepEqual(got, test.wantStag) {
+			t.Errorf("got staging files %v, want %v", got, test.wantStag)
 		}
 	}
 }

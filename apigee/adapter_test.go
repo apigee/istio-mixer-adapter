@@ -70,6 +70,7 @@ func TestValidateBuild(t *testing.T) {
 		Key:          "key",
 		Secret:       "secret",
 		BufferPath:   d,
+		BufferSize:   10,
 	})
 
 	if err := b.Validate(); err != nil {
@@ -113,6 +114,7 @@ func TestHandleAnalytics(t *testing.T) {
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: d,
+		BufferSize: 10,
 	})
 	if err != nil {
 		t.Fatalf("analytics.NewManager: %s", err)

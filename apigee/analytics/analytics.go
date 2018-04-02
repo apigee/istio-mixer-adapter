@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -79,6 +80,7 @@ type Manager struct {
 	tempDir            string
 	stagingDir         string
 	analyticsURL       string
+	bufferSize         int
 	bucketsLock        sync.RWMutex
 	buckets            map[string]bucket // Map from dirname -> bucket.
 	creds              sync.Map          // Map from dirname -> cred.
@@ -88,6 +90,9 @@ type Manager struct {
 type Options struct {
 	// BufferPath is the directory where the adapter will buffer analytics records.
 	BufferPath string
+	// BufferSize is the maximum number of files stored in the staging directory.
+	// Once this is reached, the oldest files will start being removed.
+	BufferSize int
 }
 
 // NewManager constructs and starts a new Manager. Call Close when you are done.
@@ -111,6 +116,10 @@ func newManager(opts Options) (*Manager, error) {
 		return nil, fmt.Errorf("mkdir %s: %s", sd, err)
 	}
 
+	if opts.BufferSize <= 0 {
+		return nil, fmt.Errorf("BufferSize must be > 0")
+	}
+
 	return &Manager{
 		close: make(chan bool),
 		client: &http.Client{
@@ -120,6 +129,7 @@ func newManager(opts Options) (*Manager, error) {
 		collectionInterval: defaultCollectionInterval,
 		tempDir:            td,
 		stagingDir:         sd,
+		bufferSize:         opts.BufferSize,
 		buckets:            map[string]bucket{},
 		creds:              sync.Map{},
 	}, nil
@@ -265,7 +275,7 @@ func (m *Manager) commitStaging() error {
 	}
 
 	var errs error
-	successes := 0
+	toMove := map[string]string{}
 	for _, subdir := range subdirs {
 		sn := subdir.Name()
 
@@ -297,16 +307,89 @@ func (m *Manager) commitStaging() error {
 		for _, f := range files {
 			oldf := path.Join(old, f.Name())
 			newf := path.Join(new, f.Name())
-			if err := os.Rename(oldf, newf); err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldf, err))
-				continue
-			}
-			successes++
+			toMove[oldf] = newf
 		}
+	}
+
+	if err := m.ensureStagingSpace(len(toMove)); err != nil {
+		// Don't bail here or the temp dir will grow without bounds. Copy the files
+		// over anyway.
+		errs = multierror.Append(errs, fmt.Errorf("cleanupStaging: %s", err))
+	}
+
+	successes := 0
+	for oldf, newf := range toMove {
+		if err := os.Rename(oldf, newf); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldf, err))
+			continue
+		}
+		successes++
 	}
 	if successes > 0 {
 		m.log.Infof("committed %d analytics packages to staging to be uploaded", successes)
 	}
+	return errs
+}
+
+// ensureStagingSpace ensures that staging has space for N new files.
+func (m *Manager) ensureStagingSpace(n int) error {
+	// TODO(someone): handle case when n > m.bufferSize.
+
+	// Figure out how many files are already in staging.
+	subdirs, err := ioutil.ReadDir(m.stagingDir)
+	if err != nil {
+		return fmt.Errorf("ReadDir(%s): %s", m.tempDir, err)
+	}
+
+	var errs error
+	var names []string
+	fullPath := map[string]string{}
+	for _, subdir := range subdirs {
+		p := path.Join(m.stagingDir, subdir.Name())
+
+		files, err := ioutil.ReadDir(p)
+		if err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("ls %s: %s", p, err))
+			continue
+		}
+
+		for _, f := range files {
+			names = append(names, f.Name())
+			fullPath[f.Name()] = path.Join(p, f.Name())
+		}
+	}
+
+	if len(names) <= m.bufferSize-n {
+		// We've already got enough space in staging, so don't do anything.
+		return errs
+	}
+
+	// Amount of space to create: how much we need - how much we have available.
+	need := n - (m.bufferSize - len(names))
+
+	// Loop through deleting files in order of creation time until we have cleared
+	// up enough space or until there is nothing left we can delete.
+	// Note: this will start breaking on 2286-11-20 since we are sorting
+	// lexicographically on a number.
+	sort.Strings(names)
+	for _, f := range names {
+		if need <= 0 {
+			break
+		}
+
+		fn, ok := fullPath[f]
+		if !ok {
+			// This is really weird, but don't attempt to delete something if we
+			// don't know where it is.
+			continue
+		}
+		if err := os.Remove(fn); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("rm %s: %s", fn, err))
+			continue
+		}
+		need--
+	}
+
 	return errs
 }
 
@@ -544,7 +627,8 @@ func (m *Manager) createBucket(ctx *auth.Context, d string) error {
 		return fmt.Errorf("mkdir %s: %s", p, err)
 	}
 
-	fn := u.String() + ".json.gz"
+	// Use the timestamp as the prefix so we can sort them easily by creation time.
+	fn := fmt.Sprintf("%d_%s.json.gz", m.now().Unix(), u.String())
 
 	f, err := os.Create(path.Join(p, fn))
 	if err != nil {
