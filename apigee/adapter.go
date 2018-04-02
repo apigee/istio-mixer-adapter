@@ -121,6 +121,7 @@ func GetInfo() adapter.Info {
 		},
 		DefaultConfig: &config.Params{
 			BufferPath: "/tmp/apigee-ax/buffer/",
+			BufferSize: 1024,
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
@@ -163,6 +164,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	authMan := auth.NewManager(env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
+		BufferSize: int(b.adapterConfig.BufferSize),
 	})
 	if err != nil {
 		return nil, err

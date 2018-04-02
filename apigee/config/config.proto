@@ -34,4 +34,8 @@ message Params {
 
     // Path to where analytics records are persisted before uploading to Apigee.
     string buffer_path = 7;
+
+    // How many files should be stored in staging before we start deleting old
+    // records.
+    int64 buffer_size = 8;
 }
