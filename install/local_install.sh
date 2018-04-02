@@ -12,6 +12,9 @@
 # Variables:
 # - INSTALL_PROTOC - installs protoc if set to 1. Used for CI.
 
+DEFAULT_ISTIO_VERSION=0.7.1
+
+ISTIO_VERSION=${ISTIO_VERSION:-${DEFAULT_ISTIO_VERSION}}
 
 echo "Installing all the things"
 
@@ -67,11 +70,11 @@ export ISTIO="${GOPATH}/src/istio.io"
 mkdir -p "${ISTIO}"
 
 if [ ! -d "${ISTIO}/istio" ]; then
-  echo "istio repo not found, fetching and building..."
-  cd "${ISTIO}"
-  git clone https://github.com/istio/istio
+  echo "istio repo not found, fetching and building version ${ISTIO_VERSION}..."
 
-  echo "Checking if istio is built..."
+  cd "${ISTIO}"
+  git clone -b ${ISTIO_VERSION} https://github.com/istio/istio
+
   cd "${ISTIO}/istio"
   make depend || exit 1
   make mixs || exit 1
