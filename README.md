@@ -12,12 +12,9 @@ The quickest way to get started is to follow the [Istio Kubernetes Quick Start](
 
 Before you install Istio into Kubernetes (step 5: Install Istio’s core components), edit the `istio.yaml` or `istio-auth.yaml` file to point to the Apigee mixer instead of the Istio vanilla mixer.
 
-Assuming Istio 0.6.0:
+Assuming Istio 0.7.1:
 
-Replace: `docker.io/istio/mixer:0.6.0` with: `gcr.io/apigee-api-management-istio/istio-mixer:test`
-Replace: `zipkinURL` with `trace_zipkin_url`
-
-(note: after Istio 0.6.0, you shouldn't need the `zipkinURL` replacement anymore)
+Replace: `docker.io/istio/mixer:0.7.1` with: `gcr.io/apigee-api-management-istio/istio-mixer:1.0.0-alpha-1`
 
 ## Install your service
 
