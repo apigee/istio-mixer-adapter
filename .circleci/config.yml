@@ -18,8 +18,9 @@ jobs:
       - run:
           command: go test -coverprofile=coverage.txt ./...
           name: Run tests
-          post:
-              - bash <(curl -s https://codecov.io/bash)
+      - run:
+          command: bash <(curl -s https://codecov.io/bash)
+          name: upload codecov
 
   build-test-image:
     docker:
@@ -36,8 +37,9 @@ jobs:
       - run:
           command: go test -coverprofile=coverage.txt ./...
           name: Run tests
-          post:
-              - bash <(curl -s https://codecov.io/bash)
+      - run:
+          command: bash <(curl -s https://codecov.io/bash)
+          name: upload codecov
       - setup_remote_docker
       - run:
           command: ./install/install_docker.sh
