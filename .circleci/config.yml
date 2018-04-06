@@ -16,7 +16,7 @@ jobs:
         # will have removed the vendor link.
       - run: dep ensure
       - run:
-          command: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+          command: go test -coverprofile=coverage.txt ./...
           name: Run tests
           post:
               - bash <(curl -s https://codecov.io/bash)
@@ -34,7 +34,7 @@ jobs:
         # will have removed the vendor link.
       - run: dep ensure
       - run:
-          command: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+          command: go test -coverprofile=coverage.txt ./...
           name: Run tests
           post:
               - bash <(curl -s https://codecov.io/bash)
