@@ -1,0 +1,150 @@
+// Copyright 2018 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package quota
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"path"
+	"sync"
+	"time"
+)
+
+// bucket tracks a specific quota instance
+type bucket struct {
+	manager      *Manager
+	org          string
+	env          string
+	id           string // application name + product name
+	requests     []*request
+	result       *Result
+	created      time.Time
+	lock         sync.RWMutex
+	now          func() time.Time
+	synced       time.Time
+	checked      time.Time
+	refreshAfter time.Duration
+	deleteAfter  time.Duration
+}
+
+// apply a quota request to the local quota bucket and schedule for sync
+func (b *bucket) apply(m *Manager, req *request) Result {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+	b.checked = b.now()
+	b.requests = append(b.requests, req)
+	res := Result{
+		Allowed:    req.Allow,
+		ExpiryTime: b.checked.Unix(),
+		Timestamp:  b.checked.Unix(),
+	}
+	if b.result != nil {
+		res.Used = b.result.Used // start from last result
+	}
+	for _, r := range b.requests {
+		res.Used += r.Weight
+	}
+	if res.Used > res.Allowed {
+		res.Exceeded = res.Used - res.Allowed
+	}
+	m.syncQueue <- b
+	return res
+}
+
+// sync local quota bucket with server
+func (b *bucket) sync(m *Manager) {
+	m.log.Infof("syncing bucket: %#v", b)
+	b.lock.Lock()
+	requests := b.requests
+	b.requests = []*request{}
+	b.lock.Unlock()
+
+	var weight int64
+	for _, r := range requests {
+		weight += r.Weight
+	}
+	if weight == 0 {
+		return
+	}
+
+	r := request{
+		Identifier: requests[0].Identifier,
+		Weight:     weight,
+		Interval:   requests[0].Interval,
+		Allow:      requests[0].Allow,
+		TimeUnit:   requests[0].TimeUnit,
+	}
+
+	// todo: move calculation elsewhere
+	quotaURL := m.baseURL
+	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, b.org, b.env))
+
+	body := new(bytes.Buffer)
+	json.NewEncoder(body).Encode(r)
+
+	req, err := http.NewRequest(http.MethodPost, quotaURL.String(), body)
+	if err != nil {
+		m.log.Errorf("unable to create quota sync request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	m.log.Infof("Sending to (%s): %s", quotaURL.String(), body)
+
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		m.log.Errorf("unable to sync quota: %v", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	buf := bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
+	_, err = buf.ReadFrom(resp.Body)
+	respBody := buf.Bytes()
+
+	switch resp.StatusCode {
+	case 200:
+		var quotaResult Result
+		if err = json.Unmarshal(respBody, &quotaResult); err != nil {
+			m.log.Errorf("Error unmarshalling: %s", string(respBody))
+			return
+		}
+
+		m.log.Infof("Quota result: %#v", quotaResult)
+		b.lock.Lock()
+		b.synced = m.now()
+		b.result = &quotaResult
+		b.lock.Unlock()
+
+	default:
+		m.log.Errorf("quota sync failed. result: %s", string(respBody))
+	}
+}
+
+func (b *bucket) okToDelete() bool {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.checked.Add(b.deleteAfter).After(b.now())
+}
+
+func (b *bucket) needsUpdate() bool {
+	b.lock.RLock()
+	defer b.lock.RUnlock()
+	return b.synced == time.Time{} || b.synced.Add(b.refreshAfter).After(b.now())
+}

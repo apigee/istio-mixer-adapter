@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"strconv"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
 )
@@ -175,6 +177,22 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					// server returns empty scopes as array with a single empty string, remove for consistency
 					if len(product.Scopes) == 1 && product.Scopes[0] == "" {
 						product.Scopes = []string{}
+					}
+
+					// parse limit from server
+					if product.QuotaLimit != "" {
+						product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
+						if err != nil {
+							log.Errorf("unable to parse quota limit: %#v", product)
+						}
+					}
+
+					// parse limit from server
+					if product.QuotaInterval != "" {
+						product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
+						if err != nil {
+							log.Errorf("unable to parse quota interval: %#v", product)
+						}
 					}
 
 					pm[product.Name] = product
