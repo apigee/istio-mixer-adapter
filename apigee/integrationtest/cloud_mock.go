@@ -25,7 +25,7 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee/product"
 	"github.com/apigee/istio-mixer-adapter/apigee/quota"
-	jwt "github.com/dgrijalva/jwt-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 )
 
@@ -92,13 +92,20 @@ func CloudMockHandler(t *testing.T) http.HandlerFunc {
 			json.NewEncoder(w).Encode(jwtResponse)
 
 		case strings.HasPrefix(r.URL.Path, "/quotas"):
+			req := quota.Request{}
+			json.NewDecoder(r.Body).Decode(&req)
 			result := quota.Result{
-				Allowed:    1,
-				Used:       1,
+				Allowed:    20,
+				Used:       req.Weight,
 				Exceeded:   0,
 				ExpiryTime: time.Now().Unix(),
 				Timestamp:  time.Now().Unix(),
 			}
+			if result.Used > result.Allowed {
+				result.Exceeded = result.Used - result.Allowed
+				result.Used = result.Allowed
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(result)
 

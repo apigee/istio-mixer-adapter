@@ -43,7 +43,7 @@ func TestQuota(t *testing.T) {
 			},
 			quotas: map[string]mixer.CheckRequest_QuotaParams{
 				"key1": {
-					Amount:     30,
+					Amount:     10, // this is irrelevant, we reduce to 1 from Mixer
 					BestEffort: true,
 				},
 			},
@@ -56,6 +56,34 @@ func TestQuota(t *testing.T) {
 			 	"key1": {
 			 	 "ValidDuration": 0,
 			 	 "Amount": 1
+			 	}
+			    }
+			   }
+			  ]
+			 }
+			`,
+		},
+		"Bad request": {
+			attrs: map[string]interface{}{
+				"api.service":     "service",
+				"request.path":    "/path",
+				"request.api_key": "goodkey",
+			},
+			quotas: map[string]mixer.CheckRequest_QuotaParams{
+				"key1": {
+					Amount:     10,
+					BestEffort: false, // Amount > 1 && BestEffort = false is not allowed
+				},
+			},
+			want: `
+			 {
+			  "AdapterState": null,
+			  "Returns": [
+			   {
+			    "Quota": {
+			 	"key1": {
+			 	 "ValidDuration": 0,
+			 	 "Amount": 0
 			 	}
 			    }
 			   }

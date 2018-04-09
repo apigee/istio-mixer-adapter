@@ -16,7 +16,6 @@ package quota
 
 import (
 	"encoding/json"
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -71,11 +70,14 @@ func TestSync(t *testing.T) {
 	now := func() time.Time { return time.Unix(1521221450, 0) }
 	serverResult := Result{}
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		req := request{}
+		req := Request{}
 		json.NewDecoder(r.Body).Decode(&req)
 		serverResult.Allowed = req.Allow
 		serverResult.Used += req.Weight
-		serverResult.Exceeded = int64(math.Max(float64(serverResult.Used-serverResult.Allowed), 0))
+		if serverResult.Used > serverResult.Allowed {
+			serverResult.Exceeded = serverResult.Used - serverResult.Allowed
+			serverResult.Used = serverResult.Allowed
+		}
 		serverResult.Timestamp = now().Unix()
 		serverResult.ExpiryTime = now().Unix()
 		w.Header().Set("Content-Type", "application/json")
@@ -95,7 +97,7 @@ func TestSync(t *testing.T) {
 		ClientID:       "clientId",
 	}
 
-	requests := []*request{
+	requests := []*Request{
 		{
 			Weight: 2,
 		},
@@ -146,7 +148,7 @@ func TestSync(t *testing.T) {
 	}
 
 	// do interactive sync
-	req := &request{
+	req := &Request{
 		Allow:  3,
 		Weight: 2,
 	}

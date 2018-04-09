@@ -20,57 +20,109 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/istio/mixer/pkg/adapter/test"
+	"reflect"
 )
 
 func TestBucket(t *testing.T) {
+	now := func() time.Time { return time.Unix(1521221450, 0) }
 
-	env := test.NewEnv(t)
-	m := NewManager(url.URL{}, env)
-	m.now = func() time.Time { return time.Unix(1521221450, 0) }
-
-	priorRequests := []*request{
-		{
-			Weight: 1,
+	cases := map[string]struct {
+		priorRequests []*Request
+		priorResult   *Result
+		request       *Request
+		want          Result
+	}{
+		"First request": {
+			nil,
+			nil,
+			&Request{
+				Allow:  3,
+				Weight: 2,
+			},
+			Result{
+				Allowed:    3,
+				Used:       2,
+				Exceeded:   0,
+				ExpiryTime: now().Unix(),
+				Timestamp:  now().Unix(),
+			},
 		},
-		{
-			Weight: 3,
+		"Valid request": {
+			[]*Request{
+				{Weight: 1},
+			},
+			&Result{Used: 2},
+			&Request{
+				Allow:  4,
+				Weight: 1,
+			},
+			Result{
+				Allowed:    4,
+				Used:       4,
+				Exceeded:   0,
+				ExpiryTime: now().Unix(),
+				Timestamp:  now().Unix(),
+			},
+		},
+		"Newly exceeded": {
+			[]*Request{
+				{Weight: 1},
+				{Weight: 2},
+			},
+			&Result{Used: 3},
+			&Request{
+				Allow:  7,
+				Weight: 2,
+			},
+			Result{
+				Allowed:    7,
+				Used:       7,
+				Exceeded:   1,
+				ExpiryTime: now().Unix(),
+				Timestamp:  now().Unix(),
+			},
+		},
+		"Previously exceeded": {
+			[]*Request{},
+			&Result{
+				Used:     3,
+				Exceeded: 1,
+			},
+			&Request{
+				Allow:  3,
+				Weight: 1,
+			},
+			Result{
+				Allowed:    3,
+				Used:       3,
+				Exceeded:   2,
+				ExpiryTime: now().Unix(),
+				Timestamp:  now().Unix(),
+			},
 		},
 	}
 
-	priorResult := &Result{
-		Used: 2,
-	}
+	m := newManager(url.URL{})
 
-	b := &bucket{
-		org:         "org",
-		env:         "env",
-		id:          "id",
-		requests:    priorRequests,
-		result:      priorResult,
-		created:     m.now(),
-		lock:        sync.RWMutex{},
-		now:         m.now,
-		deleteAfter: defaultDeleteAfter,
-	}
+	for id, c := range cases {
+		t.Logf("** Executing test case '%s' **", id)
 
-	req := request{
-		Allow:  3,
-		Weight: 2,
-	}
+		b := &bucket{
+			org:         "org",
+			env:         "env",
+			id:          "id",
+			requests:    c.priorRequests,
+			result:      c.priorResult,
+			created:     now(),
+			lock:        sync.RWMutex{},
+			now:         now,
+			deleteAfter: defaultDeleteAfter,
+		}
 
-	res := b.apply(m, &req)
+		res := b.apply(m, c.request)
 
-	if res.Used != 8 {
-		t.Errorf("Used got: %d, want: %d", res.Used, 8)
-	}
-	if res.Allowed != 3 {
-		t.Errorf("Allowed got: %d, want: %d", res.Allowed, 3)
-	}
-	if res.Exceeded != 5 {
-		t.Errorf("Exceeded got: %d, want: %d", res.Allowed, 5)
-	}
-	if b.checked != m.now() {
-		t.Errorf("checked got: %v, want: %v", b.checked, m.now())
+		if !reflect.DeepEqual(res, c.want) {
+			t.Errorf("got: %#v, want: %#v", res, c.want)
+		}
 	}
 }

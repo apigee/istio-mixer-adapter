@@ -30,7 +30,7 @@ type bucket struct {
 	org          string
 	env          string
 	id           string // application name + product name
-	requests     []*request
+	requests     []*Request
 	result       *Result
 	created      time.Time
 	lock         sync.RWMutex
@@ -42,7 +42,7 @@ type bucket struct {
 }
 
 // apply a quota request to the local quota bucket and schedule for sync
-func (b *bucket) apply(m *Manager, req *request) Result {
+func (b *bucket) apply(m *Manager, req *Request) Result {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	b.checked = b.now()
@@ -54,12 +54,14 @@ func (b *bucket) apply(m *Manager, req *request) Result {
 	}
 	if b.result != nil {
 		res.Used = b.result.Used // start from last result
+		res.Used += b.result.Exceeded
 	}
 	for _, r := range b.requests {
 		res.Used += r.Weight
 	}
 	if res.Used > res.Allowed {
 		res.Exceeded = res.Used - res.Allowed
+		res.Used = res.Allowed
 	}
 	m.syncQueue <- b
 	return res
@@ -67,10 +69,9 @@ func (b *bucket) apply(m *Manager, req *request) Result {
 
 // sync local quota bucket with server
 func (b *bucket) sync(m *Manager) {
-	m.log.Infof("syncing bucket: %#v", b)
 	b.lock.Lock()
 	requests := b.requests
-	b.requests = []*request{}
+	b.requests = []*Request{}
 	b.lock.Unlock()
 
 	var weight int64
@@ -81,7 +82,7 @@ func (b *bucket) sync(m *Manager) {
 		return
 	}
 
-	r := request{
+	r := Request{
 		Identifier: requests[0].Identifier,
 		Weight:     weight,
 		Interval:   requests[0].Interval,

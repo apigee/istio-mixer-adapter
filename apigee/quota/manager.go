@@ -107,7 +107,7 @@ func (m *Manager) Close() {
 func (m *Manager) Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) Result {
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 
-	req := request{
+	req := Request{
 		Identifier: quotaID,
 		Weight:     args.QuotaAmount,
 		Interval:   p.QuotaIntervalInt,
@@ -122,7 +122,7 @@ func (m *Manager) Apply(auth auth.Context, p product.APIProduct, args adapter.Qu
 			org:         auth.Context.Organization(),
 			env:         auth.Context.Environment(),
 			id:          quotaID,
-			requests:    []*request{},
+			requests:    []*Request{},
 			result:      nil,
 			created:     m.now(),
 			lock:        sync.RWMutex{},

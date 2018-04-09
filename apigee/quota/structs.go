@@ -14,7 +14,8 @@
 
 package quota
 
-type request struct {
+// A Request is sent to Apigee's quota server to allocate quota.
+type Request struct {
 	Identifier string `json:"identifier"`
 	Weight     int64  `json:"weight"`
 	Interval   int64  `json:"interval"`
@@ -23,7 +24,8 @@ type request struct {
 }
 
 // A Result is a response from Apigee's quota server that gives information
-// about how much quota is available.
+// about how much quota is available. Note that Used will never exceed Allowed,
+// but Exceeded will be positive in that case.
 type Result struct {
 	Allowed    int64 `json:"allowed"`
 	Used       int64 `json:"used"`
