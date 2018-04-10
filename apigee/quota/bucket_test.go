@@ -125,3 +125,83 @@ func TestBucket(t *testing.T) {
 		}
 	}
 }
+
+func TestNeedToDelete(t *testing.T) {
+	now := func() time.Time { return time.Unix(1521221450, 0) }
+
+	cases := map[string]struct {
+		requests []*Request
+		checked  time.Time
+		want     bool
+	}{
+		"empty": {
+			want: true,
+		},
+		"recently checked": {
+			checked: now(),
+			want:    false,
+		},
+		"not recently checked": {
+			checked: now().Add(-time.Hour),
+			want:    true,
+		},
+		"has pending requests": {
+			requests: []*Request{},
+			checked:  now().Add(-time.Hour),
+			want:     false,
+		},
+	}
+
+	for id, c := range cases {
+		t.Logf("** Executing test case '%s' **", id)
+		b := bucket{
+			now:         now,
+			deleteAfter: time.Minute,
+			requests:    c.requests,
+			checked:     c.checked,
+		}
+		if c.want != b.needToDelete() {
+			t.Errorf("want: %v got: %v", c.want, b.needToDelete())
+		}
+	}
+}
+
+func TestNeedToSync(t *testing.T) {
+	now := func() time.Time { return time.Unix(1521221450, 0) }
+
+	cases := map[string]struct {
+		requests []*Request
+		synced   time.Time
+		want     bool
+	}{
+		"empty": {
+			want: true,
+		},
+		"recently synced": {
+			synced: now(),
+			want:   false,
+		},
+		"not recently synced": {
+			synced: now().Add(-time.Hour),
+			want:   true,
+		},
+		"has pending requests": {
+			synced:   now(),
+			requests: []*Request{},
+			want:     true,
+		},
+	}
+
+	for id, c := range cases {
+		t.Logf("** Executing test case '%s' **", id)
+		b := bucket{
+			now:          now,
+			refreshAfter: time.Minute,
+			requests:     c.requests,
+			synced:       c.synced,
+		}
+		if c.want != b.needToSync() {
+			t.Errorf("want: %v got: %v", c.want, b.needToDelete())
+		}
+	}
+}

@@ -151,7 +151,7 @@ func (b *bucket) sync(m *Manager) {
 
 		m.log.Infof("quota result: %#v", quotaResult)
 		b.lock.Lock()
-		b.synced = m.now()
+		b.synced = b.now()
 		b.result = &quotaResult
 		b.lock.Unlock()
 
@@ -163,11 +163,11 @@ func (b *bucket) sync(m *Manager) {
 func (b *bucket) needToDelete() bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.requests == nil && b.checked.Add(b.deleteAfter).After(b.now())
+	return b.requests == nil && b.now().After(b.checked.Add(b.deleteAfter))
 }
 
 func (b *bucket) needToSync() bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.requests != nil || b.synced.Add(b.refreshAfter).After(b.now())
+	return b.requests != nil || b.now().After(b.synced.Add(b.refreshAfter))
 }

@@ -151,7 +151,7 @@ func TestSync(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond) // allow idle sync
 	if len(b.requests) != 0 {
-		t.Errorf("num request got: %d, want: %d", len(b.requests), 0)
+		t.Errorf("pending requests got: %d, want: %d", len(b.requests), 0)
 	}
 	if !reflect.DeepEqual(*b.result, serverResult) {
 		t.Errorf("result got: %#v, want: %#v", *b.result, serverResult)
@@ -165,12 +165,11 @@ func TestSync(t *testing.T) {
 		Allow:  3,
 		Weight: 2,
 	}
-	m.now = func() time.Time { return time.Unix(1521221451, 0) }
 	b.apply(m, req)
-	time.Sleep(10 * time.Millisecond) // allow background sync
+	b.sync(m)
 
 	if len(b.requests) != 0 {
-		t.Errorf("num request got: %d, want: %d", len(b.requests), 0)
+		t.Errorf("pending requests got: %d, want: %d", len(b.requests), 0)
 	}
 	if !reflect.DeepEqual(*b.result, serverResult) {
 		t.Errorf("result got: %#v, want: %#v", *b.result, serverResult)

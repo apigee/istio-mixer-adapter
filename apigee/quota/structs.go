@@ -21,7 +21,7 @@ type Request struct {
 	Interval        int64  `json:"interval"`
 	Allow           int64  `json:"allow"`
 	TimeUnit        string `json:"timeUnit"`
-	DeduplicationID string // for Istio, not Apigee
+	DeduplicationID string `json:"-"` // for Istio, not Apigee
 }
 
 // A Result is a response from Apigee's quota server that gives information
