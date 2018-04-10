@@ -58,9 +58,19 @@ func TestQuota(t *testing.T) {
 	defer m.Close()
 
 	result := m.Apply(*authContext, p, args)
-
 	if result.Used != 1 {
 		t.Errorf("result used should be 1")
+	}
+	if result.Exceeded != 0 {
+		t.Errorf("result exceeded should be 0")
+	}
+
+	result = m.Apply(*authContext, p, args)
+	if result.Used != 1 {
+		t.Errorf("result used should be 1")
+	}
+	if result.Exceeded != 1 {
+		t.Errorf("result exceeded should be 1")
 	}
 }
 

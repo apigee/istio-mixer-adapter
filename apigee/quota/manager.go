@@ -116,9 +116,10 @@ func (m *Manager) Apply(auth auth.Context, p product.APIProduct, args adapter.Qu
 	}
 
 	m.bucketsLock.Lock()
-	b := m.buckets[quotaID]
-	if b == nil {
+	b, ok := m.buckets[quotaID]
+	if !ok {
 		b = &bucket{
+			manager:     m,
 			org:         auth.Context.Organization(),
 			env:         auth.Context.Environment(),
 			id:          quotaID,
