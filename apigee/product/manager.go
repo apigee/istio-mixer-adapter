@@ -246,7 +246,7 @@ func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) erro
 type quitSignalError error
 
 // Resolve determines the valid products for a given API.
-func (p *Manager) Resolve(ac auth.Context, api, path string) []APIProduct {
+func (p *Manager) Resolve(ac *auth.Context, api, path string) []APIProduct {
 	validProducts, failHints := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
 	ac.Log().Infof("Resolved api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
 	if len(validProducts) == 0 {

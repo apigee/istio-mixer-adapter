@@ -22,23 +22,43 @@ import (
 	"path"
 	"sync"
 	"time"
+
+	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 )
 
 // bucket tracks a specific quota instance
 type bucket struct {
 	manager      *Manager
-	org          string
-	env          string
+	quotaURL     string
 	id           string // application name + product name
 	requests     []*Request
 	result       *Result
 	created      time.Time
 	lock         sync.RWMutex
 	now          func() time.Time
-	synced       time.Time
-	checked      time.Time
-	refreshAfter time.Duration
-	deleteAfter  time.Duration
+	synced       time.Time     // last sync
+	checked      time.Time     // last apply
+	refreshAfter time.Duration // after synced
+	deleteAfter  time.Duration // after checked
+}
+
+func newBucket(id string, m *Manager, auth *auth.Context) *bucket {
+	org := auth.Context.Organization()
+	env := auth.Context.Environment()
+	quotaURL := m.baseURL
+	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, org, env))
+	return &bucket{
+		id:           id,
+		manager:      m,
+		quotaURL:     quotaURL.String(),
+		requests:     nil,
+		result:       nil,
+		created:      m.now(),
+		lock:         sync.RWMutex{},
+		now:          m.now,
+		deleteAfter:  defaultDeleteAfter,
+		refreshAfter: defaultRefreshAfter,
+	}
 }
 
 // apply a quota request to the local quota bucket and schedule for sync
@@ -46,7 +66,6 @@ func (b *bucket) apply(m *Manager, req *Request) Result {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	b.checked = b.now()
-	b.requests = append(b.requests, req)
 	res := Result{
 		Allowed:    req.Allow,
 		ExpiryTime: b.checked.Unix(),
@@ -56,14 +75,21 @@ func (b *bucket) apply(m *Manager, req *Request) Result {
 		res.Used = b.result.Used // start from last result
 		res.Used += b.result.Exceeded
 	}
+	var dupRequest bool
 	for _, r := range b.requests {
 		res.Used += r.Weight
+		if req.DeduplicationID != "" && r.DeduplicationID == req.DeduplicationID {
+			dupRequest = true
+		}
+	}
+	if !dupRequest {
+		res.Used += req.Weight
+		b.requests = append(b.requests, req)
 	}
 	if res.Used > res.Allowed {
 		res.Exceeded = res.Used - res.Allowed
 		res.Used = res.Allowed
 	}
-	m.syncQueue <- b
 	return res
 }
 
@@ -71,7 +97,7 @@ func (b *bucket) apply(m *Manager, req *Request) Result {
 func (b *bucket) sync(m *Manager) {
 	b.lock.Lock()
 	requests := b.requests
-	b.requests = []*Request{}
+	b.requests = nil
 	b.lock.Unlock()
 
 	var weight int64
@@ -90,14 +116,10 @@ func (b *bucket) sync(m *Manager) {
 		TimeUnit:   requests[0].TimeUnit,
 	}
 
-	// todo: move calculation elsewhere
-	quotaURL := m.baseURL
-	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, b.org, b.env))
-
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(r)
 
-	req, err := http.NewRequest(http.MethodPost, quotaURL.String(), body)
+	req, err := http.NewRequest(http.MethodPost, b.quotaURL, body)
 	if err != nil {
 		m.log.Errorf("unable to create quota sync request: %v", err)
 	}
@@ -105,7 +127,7 @@ func (b *bucket) sync(m *Manager) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	m.log.Infof("Sending to (%s): %s", quotaURL.String(), body)
+	m.log.Infof("Sending to (%s): %s", b.quotaURL, body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -127,7 +149,7 @@ func (b *bucket) sync(m *Manager) {
 			return
 		}
 
-		m.log.Infof("Quota result: %#v", quotaResult)
+		m.log.Infof("quota result: %#v", quotaResult)
 		b.lock.Lock()
 		b.synced = m.now()
 		b.result = &quotaResult
@@ -138,14 +160,14 @@ func (b *bucket) sync(m *Manager) {
 	}
 }
 
-func (b *bucket) okToDelete() bool {
+func (b *bucket) needToDelete() bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.checked.Add(b.deleteAfter).After(b.now())
+	return b.requests == nil && b.checked.Add(b.deleteAfter).After(b.now())
 }
 
-func (b *bucket) needsUpdate() bool {
+func (b *bucket) needToSync() bool {
 	b.lock.RLock()
 	defer b.lock.RUnlock()
-	return b.synced == time.Time{} || b.synced.Add(b.refreshAfter).After(b.now())
+	return b.requests != nil || b.synced.Add(b.refreshAfter).After(b.now())
 }

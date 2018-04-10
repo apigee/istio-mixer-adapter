@@ -267,7 +267,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		if authContext == nil {
 			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, resolveClaims(h.Log(), inst.ApiClaims))
 			// ignore error, take whatever we have
-			authContext = &ac
+			authContext = ac
 		}
 
 		records = append(records, record)
@@ -276,7 +276,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return h.analyticsMan.SendRecords(authContext, records)
 }
 
-// Handle Authentication and Authorization - NEVER RETURN ERROR!
+// Handle Authentication and Authorization
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	redacts := []interface{}{
 		inst.Subject.Properties[apiKeyAttribute],
@@ -322,8 +322,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}, nil
 }
 
-// todo: support args.DeduplicationID
-// Handle Quota checks - NEVER RETURN ERROR!
+// Handle Quota checks
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
 	redacts := []interface{}{
 		inst.Dimensions[apiKeyAttribute],
@@ -369,17 +368,17 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	}
 	args.QuotaAmount = 1
 
-	var exceeded int64
+	var exceeded bool
 	// apply to all matching products
 	for _, p := range prods {
 		if p.QuotaLimitInt > 0 {
 			result := h.quotaMan.Apply(authContext, p, args)
 			if result.Exceeded > 0 {
-				exceeded = result.Exceeded
+				exceeded = true
 			}
 		}
 	}
-	if exceeded > 0 {
+	if exceeded {
 		return adapter.QuotaResult{
 			Status:        status.OK,
 			ValidDuration: 0,

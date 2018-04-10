@@ -58,7 +58,7 @@ func TestStartStop(t *testing.T) {
 	p := NewManager(*serverURL, env)
 	defer p.Close()
 	context := authtest.NewContext("", env)
-	ac := auth.Context{
+	ac := &auth.Context{
 		Context:     context,
 		APIProducts: []string{apiProducts[0].Name},
 		Scopes:      apiProducts[0].Scopes,

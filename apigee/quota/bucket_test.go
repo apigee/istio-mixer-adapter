@@ -108,8 +108,7 @@ func TestBucket(t *testing.T) {
 		t.Logf("** Executing test case '%s' **", id)
 
 		b := &bucket{
-			org:         "org",
-			env:         "env",
+			quotaURL:    "",
 			id:          "id",
 			requests:    c.priorRequests,
 			result:      c.priorResult,

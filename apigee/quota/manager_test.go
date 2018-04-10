@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -54,10 +53,9 @@ func TestQuota(t *testing.T) {
 	}
 
 	m = NewManager(context.ApigeeBase(), env)
-	m.Start(env)
 	defer m.Close()
 
-	result := m.Apply(*authContext, p, args)
+	result := m.Apply(authContext, p, args)
 	if result.Used != 1 {
 		t.Errorf("result used should be 1")
 	}
@@ -65,7 +63,17 @@ func TestQuota(t *testing.T) {
 		t.Errorf("result exceeded should be 0")
 	}
 
-	result = m.Apply(*authContext, p, args)
+	args.DeduplicationID = "Y"
+	result = m.Apply(authContext, p, args)
+	if result.Used != 1 {
+		t.Errorf("result used should be 1")
+	}
+	if result.Exceeded != 1 {
+		t.Errorf("result exceeded should be 1")
+	}
+
+	// duplicate
+	result = m.Apply(authContext, p, args)
 	if result.Used != 1 {
 		t.Errorf("result used should be 1")
 	}
@@ -74,7 +82,7 @@ func TestQuota(t *testing.T) {
 	}
 }
 
-// todo: make determinate
+// not fully determinate, uses delays and background threads
 func TestSync(t *testing.T) {
 
 	now := func() time.Time { return time.Unix(1521221450, 0) }
@@ -119,32 +127,27 @@ func TestSync(t *testing.T) {
 		Used: 1,
 	}
 
-	b := &bucket{
-		org:          authContext.Organization(),
-		env:          authContext.Environment(),
-		id:           "id",
-		requests:     requests,
-		result:       result,
-		created:      now(),
-		lock:         sync.RWMutex{},
-		now:          now,
-		refreshAfter: time.Millisecond,
-	}
-
 	m := &Manager{
 		close: make(chan bool),
 		client: &http.Client{
 			Timeout: httpTimeout,
 		},
-		now:               now,
-		syncLoopPollEvery: 2 * time.Millisecond,
-		buckets:           map[string]*bucket{b.id: b},
-		syncQueue:         make(chan *bucket, 10),
-		baseURL:           context.ApigeeBase(),
-		numSyncWorkers:    1,
+		now:            now,
+		syncRate:       2 * time.Millisecond,
+		syncQueue:      make(chan *bucket, 10),
+		baseURL:        context.ApigeeBase(),
+		numSyncWorkers: 1,
 	}
 	m.Start(env)
 	defer m.Close()
+
+	b := newBucket("id", m, authContext)
+	b.created = now()
+	b.now = now
+	b.requests = requests
+	b.result = result
+	m.buckets = map[string]*bucket{b.id: b}
+	b.refreshAfter = time.Millisecond
 
 	time.Sleep(10 * time.Millisecond) // allow idle sync
 	if len(b.requests) != 0 {

@@ -26,12 +26,11 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-// todo: support args.DeduplicationID
-
 const (
 	quotaPath             = "/quotas/organization/%s/environment/%s"
-	defaultPollPeriod     = time.Second
+	defaultSyncRate       = time.Second
 	defaultNumSyncWorkers = 10
+	defaultRefreshAfter   = 1 * time.Minute
 	defaultDeleteAfter    = 10 * time.Minute
 	httpTimeout           = 15 * time.Second
 	syncQueueSize         = 100
@@ -39,16 +38,16 @@ const (
 
 // A Manager tracks multiple Apigee quotas
 type Manager struct {
-	baseURL           url.URL
-	close             chan bool
-	client            *http.Client
-	now               func() time.Time
-	log               adapter.Logger
-	syncLoopPollEvery time.Duration
-	bucketsLock       sync.RWMutex
-	buckets           map[string]*bucket // Map from ID -> bucket
-	syncQueue         chan *bucket
-	numSyncWorkers    int
+	baseURL        url.URL
+	close          chan bool
+	client         *http.Client
+	now            func() time.Time
+	log            adapter.Logger
+	syncRate       time.Duration
+	bucketsLock    sync.RWMutex
+	buckets        map[string]*bucket // Map from ID -> bucket
+	syncQueue      chan *bucket
+	numSyncWorkers int
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
@@ -65,12 +64,12 @@ func newManager(baseURL url.URL) *Manager {
 		client: &http.Client{
 			Timeout: httpTimeout,
 		},
-		now:               time.Now,
-		syncLoopPollEvery: defaultPollPeriod,
-		buckets:           map[string]*bucket{},
-		syncQueue:         make(chan *bucket, syncQueueSize),
-		baseURL:           baseURL,
-		numSyncWorkers:    defaultNumSyncWorkers,
+		now:            time.Now,
+		syncRate:       defaultSyncRate,
+		buckets:        map[string]*bucket{},
+		syncQueue:      make(chan *bucket, syncQueueSize),
+		baseURL:        baseURL,
+		numSyncWorkers: defaultNumSyncWorkers,
 	}
 }
 
@@ -80,7 +79,7 @@ func (m *Manager) Start(env adapter.Env) {
 	m.log.Infof("starting quota manager")
 
 	env.ScheduleDaemon(func() {
-		m.idleSyncLoop()
+		m.syncLoop()
 	})
 
 	for i := 0; i < m.numSyncWorkers; i++ {
@@ -104,54 +103,53 @@ func (m *Manager) Close() {
 }
 
 // Apply a quota request to the local quota bucket and schedule for sync
-func (m *Manager) Apply(auth auth.Context, p product.APIProduct, args adapter.QuotaArgs) Result {
+func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.QuotaArgs) Result {
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 
 	req := Request{
-		Identifier: quotaID,
-		Weight:     args.QuotaAmount,
-		Interval:   p.QuotaIntervalInt,
-		Allow:      p.QuotaLimitInt,
-		TimeUnit:   p.QuotaTimeUnit,
+		Identifier:      quotaID,
+		Weight:          args.QuotaAmount,
+		Interval:        p.QuotaIntervalInt,
+		Allow:           p.QuotaLimitInt,
+		TimeUnit:        p.QuotaTimeUnit,
+		DeduplicationID: args.DeduplicationID,
 	}
 
-	m.bucketsLock.Lock()
+	m.bucketsLock.RLock()
 	b, ok := m.buckets[quotaID]
 	if !ok {
-		b = &bucket{
-			manager:     m,
-			org:         auth.Context.Organization(),
-			env:         auth.Context.Environment(),
-			id:          quotaID,
-			requests:    []*Request{},
-			result:      nil,
-			created:     m.now(),
-			lock:        sync.RWMutex{},
-			now:         m.now,
-			deleteAfter: defaultDeleteAfter,
-		}
+		b = newBucket(quotaID, m, auth)
 		m.buckets[quotaID] = b
 	}
-	m.bucketsLock.Unlock()
+	m.bucketsLock.RUnlock()
 
 	return b.apply(m, &req)
 }
 
-// loop that deletes old buckets and syncs active buckets
-func (m *Manager) idleSyncLoop() {
-	t := time.NewTicker(m.syncLoopPollEvery)
+// loop to sync active buckets and deletes old buckets
+func (m *Manager) syncLoop() {
+	t := time.NewTicker(m.syncRate)
 	for {
 		select {
 		case <-t.C:
-			m.bucketsLock.Lock()
+			var deleteIDs []string
+			m.bucketsLock.RLock()
 			for id, b := range m.buckets {
-				if b.okToDelete() {
-					delete(m.buckets, id)
-				} else if b.needsUpdate() {
-					m.syncQueue <- b
+				if b.needToDelete() {
+					deleteIDs = append(deleteIDs, id)
+				} else if b.needToSync() {
+					bucket := b
+					m.syncQueue <- bucket
 				}
 			}
-			m.bucketsLock.Unlock()
+			m.bucketsLock.RUnlock()
+			if deleteIDs != nil {
+				m.bucketsLock.Lock()
+				for _, id := range deleteIDs {
+					delete(m.buckets, id)
+				}
+				m.bucketsLock.Unlock()
+			}
 		case <-m.close:
 			m.log.Infof("closing quota sync loop")
 			t.Stop()
@@ -165,7 +163,6 @@ func (m *Manager) syncBucketWorker() {
 	for {
 		select {
 		case bucket := <-m.syncQueue:
-			// todo: debounce?
 			bucket.sync(m)
 		case <-m.close:
 			m.log.Infof("closing quota sync worker")
