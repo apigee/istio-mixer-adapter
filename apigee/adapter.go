@@ -369,15 +369,22 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 	args.QuotaAmount = 1
 
 	var exceeded bool
+	var anyError error
 	// apply to all matching products
 	for _, p := range prods {
 		if p.QuotaLimitInt > 0 {
-			result := h.quotaMan.Apply(authContext, p, args)
-			if result.Exceeded > 0 {
+			result, err := h.quotaMan.Apply(authContext, p, args)
+			if err != nil {
+				anyError = err
+			} else if result.Exceeded > 0 {
 				exceeded = true
 			}
 		}
 	}
+	if anyError != nil {
+		return adapter.QuotaResult{}, anyError
+	}
+
 	if exceeded {
 		return adapter.QuotaResult{
 			Status:        status.OK,

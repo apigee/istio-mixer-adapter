@@ -103,10 +103,10 @@ func (m *Manager) Close() {
 }
 
 // Apply a quota request to the local quota bucket and schedule for sync
-func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.QuotaArgs) Result {
+func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.QuotaArgs) (*Result, error) {
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 
-	req := Request{
+	req := &Request{
 		Identifier:      quotaID,
 		Weight:          args.QuotaAmount,
 		Interval:        p.QuotaIntervalInt,
@@ -118,7 +118,7 @@ func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.Q
 	m.bucketsLock.RLock()
 	b, existingBucket := m.buckets[quotaID]
 	if !existingBucket {
-		b = newBucket(quotaID, m, auth)
+		b = newBucket(req, m, auth)
 		m.buckets[quotaID] = b
 	}
 	m.bucketsLock.RUnlock()
@@ -126,7 +126,7 @@ func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.Q
 		b.sync(m) // force sync for new bucket
 	}
 
-	return b.apply(m, &req)
+	return b.apply(m, req)
 }
 
 // loop to sync active buckets and deletes old buckets
@@ -147,6 +147,7 @@ func (m *Manager) syncLoop() {
 			}
 			m.bucketsLock.RUnlock()
 			if deleteIDs != nil {
+				m.log.Infof("deleting quota buckets: %v", deleteIDs)
 				m.bucketsLock.Lock()
 				for _, id := range deleteIDs {
 					delete(m.buckets, id)

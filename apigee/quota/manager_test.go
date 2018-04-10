@@ -34,8 +34,15 @@ func TestQuota(t *testing.T) {
 	var m *Manager
 	m.Close() // just to verify it doesn't die here
 
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result := Result{}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	}))
+	defer ts.Close()
+
 	env := test.NewEnv(t)
-	context := authtest.NewContext("", env)
+	context := authtest.NewContext(ts.URL, env)
 	authContext := &auth.Context{
 		Context: context,
 	}
@@ -47,38 +54,58 @@ func TestQuota(t *testing.T) {
 	}
 
 	args := adapter.QuotaArgs{
-		DeduplicationID: "X",
-		QuotaAmount:     1,
-		BestEffort:      true,
+		QuotaAmount: 1,
+		BestEffort:  true,
 	}
 
 	m = NewManager(context.ApigeeBase(), env)
 	defer m.Close()
 
-	result := m.Apply(authContext, p, args)
-	if result.Used != 1 {
-		t.Errorf("result used should be 1")
-	}
-	if result.Exceeded != 0 {
-		t.Errorf("result exceeded should be 0")
+	cases := []struct {
+		test            string
+		deduplicationID string
+		want            Result
+	}{
+		{
+			test:            "first",
+			deduplicationID: "X",
+			want: Result{
+				Used:     1,
+				Exceeded: 0,
+			},
+		},
+		{
+			test:            "duplicate",
+			deduplicationID: "X",
+			want: Result{
+				Used:     1,
+				Exceeded: 0,
+			},
+		},
+		{
+			test:            "second",
+			deduplicationID: "Y",
+			want: Result{
+				Used:     1,
+				Exceeded: 1,
+			},
+		},
 	}
 
-	args.DeduplicationID = "Y"
-	result = m.Apply(authContext, p, args)
-	if result.Used != 1 {
-		t.Errorf("result used should be 1")
-	}
-	if result.Exceeded != 1 {
-		t.Errorf("result exceeded should be 1")
-	}
+	for _, c := range cases {
+		t.Logf("** Executing test case '%s' **", c.test)
 
-	// duplicate
-	result = m.Apply(authContext, p, args)
-	if result.Used != 1 {
-		t.Errorf("result used should be 1")
-	}
-	if result.Exceeded != 1 {
-		t.Errorf("result exceeded should be 1")
+		args.DeduplicationID = c.deduplicationID
+		result, err := m.Apply(authContext, p, args)
+		if err != nil {
+			t.Errorf("should not get error: %v", err)
+		}
+		if result.Used != c.want.Used {
+			t.Errorf("used got: %v, want: %v", result.Used, c.want.Used)
+		}
+		if result.Exceeded != c.want.Exceeded {
+			t.Errorf("exceeded got: %v, want: %v", result.Exceeded, c.want.Exceeded)
+		}
 	}
 }
 
@@ -115,9 +142,11 @@ func TestSync(t *testing.T) {
 		ClientID:       "clientId",
 	}
 
+	quotaID := "id"
 	requests := []*Request{
 		{
-			Weight: 2,
+			Identifier: quotaID,
+			Weight:     2,
 		},
 		{
 			Weight: 1,
@@ -141,12 +170,12 @@ func TestSync(t *testing.T) {
 	m.Start(env)
 	defer m.Close()
 
-	b := newBucket("id", m, authContext)
+	b := newBucket(requests[0], m, authContext)
 	b.created = now()
 	b.now = now
 	b.requests = requests
 	b.result = result
-	m.buckets = map[string]*bucket{b.id: b}
+	m.buckets = map[string]*bucket{quotaID: b}
 	b.refreshAfter = time.Millisecond
 
 	time.Sleep(10 * time.Millisecond) // allow idle sync
@@ -182,7 +211,7 @@ func TestSync(t *testing.T) {
 	time.Sleep(10 * time.Millisecond) // allow background delete
 	m.bucketsLock.RLock()
 	defer m.bucketsLock.RUnlock()
-	if m.buckets[b.id] != nil {
+	if m.buckets[quotaID] != nil {
 		t.Errorf("old bucket should have been deleted")
 	}
 

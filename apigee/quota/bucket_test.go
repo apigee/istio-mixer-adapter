@@ -16,11 +16,10 @@ package quota
 
 import (
 	"net/url"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
-
-	"reflect"
 )
 
 func TestBucket(t *testing.T) {
@@ -30,7 +29,7 @@ func TestBucket(t *testing.T) {
 		priorRequests []*Request
 		priorResult   *Result
 		request       *Request
-		want          Result
+		want          *Result
 	}{
 		"First request": {
 			nil,
@@ -39,7 +38,7 @@ func TestBucket(t *testing.T) {
 				Allow:  3,
 				Weight: 2,
 			},
-			Result{
+			&Result{
 				Allowed:    3,
 				Used:       2,
 				Exceeded:   0,
@@ -56,7 +55,7 @@ func TestBucket(t *testing.T) {
 				Allow:  4,
 				Weight: 1,
 			},
-			Result{
+			&Result{
 				Allowed:    4,
 				Used:       4,
 				Exceeded:   0,
@@ -74,7 +73,7 @@ func TestBucket(t *testing.T) {
 				Allow:  7,
 				Weight: 2,
 			},
-			Result{
+			&Result{
 				Allowed:    7,
 				Used:       7,
 				Exceeded:   1,
@@ -92,7 +91,7 @@ func TestBucket(t *testing.T) {
 				Allow:  3,
 				Weight: 1,
 			},
-			Result{
+			&Result{
 				Allowed:    3,
 				Used:       3,
 				Exceeded:   2,
@@ -108,8 +107,8 @@ func TestBucket(t *testing.T) {
 		t.Logf("** Executing test case '%s' **", id)
 
 		b := &bucket{
+			prototype:   c.request,
 			quotaURL:    "",
-			id:          "id",
 			requests:    c.priorRequests,
 			result:      c.priorResult,
 			created:     now(),
@@ -118,7 +117,10 @@ func TestBucket(t *testing.T) {
 			deleteAfter: defaultDeleteAfter,
 		}
 
-		res := b.apply(m, c.request)
+		res, err := b.apply(m, c.request)
+		if err != nil {
+			t.Errorf("should not get error: %v", err)
+		}
 
 		if !reflect.DeepEqual(res, c.want) {
 			t.Errorf("got: %#v, want: %#v", res, c.want)

@@ -30,7 +30,7 @@ import (
 type bucket struct {
 	manager      *Manager
 	quotaURL     string
-	id           string // application name + product name
+	prototype    *Request
 	requests     []*Request
 	result       *Result
 	created      time.Time
@@ -42,13 +42,13 @@ type bucket struct {
 	deleteAfter  time.Duration // after checked
 }
 
-func newBucket(id string, m *Manager, auth *auth.Context) *bucket {
+func newBucket(req *Request, m *Manager, auth *auth.Context) *bucket {
 	org := auth.Context.Organization()
 	env := auth.Context.Environment()
 	quotaURL := m.baseURL
 	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, org, env))
 	return &bucket{
-		id:           id,
+		prototype:    req,
 		manager:      m,
 		quotaURL:     quotaURL.String(),
 		requests:     nil,
@@ -62,11 +62,15 @@ func newBucket(id string, m *Manager, auth *auth.Context) *bucket {
 }
 
 // apply a quota request to the local quota bucket and schedule for sync
-func (b *bucket) apply(m *Manager, req *Request) Result {
+func (b *bucket) apply(m *Manager, req *Request) (*Result, error) {
+	if !b.isCompatible(req) {
+		return nil, fmt.Errorf("incompatible quota buckets")
+	}
+
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	b.checked = b.now()
-	res := Result{
+	res := &Result{
 		Allowed:    req.Allow,
 		ExpiryTime: b.checked.Unix(),
 		Timestamp:  b.checked.Unix(),
@@ -90,7 +94,14 @@ func (b *bucket) apply(m *Manager, req *Request) Result {
 		res.Exceeded = res.Used - res.Allowed
 		res.Used = res.Allowed
 	}
-	return res
+	return res, nil
+}
+
+func (b *bucket) isCompatible(r *Request) bool {
+	return b.prototype.Interval == r.Interval &&
+		b.prototype.Allow == r.Allow &&
+		b.prototype.TimeUnit == r.TimeUnit &&
+		b.prototype.Identifier == r.Identifier
 }
 
 // sync local quota bucket with server
@@ -104,17 +115,9 @@ func (b *bucket) sync(m *Manager) {
 	for _, r := range requests {
 		weight += r.Weight
 	}
-	if weight == 0 {
-		return
-	}
 
-	r := Request{
-		Identifier: requests[0].Identifier,
-		Weight:     weight,
-		Interval:   requests[0].Interval,
-		Allow:      requests[0].Allow,
-		TimeUnit:   requests[0].TimeUnit,
-	}
+	r := *b.prototype // make copy
+	r.Weight = weight
 
 	body := new(bytes.Buffer)
 	json.NewEncoder(body).Encode(r)
