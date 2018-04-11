@@ -40,7 +40,7 @@ func (a *Manager) Close() {
 
 // Authenticate constructs an Apigee context from an existing context and either
 // a set of JWT claims, or an Apigee API key.
-func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (Context, error) {
+func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (*Context, error) {
 	redacts := []interface{}{
 		claims["access_token"],
 		claims["client_id"],
@@ -48,7 +48,7 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
 	ctx.Log().Infof("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
-	var ac = Context{Context: ctx}
+	var ac = &Context{Context: ctx}
 	if claims != nil {
 		err := ac.setClaims(claims)
 		if ac.ClientID != "" || err != nil {

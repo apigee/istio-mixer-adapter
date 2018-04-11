@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"strconv"
+
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
 )
@@ -177,6 +179,22 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 						product.Scopes = []string{}
 					}
 
+					// parse limit from server
+					if product.QuotaLimit != "" {
+						product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
+						if err != nil {
+							log.Errorf("unable to parse quota limit: %#v", product)
+						}
+					}
+
+					// parse limit from server
+					if product.QuotaInterval != "" {
+						product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
+						if err != nil {
+							log.Errorf("unable to parse quota interval: %#v", product)
+						}
+					}
+
 					pm[product.Name] = product
 					break
 				}
@@ -228,7 +246,7 @@ func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) erro
 type quitSignalError error
 
 // Resolve determines the valid products for a given API.
-func (p *Manager) Resolve(ac auth.Context, api, path string) []APIProduct {
+func (p *Manager) Resolve(ac *auth.Context, api, path string) []APIProduct {
 	validProducts, failHints := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
 	ac.Log().Infof("Resolved api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
 	if len(validProducts) == 0 {

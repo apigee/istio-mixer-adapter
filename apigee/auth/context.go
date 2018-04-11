@@ -69,7 +69,7 @@ func parseExp(claims map[string]interface{}) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("unknown type for time %s: %T", claims["exp"], claims["exp"])
 }
 
-// does nothing if claims is empty
+// does nothing if claims is nil
 func (a *Context) setClaims(claims map[string]interface{}) error {
 	if claims[clientIDClaim] == nil {
 		return nil
@@ -121,26 +121,3 @@ func parseArrayOfStrings(obj interface{}) (results []string, err error) {
 	}
 	return
 }
-
-// todo: add developerEmail
-/*
-jwt claims:
-{
- api_product_list: [
-  "EdgeMicroTestProduct"
- ],
- audience: "microgateway",
- jti: "29e2320b-787c-4625-8599-acc5e05c68d0",
- iss: "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
- access_token: "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
- client_id: "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
- nbf: 1516387728,
- iat: 1516387728,
- application_name: "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
- scopes: [
-  "scope1",
-  "scope2"
- ],
- exp: 1516388028
-}
-*/

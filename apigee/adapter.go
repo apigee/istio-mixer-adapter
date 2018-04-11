@@ -64,6 +64,7 @@ type (
 		productMan   *product.Manager
 		authMan      *auth.Manager
 		analyticsMan *analytics.Manager
+		quotaMan     *quota.Manager
 	}
 )
 
@@ -160,8 +161,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	productMan := product.NewManager(*customerBase, env.Logger(), env)
+	productMan := product.NewManager(*customerBase, env)
 	authMan := auth.NewManager(env)
+	quotaMan := quota.NewManager(*apigeeBase, env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
 		BufferSize: int(b.adapterConfig.BufferSize),
@@ -181,6 +183,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		productMan:   productMan,
 		authMan:      authMan,
 		analyticsMan: analyticsMan,
+		quotaMan:     quotaMan,
 	}
 
 	return h, nil
@@ -264,7 +267,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		if authContext == nil {
 			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, resolveClaims(h.Log(), inst.ApiClaims))
 			// ignore error, take whatever we have
-			authContext = &ac
+			authContext = ac
 		}
 
 		records = append(records, record)
@@ -273,7 +276,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return h.analyticsMan.SendRecords(authContext, records)
 }
 
-// Handle Authentication and Authorization - NEVER RETURN ERROR!
+// Handle Authentication and Authorization
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	redacts := []interface{}{
 		inst.Subject.Properties[apiKeyAttribute],
@@ -319,7 +322,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}, nil
 }
 
-// Handle Quota checks - NEVER RETURN ERROR!
+// Handle Quota checks
 func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
 	redacts := []interface{}{
 		inst.Dimensions[apiKeyAttribute],
@@ -359,26 +362,30 @@ func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args a
 		}, nil
 	}
 
-	// todo: support args.DeduplicationID
-	// set QuotaAmount to 1 to eliminate Istio prefetch (also renders BestEffort meaningless)
+	// we only allow QuotaAmount == 1 in order to eliminate Istio prefetch
+	if args.QuotaAmount > 1 && !args.BestEffort {
+		return adapter.QuotaResult{}, nil
+	}
 	args.QuotaAmount = 1
-	var exceeded int64
-	var anyErr error
+
+	var exceeded bool
+	var anyError error
+	// apply to all matching products
 	for _, p := range prods {
-		if p.QuotaLimit != "" {
-			result, err := quota.Apply(authContext, p, args)
+		if p.QuotaLimitInt > 0 {
+			result, err := h.quotaMan.Apply(authContext, p, args)
 			if err != nil {
-				anyErr = err
+				anyError = err
 			} else if result.Exceeded > 0 {
-				exceeded = result.Exceeded
+				exceeded = true
 			}
 		}
 	}
-	if anyErr != nil {
-		h.Log().Errorf("quota error: %v", anyErr)
-		return adapter.QuotaResult{}, nil
+	if anyError != nil {
+		return adapter.QuotaResult{}, anyError
 	}
-	if exceeded > 0 {
+
+	if exceeded {
 		return adapter.QuotaResult{
 			Status:        status.OK,
 			ValidDuration: 0,
@@ -416,7 +423,7 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 		}
 
 		if len(encoded)%4 != 0 {
-			// Encoded base64 must always have a length divisble by 4, or DecodeString
+			// Encoded base64 must always have a length divisible by 4, or DecodeString
 			// will fail. Pad with "=" to make it happy.
 			encoded += strings.Repeat("=", 4-(len(encoded)%4))
 		}
