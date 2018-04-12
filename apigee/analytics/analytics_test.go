@@ -139,7 +139,7 @@ func TestPushAnalytics(t *testing.T) {
 		t.Fatalf("newManager: %s", err)
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 50 * time.Millisecond
+	m.collectionInterval = 100 * time.Millisecond
 
 	wantRecords := map[string][]testRecordPush{
 		t1: {
@@ -206,7 +206,7 @@ func TestPushAnalytics(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(200 * time.Millisecond)
 
 	// Should have sent things out by now, check it out.
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {

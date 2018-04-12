@@ -1,0 +1,10 @@
+coverage:
+  precision: 0
+  round: up
+  range: 60..99
+  ignore:
+    - "apigee/authtest/"
+    - "apigee/integrationtest/"
+    - "bin/"
+    - "install/"
+    - "template/"
