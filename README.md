@@ -1,5 +1,9 @@
 # Istio Apigee Adapter
 
+[![CircleCI](https://circleci.com/gh/apigee/istio-mixer-adapter.svg?style=shield)](https://circleci.com/gh/apigee/istio-mixer-adapter)
+[![Go Report Card](https://goreportcard.com/badge/github.com/apigee/istio-mixer-adapter)](https://goreportcard.com/report/github.com/apigee/istio-mixer-adapter)
+[![codecov.io](https://codecov.io/github/apigee/istio-mixer-adapter/coverage.svg?branch=master)](https://codecov.io/github/apigee/istio-mixer-adapter?branch=master)
+
 This is the source repository for Apigee's Istio Mixer Adapter. This allows users of Istio to
 incorporate Apigee Authentication, Authorization, and Analytics policies to protect and
 report through the Apigee UI.
