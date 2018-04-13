@@ -437,7 +437,7 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 			return claims
 		}
 
-		err = json.Unmarshal(decoded, &claims)
+		json.Unmarshal(decoded, &claims)
 	}
 
 	return claims

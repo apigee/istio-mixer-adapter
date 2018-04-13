@@ -687,22 +687,22 @@ func TestStagingSizeCap(t *testing.T) {
 	}{
 		{"too many files, clean some up",
 			map[string][]string{
-				tempDir:    []string{"6", "7"},
-				stagingDir: []string{"1", "2", "3", "4"},
+				tempDir:    {"6", "7"},
+				stagingDir: {"1", "2", "3", "4"},
 			},
 			[]string{"3", "4", "6", "7"},
 		},
 		{"under limit, don't delete",
 			map[string][]string{
-				tempDir:    []string{"6", "7"},
-				stagingDir: []string{"1", "2"},
+				tempDir:    {"6", "7"},
+				stagingDir: {"1", "2"},
 			},
 			[]string{"1", "2", "6", "7"},
 		},
 		{"clean up even if nothing in temp",
 			map[string][]string{
-				tempDir:    []string{},
-				stagingDir: []string{"1", "2", "3", "4", "5"},
+				tempDir:    {},
+				stagingDir: {"1", "2", "3", "4", "5"},
 			},
 			[]string{"2", "3", "4", "5"},
 		},
