@@ -447,8 +447,8 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 func resolveClaimsInterface(log adapter.Logger, claimsIn map[string]interface{}) map[string]interface{} {
 	c := map[string]string{}
 	for k, v := range claimsIn {
-		if vstr, ok := v.(string); ok {
-			c[k] = vstr
+		if s, ok := v.(string); ok {
+			c[k] = s
 		}
 	}
 	return resolveClaims(log, c)

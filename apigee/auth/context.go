@@ -30,12 +30,14 @@ const (
 	applicationNameClaim = "application_name"
 	scopesClaim          = "scopes"
 	expClaim             = "exp"
+	developerEmailClaim  = "application_developeremail"
 )
 
 var (
 	// AllValidClaims is a list of the claims expected from a JWT token
 	AllValidClaims = []string{
-		apiProductListClaim, audienceClaim, clientIDClaim, applicationNameClaim, scopesClaim, expClaim,
+		apiProductListClaim, audienceClaim, clientIDClaim, applicationNameClaim,
+		scopesClaim, expClaim, developerEmailClaim,
 	}
 )
 
@@ -92,14 +94,15 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 
 	var ok bool
 	if a.ClientID, ok = claims[clientIDClaim].(string); !ok {
-		return fmt.Errorf("unable to interpret client_id: %v", claims[clientIDClaim])
+		return fmt.Errorf("unable to interpret %s: %v", clientIDClaim, claims[clientIDClaim])
 	}
 	if a.Application, ok = claims[applicationNameClaim].(string); !ok {
-		return fmt.Errorf("unable to interpret application_name: %v", claims[applicationNameClaim])
+		return fmt.Errorf("unable to interpret %s: %v", applicationNameClaim, claims[applicationNameClaim])
 	}
 	a.APIProducts = products
 	a.Scopes = scopes
 	a.Expires = exp
+	a.DeveloperEmail, _ = claims[developerEmailClaim].(string)
 
 	return nil
 }
