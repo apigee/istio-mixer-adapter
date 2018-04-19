@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"sort"
@@ -31,7 +32,7 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/google/uuid"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -63,13 +64,6 @@ type bucket struct {
 	f        *os.File
 }
 
-// A cred keeps track of the key/secret for a given bucket.
-type cred struct {
-	key    string
-	secret string
-	base   string
-}
-
 // A Manager is a way for Istio to interact with Apigee's analytics platform.
 type Manager struct {
 	close              chan bool
@@ -83,7 +77,9 @@ type Manager struct {
 	bufferSize         int
 	bucketsLock        sync.RWMutex
 	buckets            map[string]bucket // Map from dirname -> bucket.
-	creds              sync.Map          // Map from dirname -> cred.
+	baseURL            url.URL
+	key                string
+	secret             string
 }
 
 // Options allows us to specify options for how this analytics manager will run.
@@ -93,6 +89,22 @@ type Options struct {
 	// BufferSize is the maximum number of files stored in the staging directory.
 	// Once this is reached, the oldest files will start being removed.
 	BufferSize int
+	// Base Apigee URL
+	BaseURL url.URL
+	// Key for submit auth
+	Key string
+	// Secret for submit auth
+	Secret string
+}
+
+func (o *Options) validate() error {
+	if o.BufferPath == "" ||
+		o.BufferSize == 0 ||
+		o.Key == "" ||
+		o.Secret == "" {
+		return fmt.Errorf("all analytics options are required")
+	}
+	return nil
 }
 
 // NewManager constructs and starts a new Manager. Call Close when you are done.
@@ -106,6 +118,9 @@ func NewManager(env adapter.Env, opts Options) (*Manager, error) {
 }
 
 func newManager(opts Options) (*Manager, error) {
+	if err := opts.validate(); err != nil {
+		return nil, err
+	}
 	// Ensure that the buffer path exists and we can access it.
 	td := path.Join(opts.BufferPath, tempDir)
 	sd := path.Join(opts.BufferPath, stagingDir)
@@ -131,7 +146,9 @@ func newManager(opts Options) (*Manager, error) {
 		stagingDir:         sd,
 		bufferSize:         opts.BufferSize,
 		buckets:            map[string]bucket{},
-		creds:              sync.Map{},
+		baseURL:            opts.BaseURL,
+		key:                opts.Key,
+		secret:             opts.Secret,
 	}, nil
 }
 
@@ -159,10 +176,10 @@ func (m *Manager) crashRecovery() error {
 		}
 
 		for _, fi := range files {
-			old := path.Join(m.tempDir, bucket, fi.Name())
-			new := path.Join(p, fi.Name())
+			oldPath := path.Join(m.tempDir, bucket, fi.Name())
+			newPath := path.Join(p, fi.Name())
 			// Check if it is a valid gzip file.
-			f, err := os.Open(old)
+			f, err := os.Open(oldPath)
 			if err != nil {
 				errs = multierror.Append(errs, err)
 				continue
@@ -176,12 +193,12 @@ func (m *Manager) crashRecovery() error {
 				// File couldn't be read, attempt recovery.
 				if err.Error() != "unexpected EOF" {
 					errs = multierror.Append(errs, fmt.Errorf("readall(%s): %s", fi.Name(), err))
-				} else if err := m.recoverFile(old, new); err != nil {
+				} else if err := m.recoverFile(oldPath, newPath); err != nil {
 					errs = multierror.Append(errs, err)
 				}
 				continue
 			}
-			if err := os.Rename(old, new); err != nil {
+			if err := os.Rename(oldPath, newPath); err != nil {
 				errs = multierror.Append(errs, err)
 				continue
 			}
@@ -293,21 +310,21 @@ func (m *Manager) commitStaging() error {
 		m.bucketsLock.Unlock()
 
 		// Copy over all the files in the temp dir to the staging dir.
-		old := path.Join(m.tempDir, sn)
-		new := path.Join(m.stagingDir, sn)
-		files, err := ioutil.ReadDir(old)
+		oldPath := path.Join(m.tempDir, sn)
+		newPath := path.Join(m.stagingDir, sn)
+		files, err := ioutil.ReadDir(oldPath)
 		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("ioutil.ReadDir(%s): %s", old, err))
+			errs = multierror.Append(errs, fmt.Errorf("ioutil.ReadDir(%s): %s", oldPath, err))
 			continue
 		}
-		if err := os.MkdirAll(new, bufferMode); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", new, err))
+		if err := os.MkdirAll(newPath, bufferMode); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", newPath, err))
 			continue
 		}
 		for _, f := range files {
-			oldf := path.Join(old, f.Name())
-			newf := path.Join(new, f.Name())
-			toMove[oldf] = newf
+			oldPath := path.Join(oldPath, f.Name())
+			newPath := path.Join(newPath, f.Name())
+			toMove[oldPath] = newPath
 		}
 	}
 
@@ -318,9 +335,9 @@ func (m *Manager) commitStaging() error {
 	}
 
 	successes := 0
-	for oldf, newf := range toMove {
-		if err := os.Rename(oldf, newf); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldf, err))
+	for oldPath, newPath := range toMove {
+		if err := os.Rename(oldPath, newPath); err != nil {
+			errs = multierror.Append(errs, fmt.Errorf("mv %s: %s", oldPath, err))
 			continue
 		}
 		successes++
@@ -438,7 +455,7 @@ func (m *Manager) upload(subdir string) error {
 	var errs error
 	successes := 0
 	for _, fi := range files {
-		url, err := m.signedURL(subdir, fi.Name())
+		signedURL, err := m.signedURL(subdir, fi.Name())
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("signedURL: %s", err))
 			if m.shortCircuitErr(err) {
@@ -453,7 +470,7 @@ func (m *Manager) upload(subdir string) error {
 			continue
 		}
 
-		req, err := http.NewRequest("PUT", url, f)
+		req, err := http.NewRequest("PUT", signedURL, f)
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("http.NewRequest: %s", err))
 			continue
@@ -497,20 +514,15 @@ func (m *Manager) orgEnvFromSubdir(subdir string) (string, string) {
 
 // signedURL constructs a signed URL that can be used to upload records.
 func (m *Manager) signedURL(subdir, filename string) (string, error) {
-	credsI, ok := m.creds.Load(subdir)
-	if !ok {
-		return "", fmt.Errorf("no auth creds for %s", subdir)
-	}
-	creds := credsI.(cred)
-
 	org, env := m.orgEnvFromSubdir(subdir)
 	if org == "" || env == "" {
 		return "", fmt.Errorf("invalid subdir %s", subdir)
 	}
 
-	p := creds.base + fmt.Sprintf(analyticsPath, org, env)
+	u := m.baseURL
+	u.Path = fmt.Sprintf(analyticsPath, org, env)
 
-	req, err := http.NewRequest("GET", p, nil)
+	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return "", err
 	}
@@ -522,7 +534,7 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
 
-	req.SetBasicAuth(creds.key, creds.secret)
+	req.SetBasicAuth(m.key, m.secret)
 
 	resp, err := m.client.Do(req)
 	if err != nil {
@@ -577,7 +589,7 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 	m.ensureFields(ctx, records)
 
 	// Validate the records.
-	goodRecords := []Record{}
+	var goodRecords []Record
 	for _, record := range records {
 		if err := m.validate(record); err != nil {
 			m.log.Errorf("invalid record %v: %s", record, err)
@@ -636,8 +648,6 @@ func (m *Manager) createBucket(ctx *auth.Context, d string) error {
 	}
 
 	m.buckets[d] = bucket{fn, gzip.NewWriter(f), f}
-	base := ctx.ApigeeBase()
-	m.creds.Store(d, cred{ctx.Key(), ctx.Secret(), base.String()})
 	return nil
 }
 

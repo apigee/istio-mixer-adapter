@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path"
 	"reflect"
@@ -131,9 +132,13 @@ func TestPushAnalytics(t *testing.T) {
 	// Use a subdirectory to ensure that we can set up the directory properly.
 	bufferPath := path.Join(d, "subdir")
 
+	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
 		BufferPath: bufferPath,
 		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -247,9 +252,13 @@ func TestAuthFailure(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
 		BufferPath: d,
 		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -336,9 +345,13 @@ func TestUploadFailure(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
 		BufferPath: d,
 		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -496,10 +509,13 @@ func TestCrashRecovery(t *testing.T) {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
 	defer os.RemoveAll(d)
-
+	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
 		BufferPath: d,
 		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -598,9 +614,13 @@ func TestShortCircuit(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
+	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
 		BufferPath: d,
 		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -620,7 +640,6 @@ func TestShortCircuit(t *testing.T) {
 	callCount := 10
 
 	m.log = adaptertest.NewEnv(t).Logger()
-	m.creds.Store("hi~test", cred{"key", "secret", fs.URL()})
 
 	p := path.Join(d, "temp/hi~test")
 	if err := os.MkdirAll(p, 0777); err != nil {
@@ -715,15 +734,18 @@ func TestStagingSizeCap(t *testing.T) {
 		}
 		defer os.RemoveAll(d)
 
+		baseURL, _ := url.Parse(fs.URL())
 		m, err := newManager(Options{
 			BufferPath: d,
 			BufferSize: 4,
+			BaseURL:    *baseURL,
+			Key:        "key",
+			Secret:     "secret",
 		})
 		if err != nil {
 			t.Fatalf("newManager: %s", err)
 		}
 		m.log = adaptertest.NewEnv(t).Logger()
-		m.creds.Store("hi~test", cred{"key", "secret", fs.URL()})
 
 		// Add a bunch of files in staging and temp, and then try to commit.
 		ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
