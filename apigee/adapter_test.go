@@ -115,6 +115,9 @@ func TestHandleAnalytics(t *testing.T) {
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: d,
 		BufferSize: 10,
+		BaseURL:    url.URL{},
+		Key:        "key",
+		Secret:     "secret",
 	})
 	if err != nil {
 		t.Fatalf("analytics.NewManager: %s", err)

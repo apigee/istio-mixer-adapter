@@ -167,6 +167,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
 		BufferSize: int(b.adapterConfig.BufferSize),
+		BaseURL:    *apigeeBase,
+		Key:        b.adapterConfig.Key,
+		Secret:     b.adapterConfig.Secret,
 	})
 	if err != nil {
 		return nil, err
