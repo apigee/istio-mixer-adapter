@@ -520,8 +520,7 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 	}
 
 	u := m.baseURL
-	u.Path = fmt.Sprintf(analyticsPath, org, env)
-
+	u.Path = path.Join(u.Path, fmt.Sprintf(analyticsPath, org, env))
 	req, err := http.NewRequest("GET", u.String(), nil)
 	if err != nil {
 		return "", err
