@@ -314,14 +314,39 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}
 
 	products := h.productMan.Resolve(authContext, inst.Action.Service, inst.Action.Path)
-	if len(products) > 0 {
+	if len(products) == 0 {
 		return adapter.CheckResult{
-			Status: status.OK,
+			Status: status.WithPermissionDenied("not authorized"),
+		}, nil
+	}
+
+	args := adapter.QuotaArgs{
+		QuotaAmount: 1,
+	}
+	var exceeded bool
+	var anyError error
+	// apply to all matching products
+	for _, p := range products {
+		if p.QuotaLimitInt > 0 {
+			result, err := h.quotaMan.Apply(authContext, p, args)
+			if err != nil {
+				anyError = err
+			} else if result.Exceeded > 0 {
+				exceeded = true
+			}
+		}
+	}
+	if anyError != nil {
+		return adapter.CheckResult{}, anyError
+	}
+	if exceeded {
+		return adapter.CheckResult{
+			Status: status.WithResourceExhausted("quota exceeded"),
 		}, nil
 	}
 
 	return adapter.CheckResult{
-		Status: status.WithPermissionDenied("not authorized"),
+		Status: status.OK,
 	}, nil
 }
 
