@@ -82,19 +82,6 @@ spec:
     path: api.operation | request.path | ""
     method: request.method | ""
 ---
-# instance configuration for template 'apigee.quota'
-apiVersion: config.istio.io/v1alpha2
-kind: quota
-metadata:
-  name: apigee
-  namespace: istio-system
-spec:
-  dimensions:
-    api: api.service | destination.service | ""
-    path: request.path | ""
-    api_key: request.api_key | request.headers["x-api-key"] | ""
-    encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
----
 # Deny any request with header 'sec-istio-auth-userinfo'
 apiVersion: "config.istio.io/v1alpha2"
 kind: denier

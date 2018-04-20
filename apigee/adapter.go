@@ -37,14 +37,11 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"
 	authT "istio.io/istio/mixer/template/authorization"
-	quotaT "istio.io/istio/mixer/template/quota"
 )
 
 const (
 	encodedClaimsKey = "encoded_claims"
 	apiKeyAttribute  = "api_key"
-	apiNameAttribute = "api"
-	pathAttribute    = "path"
 )
 
 type (
@@ -96,13 +93,11 @@ func (h *handler) Secret() string {
 var (
 	// Builder
 	_ adapter.HandlerBuilder    = &builder{}
-	_ quotaT.HandlerBuilder     = &builder{}
 	_ analyticsT.HandlerBuilder = &builder{}
 	_ authT.HandlerBuilder      = &builder{}
 
 	// Handler
 	_ adapter.Handler    = &handler{}
-	_ quotaT.Handler     = &handler{}
 	_ analyticsT.Handler = &handler{}
 	_ authT.Handler      = &handler{}
 )
@@ -118,7 +113,6 @@ func GetInfo() adapter.Info {
 		SupportedTemplates: []string{
 			analyticsT.TemplateName,
 			authT.TemplateName,
-			quotaT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
 			BufferPath: "/tmp/apigee-ax/buffer/",
@@ -228,7 +222,6 @@ func (b *builder) Validate() (errs *adapter.ConfigErrors) {
 
 func (*builder) SetAnalyticsTypes(map[string]*analyticsT.Type) {}
 func (*builder) SetAuthorizationTypes(map[string]*authT.Type)  {}
-func (*builder) SetQuotaTypes(map[string]*quotaT.Type)         {}
 
 ////////////////// adapter.Handler //////////////////////////
 
@@ -279,7 +272,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return h.analyticsMan.SendRecords(authContext, records)
 }
 
-// Handle Authentication and Authorization
+// Handle Authentication, Authorization, and Quotas
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	redacts := []interface{}{
 		inst.Subject.Properties[apiKeyAttribute],
@@ -323,11 +316,12 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	args := adapter.QuotaArgs{
 		QuotaAmount: 1,
 	}
-	var exceeded bool
+	var anyQuotas, exceeded bool
 	var anyError error
 	// apply to all matching products
 	for _, p := range products {
 		if p.QuotaLimitInt > 0 {
+			anyQuotas = true
 			result, err := h.quotaMan.Apply(authContext, p, args)
 			if err != nil {
 				anyError = err
@@ -341,91 +335,18 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}
 	if exceeded {
 		return adapter.CheckResult{
-			Status: status.WithResourceExhausted("quota exceeded"),
+			Status:        status.WithResourceExhausted("quota exceeded"),
+			ValidUseCount: 1, // call adapter each time to ensure quotas are applied
 		}, nil
 	}
 
-	return adapter.CheckResult{
+	okResult := adapter.CheckResult{
 		Status: status.OK,
-	}, nil
-}
-
-// Handle Quota checks
-func (h *handler) HandleQuota(ctx context.Context, inst *quotaT.Instance, args adapter.QuotaArgs) (adapter.QuotaResult, error) {
-	redacts := []interface{}{
-		inst.Dimensions[apiKeyAttribute],
-		inst.Dimensions[encodedClaimsKey],
 	}
-	redactedInst := util.SprintfRedacts(redacts, "%#v", *inst)
-	h.Log().Infof("HandleQuota: %#v args: %v", redactedInst, args)
-
-	// skip < 0 to eliminate Istio prefetch returns
-	if args.QuotaAmount <= 0 {
-		return adapter.QuotaResult{}, nil
+	if anyQuotas {
+		okResult.ValidUseCount = 1 // call adapter each time to ensure quotas are applied
 	}
-
-	path := inst.Dimensions[pathAttribute].(string)
-	if path == "" {
-		h.Log().Errorf("path attribute required")
-		return adapter.QuotaResult{}, nil
-	}
-	apiKey := inst.Dimensions[apiKeyAttribute].(string)
-	api := inst.Dimensions[apiNameAttribute].(string)
-
-	claims := resolveClaimsInterface(h.Log(), inst.Dimensions)
-
-	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
-	if err != nil {
-		h.Log().Errorf("auth error: %v", err)
-		return adapter.QuotaResult{}, nil
-	}
-
-	// get relevant products
-	prods := h.productMan.Resolve(authContext, api, path)
-
-	if len(prods) == 0 { // no quotas, allow
-		return adapter.QuotaResult{
-			Amount:        args.QuotaAmount,
-			ValidDuration: 0,
-		}, nil
-	}
-
-	// we only allow QuotaAmount == 1 in order to eliminate Istio prefetch
-	if args.QuotaAmount > 1 && !args.BestEffort {
-		return adapter.QuotaResult{}, nil
-	}
-	args.QuotaAmount = 1
-
-	var exceeded bool
-	var anyError error
-	// apply to all matching products
-	for _, p := range prods {
-		if p.QuotaLimitInt > 0 {
-			result, err := h.quotaMan.Apply(authContext, p, args)
-			if err != nil {
-				anyError = err
-			} else if result.Exceeded > 0 {
-				exceeded = true
-			}
-		}
-	}
-	if anyError != nil {
-		return adapter.QuotaResult{}, anyError
-	}
-
-	if exceeded {
-		return adapter.QuotaResult{
-			Status:        status.OK,
-			ValidDuration: 0,
-			Amount:        0,
-		}, nil
-	}
-
-	return adapter.QuotaResult{
-		Status:        status.OK,
-		ValidDuration: 0,
-		Amount:        args.QuotaAmount,
-	}, nil
+	return okResult, nil
 }
 
 // resolveClaims ensures that jwt auth claims are properly populated from an

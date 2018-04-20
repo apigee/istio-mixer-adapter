@@ -6,21 +6,15 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee"
 	"istio.io/istio/mixer/pkg/adapter"
 	authT "istio.io/istio/mixer/template/authorization"
-	quotaT "istio.io/istio/mixer/template/quota"
 )
 
 // removed Analytics because the integration test framework can't handle it
 func testGetInfo() adapter.Info {
 	info := apigee.GetInfo()
 	info.SupportedTemplates = []string{
-		quotaT.TemplateName,
 		authT.TemplateName,
 	}
 	return info
-}
-
-func adapterConfigForQuota() string {
-	return strings.Replace(adapterConfig, "__INSTANCE__", "apigee.quota", 1)
 }
 
 func adapterConfigForAuthorization() string {

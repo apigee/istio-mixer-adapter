@@ -54,7 +54,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {},
 				"ValidDuration": 0,
-				"ValidUseCount": 0
+				"ValidUseCount": 1
 			   },
 			   "Quota": null,
 			   "Error": null
@@ -108,7 +108,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {},
 				"ValidDuration": 0,
-				"ValidUseCount": 0
+				"ValidUseCount": 1
 			   },
 			   "Quota": null,
 			   "Error": null
