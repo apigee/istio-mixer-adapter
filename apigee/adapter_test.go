@@ -34,11 +34,9 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"github.com/gogo/googleapis/google/rpc"
-	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/authorization"
-	"istio.io/istio/mixer/template/quota"
 )
 
 func TestValidateBuild(t *testing.T) {
@@ -79,7 +77,6 @@ func TestValidateBuild(t *testing.T) {
 
 	// invoke the empty set methods for coverage
 	b.SetAnalyticsTypes(map[string]*analyticsT.Type{})
-	b.SetQuotaTypes(map[string]*quota.Type{})
 	b.SetAuthorizationTypes(map[string]*authorization.Type{})
 
 	// check build
@@ -170,33 +167,6 @@ func TestHandleAuthorization(t *testing.T) {
 
 	if got.Status.Code != int32(rpc.PERMISSION_DENIED) {
 		t.Errorf("HandleAuthorization(ctx, nil) => %#v, want %#v", got.Status, status.OK)
-	}
-
-	if err := h.Close(); err != nil {
-		t.Errorf("Close() returned an unexpected error")
-	}
-}
-
-func TestHandleQuota(t *testing.T) {
-	ctx := context.Background()
-
-	h := &handler{
-		env: test.NewEnv(t),
-	}
-
-	inst := &quota.Instance{
-		Name: "",
-		Dimensions: map[string]interface{}{
-			"": "",
-		},
-	}
-
-	got, err := h.HandleQuota(ctx, inst, adapter.QuotaArgs{})
-	if err != nil {
-		t.Errorf("HandleQuota(ctx, nil) resulted in an unexpected error: %v", err)
-	}
-	if !status.IsOK(got.Status) {
-		t.Errorf("HandleQuota(ctx, nil) => %#v, want %#v", got.Status, status.OK)
 	}
 
 	if err := h.Close(); err != nil {
