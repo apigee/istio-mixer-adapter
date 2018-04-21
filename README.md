@@ -48,7 +48,7 @@ At this point, you should have this information:
 
 ## Configure Istio and Apigee Mixer
 
-In the [install]() directory, there are several .yaml files for configuring Istio.
+In the [install](install/) directory, there are several .yaml files for configuring Istio.
 
 ### Set your configuration 
 
