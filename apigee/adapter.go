@@ -51,8 +51,8 @@ type (
 
 	handler struct {
 		env          adapter.Env
-		apigeeBase   url.URL
-		customerBase url.URL
+		apigeeBase   *url.URL
+		customerBase *url.URL
 		orgName      string
 		envName      string
 		key          string
@@ -70,10 +70,10 @@ type (
 func (h *handler) Log() adapter.Logger {
 	return h.env.Logger()
 }
-func (h *handler) ApigeeBase() url.URL {
+func (h *handler) ApigeeBase() *url.URL {
 	return h.apigeeBase
 }
-func (h *handler) CustomerBase() url.URL {
+func (h *handler) CustomerBase() *url.URL {
 	return h.customerBase
 }
 func (h *handler) Organization() string {
@@ -155,9 +155,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	productMan := product.NewManager(*customerBase, env)
+	productMan := product.NewManager(customerBase, env)
 	authMan := auth.NewManager(env)
-	quotaMan := quota.NewManager(*apigeeBase, env)
+	quotaMan := quota.NewManager(apigeeBase, env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: b.adapterConfig.BufferPath,
 		BufferSize: int(b.adapterConfig.BufferSize),
@@ -171,8 +171,8 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	h := &handler{
 		env:          env,
-		apigeeBase:   *apigeeBase,
-		customerBase: *customerBase,
+		apigeeBase:   apigeeBase,
+		customerBase: customerBase,
 		orgName:      b.adapterConfig.OrgName,
 		envName:      b.adapterConfig.EnvName,
 		key:          b.adapterConfig.Key,
@@ -191,13 +191,13 @@ func (b *builder) Validate() (errs *adapter.ConfigErrors) {
 
 	if b.adapterConfig.ApigeeBase == "" {
 		errs = errs.Append("apigee_base", fmt.Errorf("required"))
-	} else if _, err := url.Parse(b.adapterConfig.ApigeeBase); err != nil {
+	} else if _, err := url.ParseRequestURI(b.adapterConfig.ApigeeBase); err != nil {
 		errs = errs.Append("apigee_base", fmt.Errorf("must be a valid url: %v", err))
 	}
 
 	if b.adapterConfig.CustomerBase == "" {
 		errs = errs.Append("customer_base", fmt.Errorf("required"))
-	} else if _, err := url.Parse(b.adapterConfig.CustomerBase); err != nil {
+	} else if _, err := url.ParseRequestURI(b.adapterConfig.CustomerBase); err != nil {
 		errs = errs.Append("customer_base", fmt.Errorf("must be a valid url: %v", err))
 	}
 

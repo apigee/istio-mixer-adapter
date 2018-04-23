@@ -96,7 +96,7 @@ func (a *jwtManager) refresh() error {
 }
 
 func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
-	jwksURL := ctx.CustomerBase()
+	jwksURL := *ctx.CustomerBase()
 	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
 
 	keyID, ok := token.Header["kid"].(string)

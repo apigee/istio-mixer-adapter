@@ -38,7 +38,7 @@ const (
 
 // A Manager tracks multiple Apigee quotas
 type Manager struct {
-	baseURL        url.URL
+	baseURL        *url.URL
 	close          chan bool
 	client         *http.Client
 	now            func() time.Time
@@ -51,14 +51,14 @@ type Manager struct {
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
-func NewManager(baseURL url.URL, env adapter.Env) *Manager {
+func NewManager(baseURL *url.URL, env adapter.Env) *Manager {
 	m := newManager(baseURL)
 	m.Start(env)
 	return m
 }
 
 // newManager constructs a new Manager
-func newManager(baseURL url.URL) *Manager {
+func newManager(baseURL *url.URL) *Manager {
 	return &Manager{
 		close: make(chan bool),
 		client: &http.Client{

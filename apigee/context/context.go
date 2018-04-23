@@ -15,8 +15,9 @@
 package context
 
 import (
-	"istio.io/istio/mixer/pkg/adapter"
 	"net/url"
+
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
 // A Context contains all the information needed to communicate with Apigee
@@ -28,6 +29,6 @@ type Context interface {
 	Key() string
 	Secret() string
 
-	ApigeeBase() url.URL
-	CustomerBase() url.URL
+	ApigeeBase() *url.URL
+	CustomerBase() *url.URL
 }

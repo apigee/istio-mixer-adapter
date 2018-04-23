@@ -45,7 +45,7 @@ Usage:
 	pp.close() // when done
 */
 
-func createManager(baseURL url.URL, log adapter.Logger) *Manager {
+func createManager(baseURL *url.URL, log adapter.Logger) *Manager {
 	isClosedInt := int32(0)
 
 	return &Manager{
@@ -63,7 +63,7 @@ func createManager(baseURL url.URL, log adapter.Logger) *Manager {
 
 // A Manager wraps all things related to a set of API products.
 type Manager struct {
-	baseURL          url.URL
+	baseURL          *url.URL
 	log              adapter.Logger
 	products         map[string]APIProduct
 	isClosed         *int32
@@ -118,7 +118,7 @@ func (p *Manager) Close() {
 
 // don't call externally. will block until success.
 func (p *Manager) retrieve() {
-	apiURL := p.baseURL
+	apiURL := *p.baseURL
 	apiURL.Path = path.Join(apiURL.Path, productsURL)
 
 	p.pollWithBackoff(p.quitPollingChan, p.pollingClosure(apiURL), func(err error) {
@@ -157,7 +157,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 			return log.Errorf("products request failed (%d): %s", resp.StatusCode, string(body))
 		}
 
-		var res apiResponse
+		var res APIResponse
 		err = json.Unmarshal(body, &res)
 		if err != nil {
 			log.Errorf("unable to unmarshal JSON response '%s': %v", string(body), err)
@@ -168,7 +168,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 		for _, product := range res.APIProducts {
 			// only save products that actually map to something
 			for _, attr := range product.Attributes {
-				if attr.Name == servicesAttr {
+				if attr.Name == ServicesAttr {
 					targets := strings.Split(attr.Value, ",")
 					for _, t := range targets {
 						product.Targets = append(product.Targets, strings.TrimSpace(t))

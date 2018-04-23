@@ -68,11 +68,11 @@ func newVerifier(jwtMan *jwtManager, opts keyVerifierOpts) keyVerifier {
 }
 
 func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (string, error) {
-	verifyRequest := apiKeyRequest{
+	verifyRequest := APIKeyRequest{
 		APIKey: apiKey,
 	}
 
-	apiURL := ctx.CustomerBase()
+	apiURL := *ctx.CustomerBase()
 	apiURL.Path = path.Join(apiURL.Path, verifyAPIKeyURL)
 
 	body := new(bytes.Buffer)
@@ -93,7 +93,7 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (strin
 	}
 	defer resp.Body.Close()
 
-	apiKeyResp := apiKeyResponse{}
+	apiKeyResp := APIKeyResponse{}
 	json.NewDecoder(resp.Body).Decode(&apiKeyResp)
 
 	return apiKeyResp.Token, nil

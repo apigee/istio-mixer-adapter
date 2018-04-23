@@ -9,8 +9,8 @@ import (
 
 // Context implements the context.Context interface and is to be used in tests.
 type Context struct {
-	apigeeBase   url.URL
-	customerBase url.URL
+	apigeeBase   *url.URL
+	customerBase *url.URL
 	orgName      string
 	envName      string
 	key          string
@@ -25,8 +25,8 @@ func NewContext(base string, log adapter.Logger) *Context {
 		panic(fmt.Sprintf("Could not parse URL: %s", base))
 	}
 	return &Context{
-		apigeeBase:   *u,
-		customerBase: *u,
+		apigeeBase:   u,
+		customerBase: u,
 		log:          log,
 	}
 }
@@ -35,10 +35,10 @@ func NewContext(base string, log adapter.Logger) *Context {
 func (c *Context) Log() adapter.Logger { return c.log }
 
 // ApigeeBase gets a URL base to send HTTP requests to.
-func (c *Context) ApigeeBase() url.URL { return c.apigeeBase }
+func (c *Context) ApigeeBase() *url.URL { return c.apigeeBase }
 
 // CustomerBase gets a URL base to send HTTP requests to.
-func (c *Context) CustomerBase() url.URL { return c.customerBase }
+func (c *Context) CustomerBase() *url.URL { return c.customerBase }
 
 // Organization gets this context's organization.
 func (c *Context) Organization() string { return c.orgName }

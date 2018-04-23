@@ -20,10 +20,11 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-const servicesAttr = "istio-services"
+// ServicesAttr is the name of the Product attribute that lists the Istio services it binds to (comma delim)
+const ServicesAttr = "istio-services"
 
 // NewManager creates a new product.Manager. Call Close() when done.
-func NewManager(baseURL url.URL, env adapter.Env) *Manager {
+func NewManager(baseURL *url.URL, env adapter.Env) *Manager {
 	pm := createManager(baseURL, env.Logger())
 	pm.start(env)
 	return pm
