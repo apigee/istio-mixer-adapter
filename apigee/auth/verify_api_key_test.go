@@ -65,7 +65,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 			return
 		}
 
-		var req apiKeyRequest
+		var req APIKeyRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			t.Fatal(err)
@@ -81,7 +81,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 			t.Fatal(err)
 		}
 
-		jwtResponse := apiKeyResponse{Token: jwt}
+		jwtResponse := APIKeyResponse{Token: jwt}
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(jwtResponse)

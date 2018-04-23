@@ -14,7 +14,8 @@
 
 package product
 
-type apiResponse struct {
+// APIResponse is the response from the Apigee products API
+type APIResponse struct {
 	APIProducts []APIProduct `json:"apiProduct"`
 }
 

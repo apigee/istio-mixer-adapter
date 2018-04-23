@@ -31,7 +31,7 @@ func TestManager(t *testing.T) {
 	apiProducts := []APIProduct{
 		{
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "attr value"},
+				{Name: ServicesAttr, Value: "attr value"},
 			},
 			Description:    "product 1",
 			DisplayName:    "APIProduct 1",
@@ -47,7 +47,7 @@ func TestManager(t *testing.T) {
 		},
 		{
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "attr value"},
+				{Name: ServicesAttr, Value: "attr value"},
 			},
 			CreatedAt:      time.Now().Unix(),
 			CreatedBy:      "test2@apigee.com",
@@ -65,7 +65,7 @@ func TestManager(t *testing.T) {
 		},
 		{
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "attr value"},
+				{Name: ServicesAttr, Value: "attr value"},
 			},
 			Description:  "product 3",
 			DisplayName:  "APIProduct 3",
@@ -77,7 +77,7 @@ func TestManager(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var result = apiResponse{
+		var result = APIResponse{
 			APIProducts: apiProducts,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -91,7 +91,7 @@ func TestManager(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createManager(*serverURL, env)
+	pp := createManager(serverURL, env)
 	pp.start(env)
 	defer pp.Close()
 
@@ -126,11 +126,11 @@ func TestManagerPolling(t *testing.T) {
 		apiProducts = append(apiProducts, APIProduct{
 			Name: fmt.Sprintf("Name %d", count),
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "attr value"},
+				{Name: ServicesAttr, Value: "attr value"},
 			},
 		})
 
-		var result = apiResponse{
+		var result = APIResponse{
 			APIProducts: apiProducts,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -144,7 +144,7 @@ func TestManagerPolling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createManager(*serverURL, env)
+	pp := createManager(serverURL, env)
 	pp.start(env)
 	defer pp.Close()
 

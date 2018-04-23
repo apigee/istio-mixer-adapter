@@ -32,7 +32,7 @@ func TestStartStop(t *testing.T) {
 	apiProducts := []APIProduct{
 		{
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "service1.istio"},
+				{Name: ServicesAttr, Value: "service1.istio"},
 			},
 			Name:      "Name 1",
 			Resources: []string{"/"},
@@ -41,7 +41,7 @@ func TestStartStop(t *testing.T) {
 	}
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var result = apiResponse{
+		var result = APIResponse{
 			APIProducts: apiProducts,
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -55,7 +55,7 @@ func TestStartStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := NewManager(*serverURL, env)
+	p := NewManager(serverURL, env)
 	defer p.Close()
 	context := authtest.NewContext("", env)
 	ac := &auth.Context{
@@ -74,7 +74,7 @@ func TestResolve(t *testing.T) {
 	productsMap := map[string]APIProduct{
 		"Name 1": {
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "service1.istio, shared.istio"},
+				{Name: ServicesAttr, Value: "service1.istio, shared.istio"},
 			},
 			Name:      "Name 1",
 			Resources: []string{"/"},
@@ -83,7 +83,7 @@ func TestResolve(t *testing.T) {
 		},
 		"Name 2": {
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "service2.istio,shared.istio"},
+				{Name: ServicesAttr, Value: "service2.istio,shared.istio"},
 			},
 			Environments: []string{"prod"},
 			Name:         "Name 2",
@@ -93,7 +93,7 @@ func TestResolve(t *testing.T) {
 		},
 		"Name 3": {
 			Attributes: []Attribute{
-				{Name: servicesAttr, Value: "shared.istio"},
+				{Name: ServicesAttr, Value: "shared.istio"},
 			},
 			Environments: []string{"prod"},
 			Name:         "Name 3",

@@ -33,9 +33,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
-	"github.com/gogo/googleapis/google/rpc"
 	"istio.io/istio/mixer/pkg/adapter/test"
-	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/authorization"
 )
 
@@ -59,8 +57,49 @@ func TestValidateBuild(t *testing.T) {
 
 	b := GetInfo().NewBuilder().(*builder)
 
-	b.SetAdapterConfig(GetInfo().DefaultConfig)
+	// missing config items
+	b.SetAdapterConfig(&config.Params{})
+
+	if errs := b.Validate(); errs == nil {
+		t.Errorf("Validate() missing config should have errors")
+	} else {
+		want := `6 errors occurred:
+
+* apigee_base: required
+* customer_base: required
+* org_name: required
+* env_name: required
+* key: required
+* secret: required`
+		if errs.String() != want {
+			t.Errorf("Validate() want: \n%s.\nGot: \n%s", want, errs)
+		}
+	}
+
+	// bad config items
 	b.SetAdapterConfig(&config.Params{
+		ApigeeBase:   "not an url",
+		CustomerBase: "not an url",
+		OrgName:      "org",
+		EnvName:      "env",
+		Key:          "key",
+		Secret:       "secret",
+	})
+	if errs := b.Validate(); errs == nil {
+		t.Errorf("Validate() bad config should have errors")
+	} else {
+		want := `2 errors occurred:
+
+* apigee_base: must be a valid url: parse not an url: invalid URI for request
+* customer_base: must be a valid url: parse not an url: invalid URI for request`
+		if errs.String() != want {
+			t.Errorf("Validate() want: \n%s.\nGot: \n%s", want, errs)
+		}
+	}
+
+	// good config
+	b.SetAdapterConfig(GetInfo().DefaultConfig)
+	validConfig := config.Params{
 		ApigeeBase:   serverURL.String(),
 		CustomerBase: serverURL.String(),
 		OrgName:      "org",
@@ -69,7 +108,8 @@ func TestValidateBuild(t *testing.T) {
 		Secret:       "secret",
 		BufferPath:   d,
 		BufferSize:   10,
-	})
+	}
+	b.SetAdapterConfig(&validConfig)
 
 	if err := b.Validate(); err != nil {
 		t.Errorf("Validate() resulted in unexpected error: %v", err)
@@ -80,9 +120,24 @@ func TestValidateBuild(t *testing.T) {
 	b.SetAuthorizationTypes(map[string]*authorization.Type{})
 
 	// check build
-	handler, err := b.Build(context.Background(), test.NewEnv(t))
+	h, err := b.Build(context.Background(), test.NewEnv(t))
 
-	defer handler.Close()
+	ah := h.(*handler)
+	derivedConfig := config.Params{
+		ApigeeBase:   ah.ApigeeBase().String(),
+		CustomerBase: ah.CustomerBase().String(),
+		OrgName:      ah.Organization(),
+		EnvName:      ah.Environment(),
+		Key:          ah.Key(),
+		Secret:       ah.Secret(),
+		BufferPath:   d,
+		BufferSize:   10,
+	}
+	if !reflect.DeepEqual(validConfig, derivedConfig) {
+		t.Errorf("bad derived config. want: %#v. got: %#v", validConfig, derivedConfig)
+	}
+
+	defer h.Close()
 	if err != nil {
 		t.Errorf("Build() resulted in unexpected error: %v", err)
 	}
@@ -122,8 +177,8 @@ func TestHandleAnalytics(t *testing.T) {
 
 	h := &handler{
 		env:          env,
-		apigeeBase:   *baseURL,
-		customerBase: *baseURL,
+		apigeeBase:   baseURL,
+		customerBase: baseURL,
 		orgName:      "org",
 		envName:      "env",
 		analyticsMan: analyticsMan,
@@ -140,33 +195,6 @@ func TestHandleAnalytics(t *testing.T) {
 	err = h.HandleAnalytics(ctx, inst)
 	if err != nil {
 		t.Errorf("HandleAnalytics(ctx, nil) resulted in an unexpected error: %v", err)
-	}
-
-	if err := h.Close(); err != nil {
-		t.Errorf("Close() returned an unexpected error")
-	}
-}
-
-func TestHandleAuthorization(t *testing.T) {
-	ctx := context.Background()
-
-	h := &handler{
-		env: test.NewEnv(t),
-	}
-
-	inst := &authorization.Instance{
-		Name:    "",
-		Subject: &authorization.Subject{},
-		Action:  &authorization.Action{},
-	}
-
-	got, err := h.HandleAuthorization(ctx, inst)
-	if err != nil {
-		t.Errorf("HandleAuthorization(ctx, nil) resulted in an unexpected error: %v", err)
-	}
-
-	if got.Status.Code != int32(rpc.PERMISSION_DENIED) {
-		t.Errorf("HandleAuthorization(ctx, nil) => %#v, want %#v", got.Status, status.OK)
 	}
 
 	if err := h.Close(); err != nil {

@@ -45,7 +45,7 @@ type bucket struct {
 func newBucket(req *Request, m *Manager, auth *auth.Context) *bucket {
 	org := auth.Context.Organization()
 	env := auth.Context.Environment()
-	quotaURL := m.baseURL
+	quotaURL := *m.baseURL
 	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, org, env))
 	return &bucket{
 		prototype:    req,

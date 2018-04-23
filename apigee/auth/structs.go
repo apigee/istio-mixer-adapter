@@ -14,10 +14,12 @@
 
 package auth
 
-type apiKeyRequest struct {
+// APIKeyRequest is the request to Apigee's verifyAPIKey API
+type APIKeyRequest struct {
 	APIKey string `json:"apiKey"`
 }
 
-type apiKeyResponse struct {
+// APIKeyResponse is the response from Apigee's verifyAPIKey API
+type APIKeyResponse struct {
 	Token string `json:"token"`
 }

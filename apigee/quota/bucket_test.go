@@ -101,7 +101,7 @@ func TestBucket(t *testing.T) {
 		},
 	}
 
-	m := newManager(url.URL{})
+	m := newManager(&url.URL{})
 
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
