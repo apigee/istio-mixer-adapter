@@ -47,7 +47,7 @@ func TestQuota(t *testing.T) {
 		Context: context,
 	}
 
-	p := product.APIProduct{
+	p := &product.APIProduct{
 		QuotaLimitInt:    1,
 		QuotaIntervalInt: 1,
 		QuotaTimeUnit:    "second",

@@ -104,7 +104,7 @@ func (m *Manager) Close() {
 }
 
 // Apply a quota request to the local quota bucket and schedule for sync
-func (m *Manager) Apply(auth *auth.Context, p product.APIProduct, args adapter.QuotaArgs) (*Result, error) {
+func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.QuotaArgs) (*Result, error) {
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 
 	req := &Request{

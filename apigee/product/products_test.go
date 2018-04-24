@@ -71,7 +71,7 @@ func TestStartStop(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 
-	productsMap := map[string]APIProduct{
+	productsMap := map[string]*APIProduct{
 		"Name 1": {
 			Attributes: []Attribute{
 				{Name: ServicesAttr, Value: "service1.istio, shared.istio"},
@@ -101,6 +101,11 @@ func TestResolve(t *testing.T) {
 			Scopes:       []string{},
 			Targets:      []string{"shared.istio"},
 		},
+	}
+
+	pMan := createManager(nil, nil)
+	for _, p := range productsMap {
+		pMan.resolveResourceMatchers(p)
 	}
 
 	products := []string{"Name 1", "Name 2", "Name 3", "Invalid"}
@@ -159,11 +164,14 @@ func TestValidPath(t *testing.T) {
 		{"/v1/weatherapikey/1/a/2/3/", []bool{true, false, true, false}},
 	}
 
+	pMan := createManager(nil, nil)
+
 	for _, spec := range specs {
 		for j, resource := range resources {
-			p := APIProduct{
+			p := &APIProduct{
 				Resources: []string{resource},
 			}
+			pMan.resolveResourceMatchers(p)
 			if p.isValidPath(spec.Path) != spec.Results[j] {
 				t.Errorf("expected: %v got: %v for path: %s, resource: %s",
 					spec.Results[j], p.isValidPath(spec.Path), spec.Path, resource)
