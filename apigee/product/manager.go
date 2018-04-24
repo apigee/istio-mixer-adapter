@@ -22,11 +22,10 @@ import (
 	"net/url"
 	"path"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
-
-	"strconv"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"istio.io/istio/mixer/pkg/adapter"
@@ -51,11 +50,11 @@ func createManager(baseURL *url.URL, log adapter.Logger) *Manager {
 	return &Manager{
 		baseURL:         baseURL,
 		log:             log,
-		products:        map[string]APIProduct{},
+		products:        map[string]*APIProduct{},
 		quitPollingChan: make(chan bool, 1),
 		closedChan:      make(chan bool),
 		getProductsChan: make(chan bool),
-		returnChan:      make(chan map[string]APIProduct),
+		returnChan:      make(chan map[string]*APIProduct),
 		updatedChan:     make(chan bool, 1),
 		isClosed:        &isClosedInt,
 	}
@@ -65,26 +64,28 @@ func createManager(baseURL *url.URL, log adapter.Logger) *Manager {
 type Manager struct {
 	baseURL          *url.URL
 	log              adapter.Logger
-	products         map[string]APIProduct
+	products         map[string]*APIProduct
 	isClosed         *int32
 	quitPollingChan  chan bool
 	closedChan       chan bool
 	getProductsChan  chan bool
-	returnChan       chan map[string]APIProduct
+	returnChan       chan map[string]*APIProduct
 	updatedChan      chan bool
 	refreshTimerChan <-chan time.Time
 }
 
 func (p *Manager) start(env adapter.Env) {
+	p.log.Infof("starting quota manager")
 	p.retrieve()
 	//go p.pollingLoop()
 	env.ScheduleDaemon(func() {
 		p.pollingLoop()
 	})
+	p.log.Infof("started quota manager")
 }
 
 // Products atomically gets a mapping of name => APIProduct.
-func (p *Manager) Products() map[string]APIProduct {
+func (p *Manager) Products() map[string]*APIProduct {
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
 	}
@@ -164,8 +165,9 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 			return err
 		}
 
-		pm := map[string]APIProduct{}
-		for _, product := range res.APIProducts {
+		pm := map[string]*APIProduct{}
+		for _, v := range res.APIProducts {
+			product := v
 			// only save products that actually map to something
 			for _, attr := range product.Attributes {
 				if attr.Name == ServicesAttr {
@@ -195,7 +197,9 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 						}
 					}
 
-					pm[product.Name] = product
+					p.resolveResourceMatchers(&product)
+
+					pm[product.Name] = &product
 					break
 				}
 			}
@@ -211,6 +215,18 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 		}
 
 		return nil
+	}
+}
+
+// generate matchers for resources (path)
+func (p *Manager) resolveResourceMatchers(product *APIProduct) {
+	for _, resource := range product.Resources {
+		reg, err := makeResourceRegex(resource)
+		if err != nil {
+			p.log.Errorf("unable to create resource matcher: %#v", product)
+			continue
+		}
+		product.resourceRegexps = append(product.resourceRegexps, reg)
 	}
 }
 
@@ -246,17 +262,21 @@ func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) erro
 type quitSignalError error
 
 // Resolve determines the valid products for a given API.
-func (p *Manager) Resolve(ac *auth.Context, api, path string) []APIProduct {
+func (p *Manager) Resolve(ac *auth.Context, api, path string) []*APIProduct {
 	validProducts, failHints := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
-	ac.Log().Infof("Resolved api: %s, path: %s, scopes: %v => %v", api, path, ac.Scopes, validProducts)
-	if len(validProducts) == 0 {
-		ac.Log().Infof("Resolved hints: %s", strings.Join(failHints, ", "))
+	var selected []string
+	for _, p := range validProducts {
+		selected = append(selected, p.Name)
 	}
+	ac.Log().Debugf(`
+Resolve api: %s, path: %s, scopes: %v
+Selected: %v
+Eliminated: %v`, api, path, ac.Scopes, selected, failHints)
 	return validProducts
 }
 
-func resolve(pMap map[string]APIProduct, products, scopes []string, api,
-	path string) (result []APIProduct, failHints []string) {
+func resolve(pMap map[string]*APIProduct, products, scopes []string, api,
+	path string) (result []*APIProduct, failHints []string) {
 
 	for _, name := range products {
 		apiProduct, ok := pMap[name]
@@ -293,9 +313,8 @@ func (p *APIProduct) isValidTarget(api string) bool {
 
 // true if valid path for API Product
 func (p *APIProduct) isValidPath(requestPath string) bool {
-	for _, resource := range p.Resources {
-		reg, err := makeResourceRegex(resource)
-		if err == nil && reg.MatchString(requestPath) {
+	for _, reg := range p.resourceRegexps {
+		if reg.MatchString(requestPath) {
 			return true
 		}
 	}

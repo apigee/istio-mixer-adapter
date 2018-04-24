@@ -14,6 +14,8 @@
 
 package product
 
+import "regexp"
+
 // APIResponse is the response from the Apigee products API
 type APIResponse struct {
 	APIProducts []APIProduct `json:"apiProduct"`
@@ -39,6 +41,7 @@ type APIProduct struct {
 	Targets          []string
 	QuotaLimitInt    int64
 	QuotaIntervalInt int64
+	resourceRegexps  []*regexp.Regexp
 }
 
 // An Attribute is a name-value-pair attribute of an API product.
