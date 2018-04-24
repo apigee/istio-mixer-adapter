@@ -277,7 +277,7 @@ func (m *Manager) uploadLoop() {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
 		case <-m.close:
-			m.log.Infof("analytics close signal received, shutting down")
+			m.log.Debugf("analytics close signal received, shutting down")
 			t.Stop()
 			return
 		}
@@ -343,7 +343,7 @@ func (m *Manager) commitStaging() error {
 		successes++
 	}
 	if successes > 0 {
-		m.log.Infof("committed %d analytics packages to staging to be uploaded", successes)
+		m.log.Debugf("committed %d analytics packages to staging to be uploaded", successes)
 	}
 	return errs
 }
@@ -499,7 +499,7 @@ func (m *Manager) upload(subdir string) error {
 		successes++
 	}
 	if successes > 0 {
-		m.log.Infof("uploaded %d analytics packages.", successes)
+		m.log.Debugf("uploaded %d analytics packages.", successes)
 	}
 	return errs
 }

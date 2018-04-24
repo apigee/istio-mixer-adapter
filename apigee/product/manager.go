@@ -111,9 +111,11 @@ func (p *Manager) Close() {
 	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
+	p.log.Infof("closing quota manager")
 	p.quitPollingChan <- true
 	p.closedChan <- true
 	close(p.closedChan)
+	p.log.Infof("closed quota manager")
 }
 
 // don't call externally. will block until success.
@@ -128,8 +130,6 @@ func (p *Manager) retrieve() {
 
 func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 	return func(_ chan bool) error {
-		log := p.log
-
 		req, err := http.NewRequest(http.MethodGet, apiURL.String(), nil)
 		if err != nil {
 			return err
@@ -138,7 +138,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
 
-		log.Infof("retrieving products from: %s", apiURL.String())
+		p.log.Debugf("retrieving products from: %s", apiURL.String())
 
 		client := http.DefaultClient
 		resp, err := client.Do(req)
@@ -149,18 +149,18 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Errorf("Unable to read server response: %v", err)
+			p.log.Errorf("Unable to read server response: %v", err)
 			return err
 		}
 
 		if resp.StatusCode != 200 {
-			return log.Errorf("products request failed (%d): %s", resp.StatusCode, string(body))
+			return p.log.Errorf("products request failed (%d): %s", resp.StatusCode, string(body))
 		}
 
 		var res APIResponse
 		err = json.Unmarshal(body, &res)
 		if err != nil {
-			log.Errorf("unable to unmarshal JSON response '%s': %v", string(body), err)
+			p.log.Errorf("unable to unmarshal JSON response '%s': %v", string(body), err)
 			return err
 		}
 
@@ -183,7 +183,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					if product.QuotaLimit != "" {
 						product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
 						if err != nil {
-							log.Errorf("unable to parse quota limit: %#v", product)
+							p.log.Errorf("unable to parse quota limit: %#v", product)
 						}
 					}
 
@@ -191,7 +191,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					if product.QuotaInterval != "" {
 						product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
 						if err != nil {
-							log.Errorf("unable to parse quota interval: %#v", product)
+							p.log.Errorf("unable to parse quota interval: %#v", product)
 						}
 					}
 
@@ -202,7 +202,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 		}
 		p.products = pm
 
-		log.Infof("retrieved %d products, kept %d", len(res.APIProducts), len(pm))
+		p.log.Debugf("retrieved %d products, kept %d", len(res.APIProducts), len(pm))
 
 		// don't block, default means there is existing signal
 		select {
@@ -261,19 +261,19 @@ func resolve(pMap map[string]APIProduct, products, scopes []string, api,
 	for _, name := range products {
 		apiProduct, ok := pMap[name]
 		if !ok {
-			failHints = append(failHints, fmt.Sprintf("%s missing", name))
+			failHints = append(failHints, fmt.Sprintf("%s doesn't exist", name))
 			continue
 		}
 		if !apiProduct.isValidScopes(scopes) {
-			failHints = append(failHints, fmt.Sprintf("%s missing scopes: %s", name, scopes))
+			failHints = append(failHints, fmt.Sprintf("%s doesn't match scopes: %s", name, scopes))
 			continue
 		}
 		if !apiProduct.isValidPath(path) {
-			failHints = append(failHints, fmt.Sprintf("%s missing path: %s", name, path))
+			failHints = append(failHints, fmt.Sprintf("%s doesn't match path: %s", name, path))
 			continue
 		}
 		if !apiProduct.isValidTarget(api) {
-			failHints = append(failHints, fmt.Sprintf("%s missing target: %s", name, api))
+			failHints = append(failHints, fmt.Sprintf("%s doesn't match target: %s", name, api))
 			continue
 		}
 		result = append(result, apiProduct)

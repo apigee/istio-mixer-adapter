@@ -100,6 +100,7 @@ func (m *Manager) Close() {
 	for i := 0; i < m.numSyncWorkers; i++ {
 		m.close <- true
 	}
+	m.log.Infof("closed quota manager")
 }
 
 // Apply a quota request to the local quota bucket and schedule for sync
@@ -147,7 +148,7 @@ func (m *Manager) syncLoop() {
 			}
 			m.bucketsLock.RUnlock()
 			if deleteIDs != nil {
-				m.log.Infof("deleting quota buckets: %v", deleteIDs)
+				m.log.Debugf("deleting quota buckets: %v", deleteIDs)
 				m.bucketsLock.Lock()
 				for _, id := range deleteIDs {
 					delete(m.buckets, id)
@@ -155,7 +156,7 @@ func (m *Manager) syncLoop() {
 				m.bucketsLock.Unlock()
 			}
 		case <-m.close:
-			m.log.Infof("closing quota sync loop")
+			m.log.Debugf("closing quota sync loop")
 			t.Stop()
 			return
 		}
@@ -169,7 +170,7 @@ func (m *Manager) syncBucketWorker() {
 		case bucket := <-m.syncQueue:
 			bucket.sync(m)
 		case <-m.close:
-			m.log.Infof("closing quota sync worker")
+			m.log.Debugf("closing quota sync worker")
 			return
 		}
 	}

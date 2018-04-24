@@ -46,7 +46,7 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 		claims["client_id"],
 	}
 	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
-	ctx.Log().Infof("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
+	ctx.Log().Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
 	var ac = &Context{Context: ctx}
 	if claims != nil {
@@ -70,9 +70,9 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 	redacts = []interface{}{ac.AccessToken, ac.ClientID}
 	redactedAC := util.SprintfRedacts(redacts, "%v", ac)
 	if err == nil {
-		ctx.Log().Infof("Authenticate success: %s", redactedAC)
+		ctx.Log().Debugf("Authenticate success: %s", redactedAC)
 	} else {
-		ctx.Log().Infof("Authenticate error: %s [%v]", redactedAC, err)
+		ctx.Log().Debugf("Authenticate error: %s [%v]", redactedAC, err)
 	}
 	return ac, err
 }

@@ -16,6 +16,10 @@ required = [
   name = "istio.io/api"
   branch = "master"
 
+[[constraint]]
+  name = "istio.io/istio"
+  branch = "release-0.8"
+
 [[override]]
   name = "github.com/gogo/protobuf"
   version = "=0.5"

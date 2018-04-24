@@ -130,7 +130,7 @@ func (b *bucket) sync(m *Manager) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	m.log.Infof("Sending to (%s): %s", b.quotaURL, body)
+	m.log.Debugf("Sending to %s: %s", b.quotaURL, body)
 
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -152,7 +152,7 @@ func (b *bucket) sync(m *Manager) {
 			return
 		}
 
-		m.log.Infof("quota result: %#v", quotaResult)
+		m.log.Debugf("quota result: %#v", quotaResult)
 		b.lock.Lock()
 		b.synced = b.now()
 		b.result = &quotaResult
