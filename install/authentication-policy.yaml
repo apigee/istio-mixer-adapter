@@ -3,28 +3,21 @@
 # Configure issuer, jwks_uri, and services as appropriate.
 ---
 # Define an Istio Auth Policy
-apiVersion: config.istio.io/v1alpha2
-kind: EndUserAuthenticationPolicySpec
+apiVersion: "authentication.istio.io/v1alpha1"
+kind: Policy
 metadata:
   name: auth-spec
   namespace: default
 spec:
-  jwts:
-  - issuer: https://theganyo1-eval-test.apigee.net/edgemicro-auth/verifyApiKey
-    jwks_uri: https://theganyo1-eval-test.apigee.net/edgemicro-auth/jwkPublicKeys
-  - issuer: https://theganyo1-eval-test.apigee.net/edgemicro-auth/token
-    jwks_uri: https://theganyo1-eval-test.apigee.net/edgemicro-auth/jwkPublicKeys
----
-# Bind Istio Auth Policy to services
-apiVersion: config.istio.io/v1alpha2
-kind: EndUserAuthenticationPolicySpecBinding
-metadata:
-  name: auth
-  namespace: default
-spec:
-  policies:
-  - name: auth-spec
-    namespace: default
-  services:
+  targets:
   - name: helloworld
-    namespace: default
+  peers:
+  - mtls:
+  origins:
+  - jwt:
+      issuer: REPLACE ME
+      jwks_uri: REPLACE ME
+  - jwt:
+      issuer: REPLACE ME
+      jwks_uri: REPLACE ME
+  principalBinding: USE_ORIGIN

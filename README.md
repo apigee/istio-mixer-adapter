@@ -11,6 +11,8 @@ report through the Apigee UI.
 To join the Apigee pre-release program for additional documentation and support, please contact:
 <anchor-prega-support@google.com>.
 
+---
+
 # Installation and usage
 
 ## Install Istio with Apigee mixer
@@ -50,9 +52,7 @@ You should be able to access this service successfully:
 ## Set up Apigee
 
 1. If you don't have one, get yourself an [Apigee Edge](https://login.apigee.com) account.
-
 2. [Install Edge Microgateway](https://docs.apigee.com/api-platform/microgateway/2.5.x/installing-edge-microgateway)
-
 3. [Configure Edge Microgateway](https://docs.apigee.com/api-platform/microgateway/2.5.x/setting-and-configuring-edge-microgateway#Part1) - Just Part 1 and stop!
 
 At this point, you should have this information:
@@ -160,11 +160,13 @@ has to wait in the meantime.)
 
 Update the `install/authentication-policy.yaml` file to set your correct URLs:
 
-    jwts:
-    - issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey
-      jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
-    - issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/token
-      jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+    origins:
+    - jwt:
+        issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/token
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+    - jwt:
+        issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
 
 The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above,
 adjust as appropriate if you are using OPDK.
@@ -177,9 +179,9 @@ Calls to helloworld should now fail (with or without the API Key):
 
     curl http://$HELLOWORLD_URL/hello
     
-Should receive:
+Should receive an auth error:
 
-    Required JWT token is missing
+    Origin authentication failed.
 
 Now get a JWT token:
 
@@ -196,3 +198,8 @@ Try again with your token:
 This call should now be successful.
 
 Congratulations! You're good to go.
+
+---
+
+To join the Apigee pre-release program for additional documentation and support, please contact:
+<anchor-prega-support@google.com>.
