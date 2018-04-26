@@ -15,16 +15,18 @@
 package auth
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log"
 	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
+	"github.com/lestrrat/go-jwx/jws"
+	"github.com/pkg/errors"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -95,15 +97,23 @@ func (a *jwtManager) refresh() error {
 	return errRet
 }
 
-func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
-	jwksURL := *ctx.CustomerBase()
-	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
+func (a *jwtManager) jwtKey(ctx context.Context, keyID string) (interface{}, error) {
 
-	keyID, ok := token.Header["kid"].(string)
-	if !ok {
-		return nil, errors.New("JWT header missing kid")
+	set, err := a.jwkSet(ctx)
+	if err != nil {
+		return nil, err
 	}
 
+	if key := set.LookupKeyID(keyID); len(key) == 1 {
+		return key[0].Materialize()
+	}
+
+	return nil, fmt.Errorf("jwks doesn't contain key: %s", keyID)
+}
+
+func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
+	jwksURL := *ctx.CustomerBase()
+	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
 	url := jwksURL.String()
 	if _, ok := a.jwkSets.Load(url); !ok {
 		if err := a.ensureSet(url); err != nil {
@@ -111,28 +121,29 @@ func (a *jwtManager) jwtKey(ctx context.Context, token *jwt.Token) (interface{},
 		}
 	}
 	set, _ := a.jwkSets.Load(url)
-
-	if key := set.(*jwk.Set).LookupKeyID(keyID); len(key) == 1 {
-		return key[0].Materialize()
-	}
-
-	return nil, fmt.Errorf("jwks doesn't contain key: %s", keyID)
+	return set.(*jwk.Set), nil
 }
 
-func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (jwt.MapClaims, error) {
-	keyFunc := func(token *jwt.Token) (interface{}, error) {
-		return a.getJWTKey(ctx, token)
-	}
-	token, err := jwt.Parse(raw, keyFunc)
+func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (map[string]interface{}, error) {
+	set, err := a.jwkSet(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("jwt.Parse(): %s", err)
+		return nil, err
 	}
-	return token.Claims.(jwt.MapClaims), nil
-}
 
-func (a *jwtManager) getJWTKey(ctx context.Context, token *jwt.Token) (interface{}, error) {
-	if a == nil {
-		return nil, fmt.Errorf("auth manager not initialized")
+	verified, err := jws.VerifyWithJWKSet([]byte(raw), set, nil)
+	if err != nil {
+		return nil, err
 	}
-	return a.jwtKey(ctx, token)
+	fmt.Print(verified)
+
+	m, err := jws.Parse(strings.NewReader(raw))
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid jws message")
+	}
+
+	var claims map[string]interface{}
+	if err := json.Unmarshal(m.Payload(), &claims); err != nil {
+		return nil, errors.Wrap(err, "failed to parse claims")
+	}
+	return claims, nil
 }

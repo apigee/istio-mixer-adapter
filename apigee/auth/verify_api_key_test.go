@@ -49,6 +49,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 				t.Fatal(err)
 			}
 			key.Set("kid", "1")
+			key.Set("alg", jwt.SigningMethodRS256.Alg())
 
 			type JWKS struct {
 				Keys []jwk.Key `json:"keys"`

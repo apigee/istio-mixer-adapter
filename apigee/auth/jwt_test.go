@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -20,6 +21,7 @@ func goodJWTRequest(privateKey *rsa.PrivateKey, t *testing.T) http.HandlerFunc {
 			t.Fatal(err)
 		}
 		key.Set("kid", "1")
+		key.Set("alg", jwt.SigningMethodRS256.Alg())
 
 		type JWKS struct {
 			Keys []jwk.Key `json:"keys"`
