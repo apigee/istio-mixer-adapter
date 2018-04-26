@@ -2,10 +2,6 @@
 # for detailed Gopkg.toml documentation.
 
 required = [
-  "github.com/gogo/protobuf/proto",
-  "github.com/gogo/protobuf/jsonpb",
-  "github.com/gogo/protobuf/protoc-gen-gogoslick",
-  "github.com/gogo/protobuf/gogoproto",
   "github.com/lestrrat/go-jwx",
   "github.com/lestrrat/go-pdebug",
   "github.com/dgrijalva/jwt-go",
@@ -13,24 +9,16 @@ required = [
 ]
 
 [[constraint]]
-  name = "istio.io/api"
-  branch = "master"
-
-[[constraint]]
   name = "istio.io/istio"
   branch = "release-0.8"
 
+# fixes error:
+# vendor/k8s.io/client-go/dynamic/dynamic_util.go:34:19: unknown field 'MetadataAccessor' in struct literal of type meta.VersionInterfaces
+# caused by k8s.io/apimachinery commit 8cd82ca9c2ecc1799da600b08af6c04a112490aa
+# without this override, dep pulls master and gets an incompatible commit
 [[override]]
-  name = "github.com/gogo/protobuf"
-  version = "=0.5"
-
-[[override]]
-  name = "github.com/prometheus/client_golang"
-  version = "v0.9.0-pre1"
-
-[[override]]
-  name = "k8s.io/kubernetes"
-  branch = "release-1.9"
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.8.12"
 
 ### Pruning settings
 [prune]
