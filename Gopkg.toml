@@ -1,16 +1,21 @@
 # Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
 # for detailed Gopkg.toml documentation.
 
-required = [
-  "github.com/lestrrat/go-jwx",
-  "github.com/lestrrat/go-pdebug",
-  "github.com/dgrijalva/jwt-go",
-  "github.com/hashicorp/go-multierror"
-]
-
 [[constraint]]
   name = "istio.io/istio"
   branch = "release-0.8"
+
+[[constraint]]
+  name = "github.com/hashicorp/go-multierror"
+  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
+
+[[constraint]]
+  name = "github.com/lestrrat-go/jwx"
+  revision = "c7fda53b85fcef399d5fb71326f492eeccd1cb6f"
+
+[[constraint]]
+  name = "github.com/dgrijalva/jwt-go"
+  version = "~3.2.0"
 
 # fixes error:
 # vendor/k8s.io/client-go/dynamic/dynamic_util.go:34:19: unknown field 'MetadataAccessor' in struct literal of type meta.VersionInterfaces
@@ -19,26 +24,3 @@ required = [
 [[override]]
   name = "k8s.io/apimachinery"
   version = "kubernetes-1.8.12"
-
-### Pruning settings
-[prune]
-  unused-packages = true
-  go-tests = true
-  non-go = true
-  [[prune.project]]
-    name = "istio.io/api"
-    non-go = false
-    unused-packages = false
-  [[prune.project]]
-    name = "github.com/gogo/googleapis"
-    non-go = false
-    unused-packages = false
-  [[prune.project]]
-    name = "github.com/gogo/protobuf"
-    non-go = false
-    unused-packages = false
-  [[prune.project]]
-    name = "istio.io/istio"
-    non-go = false
-    unused-packages = false
-###

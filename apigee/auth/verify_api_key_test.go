@@ -49,6 +49,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 				t.Fatal(err)
 			}
 			key.Set("kid", "1")
+			key.Set("alg", jwt.SigningMethodRS256.Alg())
 
 			type JWKS struct {
 				Keys []jwk.Key `json:"keys"`
@@ -275,32 +276,4 @@ func TestVerifyAPIKeyError(t *testing.T) {
 	if success != nil {
 		t.Errorf("success should be nil, is: %v", success)
 	}
-}
-
-func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
-
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-		"api_product_list": []string{
-			"EdgeMicroTestProduct",
-		},
-		"audience":         "microgateway",
-		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
-		"iss":              "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
-		"access_token":     "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
-		"client_id":        "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
-		"application_name": "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
-		"scopes": []string{
-			"scope1",
-			"scope2",
-		},
-		"nbf": time.Date(2017, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
-		"iat": time.Now().Unix(),
-		"exp": (time.Now().Add(50 * time.Millisecond)).Unix(),
-	})
-
-	token.Header["kid"] = "1"
-
-	t, e := token.SignedString(privateKey)
-
-	return t, e
 }
