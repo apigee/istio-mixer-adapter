@@ -16,7 +16,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"path"
 	"sync"
@@ -96,20 +95,6 @@ func (a *jwtManager) refresh() error {
 		return true
 	})
 	return errRet
-}
-
-func (a *jwtManager) jwtKey(ctx context.Context, keyID string) (interface{}, error) {
-
-	set, err := a.jwkSet(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if key := set.LookupKeyID(keyID); len(key) == 1 {
-		return key[0].Materialize()
-	}
-
-	return nil, fmt.Errorf("jwks doesn't contain key: %s", keyID)
 }
 
 func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
