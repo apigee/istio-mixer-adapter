@@ -35,11 +35,13 @@ Find: `docker.io/istio/mixer:0.7.1` in `istio.yaml` and replace with the followi
 
 May contain new features or bug fixes, but may also be broken. Use at your own risk or with guidance. 
 
-Install on base of Istio 0.7.1.
+Install on base of [Istio 0.8.0 RC2](https://gcsweb.istio.io/gcs/istio-prerelease/daily-build/0.8.0-pre20180415-09-15/)
 
-Find: `docker.io/istio/mixer:0.7.1` in `istio.yaml` and replace with the following:
+Find: `gcr.io/istio-release/mixer:0.8.0-pre20180421-09-15` in `istio.yaml` and replace with the following:
 
     gcr.io/apigee-api-management-istio/istio-mixer:nightly
+    
+Important: Replace everywhere. There will two instances: One for policy, one for telemetry.  
 
 ## Install your service
 
@@ -197,7 +199,11 @@ Try again with your token:
 
 This call should now be successful.
 
-Congratulations! You're good to go.
+### Check your analytics
+
+Head back to the [Apigee Edge UI](https://apigee.com/edge).
+
+Click the `Analyze` in the menu on the left.
 
 ---
 
