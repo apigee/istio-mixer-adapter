@@ -245,6 +245,7 @@ func (m *Manager) recoverFile(old, new string) error {
 // Start starts the manager.
 func (m *Manager) Start(env adapter.Env) {
 	m.log = env.Logger()
+	m.log.Infof("starting analytics manager")
 
 	if err := m.crashRecovery(); err != nil {
 		m.log.Errorf("Error(s) recovering crashed data: %s", err)
@@ -253,6 +254,7 @@ func (m *Manager) Start(env adapter.Env) {
 	env.ScheduleDaemon(func() {
 		m.uploadLoop()
 	})
+	m.log.Infof("started analytics manager")
 }
 
 // Close shuts down the manager.
@@ -260,10 +262,12 @@ func (m *Manager) Close() {
 	if m == nil {
 		return
 	}
+	m.log.Infof("closing analytics manager")
 	m.close <- true
 	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
 	}
+	m.log.Infof("closed analytics manager")
 }
 
 // uploadLoop runs a timer that periodically pushes everything in the buffer
@@ -481,6 +485,7 @@ func (m *Manager) upload(subdir string) error {
 		req.Header.Set("x-amz-server-side-encryption", "AES256")
 		req.ContentLength = fi.Size()
 
+		m.log.Debugf("uploading analytics package: %s to: %s", fn, signedURL)
 		resp, err := m.client.Do(req)
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("client.Do(): %s", err))

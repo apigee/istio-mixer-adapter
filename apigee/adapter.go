@@ -235,7 +235,7 @@ func (h *handler) Close() error {
 
 // Handle processing and delivery of Analytics to Apigee
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
-	h.Log().Infof("HandleAnalytics: %d instances", len(instances))
+	h.Log().Debugf("HandleAnalytics: %d instances", len(instances))
 
 	var authContext *auth.Context
 	var records []analytics.Record
@@ -279,7 +279,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		inst.Subject.Properties[encodedClaimsKey],
 	}
 	redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
-	h.Log().Infof("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
+	h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 
 	claims := resolveClaimsInterface(h.Log(), inst.Subject.Properties)
 
@@ -288,7 +288,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
 	if err != nil {
 		if _, ok := err.(*auth.NoAuthInfoError); ok {
-			h.Log().Infof("authenticate err: %v", err)
+			h.Log().Debugf("authenticate err: %v", err)
 			return adapter.CheckResult{
 				Status: status.WithPermissionDenied(err.Error()),
 			}, nil
@@ -300,7 +300,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}
 
 	if authContext.ClientID == "" {
-		h.Log().Infof("authenticate failed")
+		h.Log().Debugf("authenticate failed")
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied("not authenticated"),
 		}, nil

@@ -75,13 +75,13 @@ type Manager struct {
 }
 
 func (p *Manager) start(env adapter.Env) {
-	p.log.Infof("starting quota manager")
+	p.log.Infof("starting product manager")
 	p.retrieve()
 	//go p.pollingLoop()
 	env.ScheduleDaemon(func() {
 		p.pollingLoop()
 	})
-	p.log.Infof("started quota manager")
+	p.log.Infof("started product manager")
 }
 
 // Products atomically gets a mapping of name => APIProduct.
