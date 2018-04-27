@@ -19,20 +19,21 @@ import (
 	"fmt"
 	"log"
 	"path"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/apigee/context"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/lestrrat/go-jwx/jws"
+	"github.com/lestrrat/go-jwx/jwt"
 	"github.com/pkg/errors"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
 const (
-	jwksPath     = "/jwkPublicKeys"
-	pollInterval = 5 * time.Minute
+	jwksPath       = "/jwkPublicKeys"
+	pollInterval   = 5 * time.Minute
+	acceptableSkew = 10 * time.Second
 )
 
 func newJWTManager() *jwtManager {
@@ -130,13 +131,24 @@ func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (map[string]inte
 		return nil, err
 	}
 
-	verified, err := jws.VerifyWithJWKSet([]byte(raw), set, nil)
+	// verify against public keys
+	_, err = jws.VerifyWithJWKSet([]byte(raw), set, nil)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Print(verified)
 
-	m, err := jws.Parse(strings.NewReader(raw))
+	// verify fields
+	token, err := jwt.ParseString(raw)
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid jws message")
+	}
+	err = token.Verify(jwt.WithAcceptableSkew(acceptableSkew))
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid jws message")
+	}
+
+	// get claims
+	m, err := jws.ParseString(raw)
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid jws message")
 	}
@@ -145,5 +157,6 @@ func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (map[string]inte
 	if err := json.Unmarshal(m.Payload(), &claims); err != nil {
 		return nil, errors.Wrap(err, "failed to parse claims")
 	}
+
 	return claims, nil
 }
