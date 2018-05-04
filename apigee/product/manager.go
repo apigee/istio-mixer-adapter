@@ -336,6 +336,15 @@ func (p *APIProduct) isValidScopes(scopes []string) bool {
 	return false
 }
 
+func (p *APIProduct) GetServicesAttrs() []string {
+	for _, attr := range p.Attributes {
+		if attr.Name == ServicesAttr {
+			return strings.Split(attr.Value, ",")
+		}
+	}
+	return nil
+}
+
 // - A single slash by itself matches any path
 // - * is valid anywhere and matches within a segment (between slashes)
 // - ** is valid only at the end and matches anything to EOL
