@@ -18,7 +18,6 @@ import (
 	"flag"
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/bindings"
-	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/cert"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/spf13/cobra"
@@ -61,7 +60,6 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 
 	c.AddCommand(provision.Cmd(rootArgs, printf, fatalf))
 	c.AddCommand(bindings.Cmd(rootArgs, printf, fatalf))
-	c.AddCommand(cert.Cmd(rootArgs, printf, fatalf))
 
 	//c.AddCommand(version.CobraCommand())
 
