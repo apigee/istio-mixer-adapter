@@ -114,7 +114,7 @@ ADAPTER_FILE="${ISTIO}/istio/mixer/adapter/inventory.yaml"
 if [[ `grep "istio-mixer-adapter" "${ADAPTER_FILE}"` == "" ]]; then
   echo "Adding apigee adapter to inventory..."
   echo "
-apigee: \"github.com/apigee/istio-mixer-adapter/apigee\"" >> \
+apigee: \"github.com/apigee/istio-mixer-adapter/adapter\"" >> \
     "${ADAPTER_FILE}"
 fi
 

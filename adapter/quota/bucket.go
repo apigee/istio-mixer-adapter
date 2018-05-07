@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 )
 
 // bucket tracks a specific quota instance

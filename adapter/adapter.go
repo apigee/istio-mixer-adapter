@@ -13,10 +13,10 @@
 // limitations under the License.
 
 // build the protos
-//go:generate $GOPATH/src/github.com/apigee/istio-mixer-adapter/bin/codegen.sh -f apigee/config/config.proto
+//go:generate $GOPATH/src/github.com/apigee/istio-mixer-adapter/bin/codegen.sh -f adapter/config/config.proto
 //go:generate $GOPATH/src/github.com/apigee/istio-mixer-adapter/bin/codegen.sh -t template/analytics/template.proto
 
-package apigee
+package adapter
 
 import (
 	"context"
@@ -27,12 +27,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/config"
-	"github.com/apigee/istio-mixer-adapter/apigee/product"
-	"github.com/apigee/istio-mixer-adapter/apigee/quota"
-	"github.com/apigee/istio-mixer-adapter/apigee/util"
+	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/config"
+	"github.com/apigee/istio-mixer-adapter/adapter/product"
+	"github.com/apigee/istio-mixer-adapter/adapter/quota"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"

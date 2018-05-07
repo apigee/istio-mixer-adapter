@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package apigee
+package adapter
 
 import (
 	"context"
@@ -29,9 +29,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/config"
+	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/template/authorization"

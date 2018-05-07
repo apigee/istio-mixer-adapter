@@ -3,8 +3,8 @@ coverage:
   round: up
   range: 60..99
   ignore:
-    - "apigee/authtest/"
-    - "apigee/integrationtest/"
+    - "adapter/authtest/"
+    - "adapter/integrationtest/"
     - "bin/"
     - "install/"
     - "template/"

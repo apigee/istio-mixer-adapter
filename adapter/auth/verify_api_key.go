@@ -22,7 +22,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"github.com/apigee/istio-mixer-adapter/adapter/context"
 	"istio.io/istio/pkg/cache"
 )
 

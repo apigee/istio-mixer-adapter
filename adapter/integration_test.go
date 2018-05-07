@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package apigee_test
+package adapter_test
 
 import (
 	"crypto/rand"
@@ -24,10 +24,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee"
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/product"
-	"github.com/apigee/istio-mixer-adapter/apigee/quota"
+	apigeeAdapter "github.com/apigee/istio-mixer-adapter/adapter"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/product"
+	"github.com/apigee/istio-mixer-adapter/adapter/quota"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter"
@@ -340,7 +340,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 
 // removed Analytics because the integration test framework can't handle it
 func testGetInfo() adapter.Info {
-	info := apigee.GetInfo()
+	info := apigeeAdapter.GetInfo()
 	info.SupportedTemplates = []string{
 		authT.TemplateName,
 	}

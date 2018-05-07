@@ -30,8 +30,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 

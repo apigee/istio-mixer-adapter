@@ -22,8 +22,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/apigee/istio-mixer-adapter/adapter/product"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
-	"github.com/apigee/istio-mixer-adapter/apigee/product"
 	"github.com/spf13/cobra"
 )
 

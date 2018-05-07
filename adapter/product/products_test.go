@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 

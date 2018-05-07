@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
+	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/lestrrat/go-jwx/jwk"
 	"istio.io/istio/mixer/pkg/adapter/test"

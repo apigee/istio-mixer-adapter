@@ -30,7 +30,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"istio.io/istio/mixer/pkg/adapter"

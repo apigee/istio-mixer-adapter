@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
+	"github.com/apigee/istio-mixer-adapter/adapter/context"
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 

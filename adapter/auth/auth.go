@@ -18,8 +18,8 @@ package auth
 // Authenticate function.
 
 import (
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
-	"github.com/apigee/istio-mixer-adapter/apigee/util"
+	"github.com/apigee/istio-mixer-adapter/adapter/context"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 

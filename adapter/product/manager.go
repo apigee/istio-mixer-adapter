@@ -27,7 +27,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 

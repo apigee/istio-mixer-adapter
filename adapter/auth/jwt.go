@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee/context"
+	"github.com/apigee/istio-mixer-adapter/adapter/context"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/lestrrat/go-jwx/jws"
 	"github.com/lestrrat/go-jwx/jwt"
