@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<KeyValueMapOperations encrypted="false" mapIdentifier="microgateway" async="false" continueOnError="false" enabled="true" name="Get-Public-Keys">
+    <DisplayName>Get Public Keys</DisplayName>
+    <FaultRules/>
+    <Properties/>
+    <ExclusiveCache>false</ExclusiveCache>
+    <ExpiryTimeInSecs>86400</ExpiryTimeInSecs>
+    <InitialEntries/>
+    <Get assignTo="private.publicKey1" index="1">
+        <Key>
+            <Parameter>public_key1</Parameter>
+        </Key>
+    </Get>
+    <Get assignTo="private.publicKey2" index="1">
+        <Key>
+            <Parameter>public_key2</Parameter>
+        </Key>
+    </Get>
+    <Get assignTo="private.public_key1_kid" index="1">
+        <Key>
+            <Parameter>public_key1_kid</Parameter>
+        </Key>
+    </Get>
+    <Get assignTo="private.public_key2_kid" index="1">
+        <Key>
+            <Parameter>public_key2_kid</Parameter>
+        </Key>
+    </Get>
+    <Scope>environment</Scope>
+</KeyValueMapOperations>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Manifest name="manifest">
+    <Policies>
+        <VersionInfo resourceName="Access-App-Info" version="SHA-512:cc0a965b5cdc11f23c49f02599e003eb52921791aac09e8a1af50016e6f1c0cefb7524e1136ccfcfbd79fb704c69814007a7a5bd5bee49079c05caf417e20ced"/>
+        <VersionInfo resourceName="Access-App-Info-2" version="SHA-512:7eb03900d0d861d965a25c3ebaf9a6975add23b190f5b7c7fb1bd564d84702def725e7a426a892adc729b64ea54c5d471382d2f34ee8234e9ca2f2e047b290a7"/>
+        <VersionInfo resourceName="AccessTokenRequest" version="SHA-512:5cafbbf9cc32c9dd8b52b78698e0101b3cca4909f7279190d3d95698bcf2a326b697003822fea36bf65670525af3521d44c05d0ec71660e56434e402d43cfc56"/>
+        <VersionInfo resourceName="Create-OAuth-Request" version="SHA-512:44970fe5002a5322c44b6071edd941f99dbabf80b07390ce370adb8c1a6af4b193a94133efb7bf1f9ee9de7876ca8890a7a50872dccba4bf5cabbaef407eb50a"/>
+        <VersionInfo resourceName="Create-Refresh-Request" version="SHA-512:967bac384fb321121a5e90e6a430f71d6f4f5121701fe6d63e1251ea222c7946f887fc81402c90735b4b7c8a8dde8a1f0be8ba174c9b363ef9734204ab7a87bc"/>
+        <VersionInfo resourceName="Extract-API-Key" version="SHA-512:b366e09cc60ac1a1bad7bcbeb2429adec08287c59f7667921471081b2520990ee0f0cb1a45482a40cfb9ecfa7b7da90b8c145fee730e7c4e01cb06f86e3f78ce"/>
+        <VersionInfo resourceName="Extract-OAuth-Params" version="SHA-512:cee7bee63a77077756c16d237014b05dbd93af3b1f0ad519e73d5f5f739288aa0ea8407b0640efeb1a7728ce305ef3b3b18140c739f7cd78600f27eaceaffaf3"/>
+        <VersionInfo resourceName="Extract-Refresh-Params" version="SHA-512:aab8ed226b7f2f8b0fea061faeb247eed5d9d1e6479870fd7119f5107a7bf2a24da90fa6223ccd0c412afb8fc9315d92c5b1edb6725555b6c5605d59aaa54ada"/>
+        <VersionInfo resourceName="Extract-Revoke-Params" version="SHA-512:78776e8e83c78763bc1c8ee345d4a91c477ae20e82ee7c2600ed7070885999b256565aba3f4d73cea56dc79f43ec4397cca67f442b3e2636cebd8921f9dfb63f"/>
+        <VersionInfo resourceName="Generate-Access-Token" version="SHA-512:074a17085165be3ed353ea5b8ce0b28b140076f751661719f6da89ce6c2c3bd3fb7131dcd5df7457061c5c14f34b8447d9b3817bb2f12c24fb1637b319cf0a2b"/>
+        <VersionInfo resourceName="Generate-JWK" version="SHA-512:d47d43441a96d9f7d81e65f81cd1e84202a2b6240b489825ad7ffa16002bf29bd45102c79888e007134757116ed4c713e95d463f521971560eca45f006179cd7"/>
+        <VersionInfo resourceName="Generate-VerifyKey-Token" version="SHA-512:3f190f4a3dc72cd30282cc22fa41d7d71bb8c0f7a0a5b5233c7109cbc09eb33a3a8ecd6037d3f27daabe87ca3f68ef1fe6f16d00946a07d7cc6c9e555851064b"/>
+        <VersionInfo resourceName="Get-Private-Key" version="SHA-512:38c8d4b3f41041dfb67d807e7e5c316ea66228d1ab547eb2df2c81886e1bad705b3b836222a6a42f4a076cae1bad71e8aaade6d369adb76c401caa5be2a5b561"/>
+        <VersionInfo resourceName="Get-Public-Keys" version="SHA-512:9899e5f26216e6ea9a3f078a3b15e924d37458238533815f46bdc2ffc358452f4dc64d552bc13fa0f4c42d78a2b53cc305980bfb66e542a98799a8e155fb4988"/>
+        <VersionInfo resourceName="JavaCallout" version="SHA-512:9f9944508d8a8e996a175710a3d81dd2a7002af1d2fa51a4f342abff5b2d7c3f339364c4bfbe8c4947bfbeea9506eb1b4848d0934046ef324f9cb2694f43c212"/>
+        <VersionInfo resourceName="Products-to-JSON" version="SHA-512:509aa416f3b35de02e1e4c821113a8a01f4b4c225e84bbdc1ceb57f2f0d1799a23cf2c90326d2f6a51b02658d7d3a83a29ffc9ca1c9c1d70385e3e58c4d6aca6"/>
+        <VersionInfo resourceName="Products-to-JSON-2" version="SHA-512:9c90dc141e2e8871da2e85ab6089e6c00636108203ecde2345f829b25d345062a362d34296886f724b5568b8597967be607fc7ba74b2ebe7eddf562758e2dce2"/>
+        <VersionInfo resourceName="Raise-Fault-Unknown-Request" version="SHA-512:2fb24dbc00c6fbcced7fd3a31144fc459ac1d1ba200e2d25ea30ea96d707a629e5f1c3520a85f6301316eab07d5b96bf5e8594dcc45d80aa14cf548715301144"/>
+        <VersionInfo resourceName="RefreshAccessToken" version="SHA-512:a910089ac2230b344cf9a9992f2dfc8e4f4b9da2a9154b4ef7ada1b4789e5c2cbea59bdd3390b0fc9e04f109227f10b133e30355e75ac3bb044d464eba922ef4"/>
+        <VersionInfo resourceName="RevokeRefreshToken" version="SHA-512:55675f8e017f8afb7430e87bccffabe3ea3f908f3cdc3d3f9deeaadabd237470d61c523fb750296b822a61ed25a789880f00fe386d51b4d9e857adb18a3d96d5"/>
+        <VersionInfo resourceName="Send-JWK-Message" version="SHA-512:e8c164598f3258ae9ecd7eb4af8e1b1aa8d53a1a967d19c5f2f4a16420ae5eb811e4d02780b24e8c3b8abbd9211914c8a81acf96fb8f4efb4875fa459a1e91f4"/>
+        <VersionInfo resourceName="Set-JWT-Variables" version="SHA-512:90d33279f3717b985a81ea7dca877fd6694319372a2eee207053b280fdeaea462ba662dd7c6dc3df4429ff7d280237a05feeb58189770289c1d37ac693f39cef"/>
+        <VersionInfo resourceName="Set-Response" version="SHA-512:638e7320945fd57ea40448bc9997ec9a2297f4ae51e6e1654e8d273dcc2d9e47c131fb344eea870a465282b475886277db194d379c350fa07380b9d08175ba1c"/>
+        <VersionInfo resourceName="Verify-API-Key" version="SHA-512:7a8771e16079eceb4d22f5b43382d4bf57fb41d63fb6e2dbd77afc6e736f59fc3b77e22d2e7460305d46e478cac67926b27614beeb0fd15871e59ab03ad0eea0"/>
+    </Policies>
+    <ProxyEndpoints>
+        <VersionInfo resourceName="default" version="SHA-512:1f74014684eafc92dfe82b6c36b6324c1e3ad158e4ad83a7b23206e4170d0db8378a33df71789ee084eaaadcaba7e205db99ef031795f6288e7279878b62069d"/>
+    </ProxyEndpoints>
+    <Resources>
+        <VersionInfo resourceName="java://micro-gateway-products-javacallout-2.0.0.jar" version="SHA-512:bdcb3ad7766a00db6af5fbb2cc9786688756d49d1db38128650310874cafbb2e8a8de3f316f41573ffc3309992f3b92b88697b3d0802756e2af96e2fc7eadbde"/>
+        <VersionInfo resourceName="jsc://generate-jwk.js" version="SHA-512:fdd9513c5dcda9194ba447d458feb95450e5fae2523b669bcc49721818872c37c92472233a9b5056832065151735e06355ac4d4a86be852d04f2b02f3de97e9c"/>
+        <VersionInfo resourceName="jsc://jsrsasign-all-min.js" version="SHA-512:62986d1a086c2ac2c9c20f8ee27919a57430552246098534f10468faa6b85401dbfa4b35ec7bb9404d37d695f5778331e71a1909268240a334151fd167c3f06a"/>
+        <VersionInfo resourceName="jsc://jwt-initialization.js" version="SHA-512:c9b1af8f846d11cf42d454643c21a937489888c8fcbf1337429672500f0ce6d26397e3697342773616706feee927521ca5eededf1fb0269dd1da253645087656"/>
+        <VersionInfo resourceName="jsc://send-jwk-response.js" version="SHA-512:81ab460fbf7c400cbb346c3d79cc1bcef116f2c21177c009e226c9a259ff73f9414cf0c838a43bd8febf745a3a1d1f6e049eea45f21bbff1df5422792245cabc"/>
+        <VersionInfo resourceName="jsc://set-jwt-variables.js" version="SHA-512:5aa31b0dfacddcaac2e17c61f7e658743b16577b906879dfa67529c2fd9fd999dfb7e2b79f10b93ab753e3db0015426cfb6ef7d31ca021d3a654515071d3dd5a"/>
+        <VersionInfo resourceName="jsc://set-response.js" version="SHA-512:cd9708e2be0ca8747c51d7c8d72695c277231861be78c6f279f90bd7b8deafa2cf7285aa1680650b5c3154163a572662613a3c6a5ee2486e30a2bb63ea862dcd"/>
+    </Resources>
+    <SharedFlows/>
+    <TargetEndpoints/>
+</Manifest>

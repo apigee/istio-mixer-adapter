@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<APIProxy revision="1" name="istio-auth">
+    <Basepaths>/istio-auth</Basepaths>
+    <ConfigurationVersion majorVersion="4" minorVersion="0"/>
+    <CreatedAt>1524447429819</CreatedAt>
+    <CreatedBy>defaultUser</CreatedBy>
+    <Description>istio-auth</Description>
+    <DisplayName>istio-auth</DisplayName>
+    <LastModifiedAt>1525127429243</LastModifiedAt>
+    <LastModifiedBy>defaultUser</LastModifiedBy>
+    <ManifestVersion>SHA-512:acd451ff5ef9bd54ebebe78e34e80259e5fa69e00d4aaf19a9785db871494c613ad31449b86878e4539f9c3e0afaf1f75b8fefce7934659bf5c146cecbe4e8f7</ManifestVersion>
+    <Policies>
+        <Policy>Access-App-Info-2</Policy>
+        <Policy>Access-App-Info</Policy>
+        <Policy>AccessTokenRequest</Policy>
+        <Policy>Create-OAuth-Request</Policy>
+        <Policy>Create-Refresh-Request</Policy>
+        <Policy>Extract-API-Key</Policy>
+        <Policy>Extract-OAuth-Params</Policy>
+        <Policy>Extract-Refresh-Params</Policy>
+        <Policy>Extract-Revoke-Params</Policy>
+        <Policy>Generate-Access-Token</Policy>
+        <Policy>Generate-JWK</Policy>
+        <Policy>Generate-VerifyKey-Token</Policy>
+        <Policy>Get-Private-Key</Policy>
+        <Policy>Get-Public-Keys</Policy>
+        <Policy>JavaCallout</Policy>
+        <Policy>Products-to-JSON-2</Policy>
+        <Policy>Products-to-JSON</Policy>
+        <Policy>Raise-Fault-Unknown-Request</Policy>
+        <Policy>RefreshAccessToken</Policy>
+        <Policy>RevokeRefreshToken</Policy>
+        <Policy>Send-JWK-Message</Policy>
+        <Policy>Set-JWT-Variables</Policy>
+        <Policy>Set-Response</Policy>
+        <Policy>Verify-API-Key</Policy>
+    </Policies>
+    <ProxyEndpoints>
+        <ProxyEndpoint>default</ProxyEndpoint>
+    </ProxyEndpoints>
+    <Resources>
+        <Resource>java://micro-gateway-products-javacallout-2.0.0.jar</Resource>
+        <Resource>jsc://generate-jwk.js</Resource>
+        <Resource>jsc://jsrsasign-all-min.js</Resource>
+        <Resource>jsc://jwt-initialization.js</Resource>
+        <Resource>jsc://send-jwk-response.js</Resource>
+        <Resource>jsc://set-jwt-variables.js</Resource>
+        <Resource>jsc://set-response.js</Resource>
+    </Resources>
+    <Spec></Spec>
+    <TargetServers/>
+    <TargetEndpoints/>
+</APIProxy>
