@@ -64,8 +64,8 @@ type bucket struct {
 	f        *os.File
 }
 
-// A Manager is a way for Istio to interact with Apigee's analytics platform.
-type Manager struct {
+// A manager is a way for Istio to interact with Apigee's analytics platform.
+type manager struct {
 	close              chan bool
 	client             *http.Client
 	now                func() time.Time
@@ -84,6 +84,8 @@ type Manager struct {
 
 // Options allows us to specify options for how this analytics manager will run.
 type Options struct {
+	// LegacyEndpoint is true if using older direct-submit protocol
+	LegacyEndpoint bool
 	// BufferPath is the directory where the adapter will buffer analytics records.
 	BufferPath string
 	// BufferSize is the maximum number of files stored in the staging directory.
@@ -99,7 +101,7 @@ type Options struct {
 
 func (o *Options) validate() error {
 	if o.BufferPath == "" ||
-		o.BufferSize == 0 ||
+		o.BufferSize <= 0 ||
 		o.Key == "" ||
 		o.Secret == "" {
 		return fmt.Errorf("all analytics options are required")
@@ -107,54 +109,9 @@ func (o *Options) validate() error {
 	return nil
 }
 
-// NewManager constructs and starts a new Manager. Call Close when you are done.
-func NewManager(env adapter.Env, opts Options) (*Manager, error) {
-	m, err := newManager(opts)
-	if err != nil {
-		return nil, err
-	}
-	m.Start(env)
-	return m, nil
-}
-
-func newManager(opts Options) (*Manager, error) {
-	if err := opts.validate(); err != nil {
-		return nil, err
-	}
-	// Ensure that the buffer path exists and we can access it.
-	td := path.Join(opts.BufferPath, tempDir)
-	sd := path.Join(opts.BufferPath, stagingDir)
-	if err := os.MkdirAll(td, bufferMode); err != nil {
-		return nil, fmt.Errorf("mkdir %s: %s", td, err)
-	}
-	if err := os.MkdirAll(sd, bufferMode); err != nil {
-		return nil, fmt.Errorf("mkdir %s: %s", sd, err)
-	}
-
-	if opts.BufferSize <= 0 {
-		return nil, fmt.Errorf("BufferSize must be > 0")
-	}
-
-	return &Manager{
-		close: make(chan bool),
-		client: &http.Client{
-			Timeout: httpTimeout,
-		},
-		now:                time.Now,
-		collectionInterval: defaultCollectionInterval,
-		tempDir:            td,
-		stagingDir:         sd,
-		bufferSize:         opts.BufferSize,
-		buckets:            map[string]bucket{},
-		baseURL:            opts.BaseURL,
-		key:                opts.Key,
-		secret:             opts.Secret,
-	}, nil
-}
-
 // crashRecovery cleans up the temp and staging dirs post-crash. This function
 // assumes that both the temp and staging dirs exist and are accessible.
-func (m *Manager) crashRecovery() error {
+func (m *manager) crashRecovery() error {
 	dirs, err := ioutil.ReadDir(m.tempDir)
 	if err != nil {
 		return err
@@ -208,7 +165,7 @@ func (m *Manager) crashRecovery() error {
 }
 
 // recoverFile recovers gzipped data in a file and puts it into a new file.
-func (m *Manager) recoverFile(old, new string) error {
+func (m *manager) recoverFile(old, new string) error {
 	in, err := os.Open(old)
 	if err != nil {
 		return fmt.Errorf("open %s: %s", old, err)
@@ -243,7 +200,7 @@ func (m *Manager) recoverFile(old, new string) error {
 }
 
 // Start starts the manager.
-func (m *Manager) Start(env adapter.Env) {
+func (m *manager) Start(env adapter.Env) {
 	m.log = env.Logger()
 	m.log.Infof("starting analytics manager")
 
@@ -258,7 +215,7 @@ func (m *Manager) Start(env adapter.Env) {
 }
 
 // Close shuts down the manager.
-func (m *Manager) Close() {
+func (m *manager) Close() {
 	if m == nil {
 		return
 	}
@@ -272,7 +229,7 @@ func (m *Manager) Close() {
 
 // uploadLoop runs a timer that periodically pushes everything in the buffer
 // directory to the server.
-func (m *Manager) uploadLoop() {
+func (m *manager) uploadLoop() {
 	t := time.NewTicker(m.collectionInterval)
 	for {
 		select {
@@ -289,7 +246,7 @@ func (m *Manager) uploadLoop() {
 }
 
 // commitStaging moves anything in the temp dir to the staging dir.
-func (m *Manager) commitStaging() error {
+func (m *manager) commitStaging() error {
 	subdirs, err := ioutil.ReadDir(m.tempDir)
 	if err != nil {
 		return fmt.Errorf("ReadDir(%s): %s", m.tempDir, err)
@@ -353,7 +310,7 @@ func (m *Manager) commitStaging() error {
 }
 
 // ensureStagingSpace ensures that staging has space for N new files.
-func (m *Manager) ensureStagingSpace(n int) error {
+func (m *manager) ensureStagingSpace(n int) error {
 	// TODO(someone): handle case when n > m.bufferSize.
 
 	// Figure out how many files are already in staging.
@@ -416,7 +373,7 @@ func (m *Manager) ensureStagingSpace(n int) error {
 
 // shortCircuitErr checks if we should bail early on this error (i.e. an error
 // that will be the same for all requests, like an auth fail or Apigee is down).
-func (m *Manager) shortCircuitErr(err error) bool {
+func (m *manager) shortCircuitErr(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, errUnauth) ||
 		strings.Contains(s, errNotFound) ||
@@ -424,7 +381,7 @@ func (m *Manager) shortCircuitErr(err error) bool {
 }
 
 // uploadAll commits everything from staging and then uploads it.
-func (m *Manager) uploadAll() error {
+func (m *manager) uploadAll() error {
 	if err := m.commitStaging(); err != nil {
 		m.log.Errorf("Error moving analytics into staging dir: %s", err)
 		// Don't return here, we may have committed some dirs and will want to
@@ -450,7 +407,7 @@ func (m *Manager) uploadAll() error {
 }
 
 // upload sends all the files in a given staging subdir to UAP.
-func (m *Manager) upload(subdir string) error {
+func (m *manager) upload(subdir string) error {
 	p := path.Join(m.stagingDir, subdir)
 	files, err := ioutil.ReadDir(p)
 	if err != nil {
@@ -509,7 +466,7 @@ func (m *Manager) upload(subdir string) error {
 	return errs
 }
 
-func (m *Manager) orgEnvFromSubdir(subdir string) (string, string) {
+func (m *manager) orgEnvFromSubdir(subdir string) (string, string) {
 	s := strings.Split(subdir, "~")
 	if len(s) == 2 {
 		return s[0], s[1]
@@ -518,7 +475,7 @@ func (m *Manager) orgEnvFromSubdir(subdir string) (string, string) {
 }
 
 // signedURL constructs a signed URL that can be used to upload records.
-func (m *Manager) signedURL(subdir, filename string) (string, error) {
+func (m *manager) signedURL(subdir, filename string) (string, error) {
 	org, env := m.orgEnvFromSubdir(subdir)
 	if org == "" || env == "" {
 		return "", fmt.Errorf("invalid subdir %s", subdir)
@@ -560,7 +517,7 @@ func (m *Manager) signedURL(subdir, filename string) (string, error) {
 }
 
 // uploadDir gets a directory for where we should upload the file.
-func (m *Manager) uploadDir() string {
+func (m *manager) uploadDir() string {
 	now := m.now()
 	d := now.Format("2006-01-02")
 	start := now.Unix()
@@ -568,29 +525,9 @@ func (m *Manager) uploadDir() string {
 	return fmt.Sprintf(pathFmt, d, start, end)
 }
 
-// ensureFields makes sure all the records in a list have the fields they need.
-func (m *Manager) ensureFields(ctx *auth.Context, records []Record) {
-	for i := range records {
-		records[i].RecordType = axRecordType
-
-		// populate from auth context
-		records[i].DeveloperEmail = ctx.DeveloperEmail
-		records[i].DeveloperApp = ctx.Application
-		records[i].AccessToken = ctx.AccessToken
-		records[i].ClientID = ctx.ClientID
-		records[i].Organization = ctx.Organization()
-		records[i].Environment = ctx.Environment()
-
-		// todo: select best APIProduct based on path, otherwise arbitrary
-		if len(ctx.APIProducts) > 0 {
-			records[i].APIProduct = ctx.APIProducts[0]
-		}
-	}
-}
-
 // SendRecords sends the records asynchronously to the UAP primary server.
-func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
-	m.ensureFields(ctx, records)
+func (m *manager) SendRecords(ctx *auth.Context, records []Record) error {
+	EnsureFields(ctx, records)
 
 	// Validate the records.
 	var goodRecords []Record
@@ -624,11 +561,11 @@ func (m *Manager) SendRecords(ctx *auth.Context, records []Record) error {
 	return nil
 }
 
-func (m *Manager) bucketDir(ctx *auth.Context) string {
+func (m *manager) bucketDir(ctx *auth.Context) string {
 	return fmt.Sprintf("%s~%s", ctx.Organization(), ctx.Environment())
 }
 
-func (m *Manager) createBucket(ctx *auth.Context, d string) error {
+func (m *manager) createBucket(ctx *auth.Context, d string) error {
 	m.bucketsLock.Lock()
 	defer m.bucketsLock.Unlock()
 
@@ -656,7 +593,7 @@ func (m *Manager) createBucket(ctx *auth.Context, d string) error {
 }
 
 // validate confirms that a record has correct values in it.
-func (m *Manager) validate(r Record) error {
+func (m *manager) validate(r Record) error {
 	var err error
 
 	// Validate that certain fields are set.
@@ -685,4 +622,24 @@ func (m *Manager) validate(r Record) error {
 		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be more than 90 days old"))
 	}
 	return err
+}
+
+// EnsureFields makes sure all the records in a list have the fields they need.
+func EnsureFields(ctx *auth.Context, records []Record) {
+	for i := range records {
+		records[i].RecordType = axRecordType
+
+		// populate from auth context
+		records[i].DeveloperEmail = ctx.DeveloperEmail
+		records[i].DeveloperApp = ctx.Application
+		records[i].AccessToken = ctx.AccessToken
+		records[i].ClientID = ctx.ClientID
+		records[i].Organization = ctx.Organization()
+		records[i].Environment = ctx.Environment()
+
+		// todo: select best APIProduct based on path, otherwise arbitrary
+		if len(ctx.APIProducts) > 0 {
+			records[i].APIProduct = ctx.APIProducts[0]
+		}
+	}
 }

@@ -60,7 +60,7 @@ type (
 
 		productMan   *product.Manager
 		authMan      *auth.Manager
-		analyticsMan *analytics.Manager
+		analyticsMan analytics.Manager
 		quotaMan     *quota.Manager
 	}
 )
@@ -115,8 +115,10 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
-			BufferPath: "/tmp/apigee-ax/buffer/",
-			BufferSize: 1024,
+			AnalyticOptions: &config.ParamsAnalytics{
+				BufferPath: "/tmp/apigee-ax/buffer/",
+				BufferSize: 1024,
+			},
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
@@ -159,11 +161,12 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	authMan := auth.NewManager(env)
 	quotaMan := quota.NewManager(apigeeBase, env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		BufferPath: b.adapterConfig.BufferPath,
-		BufferSize: int(b.adapterConfig.BufferSize),
-		BaseURL:    *apigeeBase,
-		Key:        b.adapterConfig.Key,
-		Secret:     b.adapterConfig.Secret,
+		LegacyEndpoint: b.adapterConfig.AnalyticOptions.LegacyEndpoint,
+		BufferPath:     b.adapterConfig.AnalyticOptions.BufferPath,
+		BufferSize:     int(b.adapterConfig.AnalyticOptions.BufferSize),
+		BaseURL:        *apigeeBase,
+		Key:            b.adapterConfig.Key,
+		Secret:         b.adapterConfig.Secret,
 	})
 	if err != nil {
 		return nil, err

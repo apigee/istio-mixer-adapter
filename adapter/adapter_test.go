@@ -106,8 +106,10 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
-		BufferPath:   d,
-		BufferSize:   10,
+		AnalyticOptions: &config.ParamsAnalytics{
+			BufferPath: d,
+			BufferSize: 10,
+		},
 	}
 	b.SetAdapterConfig(&validConfig)
 
@@ -130,8 +132,10 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      ah.Environment(),
 		Key:          ah.Key(),
 		Secret:       ah.Secret(),
-		BufferPath:   d,
-		BufferSize:   10,
+		AnalyticOptions: &config.ParamsAnalytics{
+			BufferPath: d,
+			BufferSize: 10,
+		},
 	}
 	if !reflect.DeepEqual(validConfig, derivedConfig) {
 		t.Errorf("bad derived config. want: %#v. got: %#v", validConfig, derivedConfig)

@@ -32,10 +32,16 @@ message Params {
     string key           = 5;
     string secret        = 6;
 
-    // Path to where analytics records are persisted before uploading to Apigee.
-    string buffer_path = 7;
+    message analytics {
+        // if true, use old-style direct communication analytics protocol
+        bool legacy_endpoint = 1;
 
-    // How many files should be stored in staging before we start deleting old
-    // records.
-    int64 buffer_size = 8;
+        // Path to where analytics records are persisted before uploading
+        string buffer_path = 2;
+
+        // How many files can be stored in staging before we start deleting old files
+        int64 buffer_size = 3;
+    }
+
+    analytics analytic_options = 7;
 }

@@ -41,14 +41,3 @@ type Record struct {
 	Organization                 string `json:"organization"`
 	Environment                  string `json:"environment"`
 }
-
-type request struct {
-	Organization string   `json:"organization"`
-	Environment  string   `json:"environment"`
-	Records      []Record `json:"records"`
-}
-
-type response struct {
-	Accepted int `json:"accepted"`
-	Rejected int `json:"rejected"`
-}

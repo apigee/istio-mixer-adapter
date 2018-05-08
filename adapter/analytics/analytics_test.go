@@ -477,7 +477,7 @@ func TestValidationFailure(t *testing.T) {
 	} {
 		t.Log(test.desc)
 
-		m := Manager{}
+		m := manager{}
 		m.now = func() time.Time { return time.Unix(ts, 0) }
 
 		gotErr := m.validate(test.record)
