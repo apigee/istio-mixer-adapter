@@ -258,24 +258,24 @@ func (p *provision) getOrCreateKVM(printf shared.FormatFn) error {
 			Encrypted: false,
 			Entries: []apigee.Entry{
 				{
-					"private_key",
-					keyBytes,
+					Name:  "private_key",
+					Value: keyBytes,
 				},
 				{
-					"public_key",
-					certBytes,
+					Name:  "public_key",
+					Value: certBytes,
 				},
 				{
-					"public_key1",
-					publicKeyBytes,
+					Name:  "public_key1",
+					Value: publicKeyBytes,
 				},
 				{
-					"public_key1_kid",
-					"1",
+					Name:  "public_key1_kid",
+					Value: "1",
 				},
 				{
-					"private_key_kid",
-					"1",
+					Name:  "private_key_kid",
+					Value: "1",
 				},
 			},
 		}

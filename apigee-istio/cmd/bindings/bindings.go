@@ -139,7 +139,7 @@ func (b *bindings) getProducts() ([]product.APIProduct, error) {
 	productsURL := fmt.Sprintf(productsURLFormat, b.CustomerProxyURL)
 	req, err := http.NewRequest(http.MethodGet, productsURL, nil)
 	if err != nil {
-		fmt.Errorf("error creating request: %v", err)
+		return nil, fmt.Errorf("error creating request: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -147,7 +147,7 @@ func (b *bindings) getProducts() ([]product.APIProduct, error) {
 	var res product.APIResponse
 	resp, err := b.Client.Do(req, &res)
 	if err != nil {
-		fmt.Errorf("error retrieving products: %v", err)
+		return nil, fmt.Errorf("error retrieving products: %v", err)
 	}
 	defer resp.Body.Close()
 
