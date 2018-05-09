@@ -37,10 +37,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
-	"github.com/srinandan/go-apigee-edge/src/apigee"
 )
 
 // todo: switch edgemicro names to istio

@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/srinandan/go-apigee-edge/src/apigee"
+	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
 )
 
 const (

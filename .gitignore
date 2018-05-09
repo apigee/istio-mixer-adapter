@@ -19,8 +19,6 @@ cluster.env
 kubedns
 # lint
 lintconfig.gen.json
-# dep
-Gopkg.lock
 # bazel
 bazel-bin
 bazel-genfiles
