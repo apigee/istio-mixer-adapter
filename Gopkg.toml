@@ -3,10 +3,6 @@
 
 # Below is for apigee-istio
 
-required = [
-    "github.com/ghodss/yaml",
-]
-
 [[constraint]]
   name = "github.com/spf13/cobra"
   version = "0.0.2"

@@ -39,8 +39,8 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
-	"github.com/ghodss/yaml"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 // todo: switch edgemicro names to istio
