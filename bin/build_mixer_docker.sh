@@ -32,12 +32,12 @@ if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
 fi
 
 if [[ `command -v docker` == "" ]]; then
-  echo "docker client not installed, please install it: ./install/install_docker.sh"
+  echo "docker client not installed, please install it: ./bin/install_docker.sh"
   exit 1
 fi
 
 if [[ `command -v gcloud` == "" ]]; then
-  echo "gcloud not installed, please install it: ./install/install_gcloud.sh"
+  echo "gcloud not installed, please install it: ./bin/install_gcloud.sh"
   exit 1
 fi
 

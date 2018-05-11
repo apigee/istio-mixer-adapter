@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - run:
-          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          command: INSTALL_PROTOC=1 ./bin/local_install.sh
           name: Run local install script
         # test needs dep ensure to be run again, since the Mixer plugin install
         # will have removed the vendor link.
@@ -29,7 +29,7 @@ jobs:
     steps:
       - checkout
       - run:
-          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          command: INSTALL_PROTOC=1 ./bin/local_install.sh
           name: Run local install script
         # test needs dep ensure to be run again, since the Mixer plugin install
         # will have removed the vendor link.
@@ -42,13 +42,13 @@ jobs:
           name: upload codecov
       - setup_remote_docker
       - run:
-          command: ./install/install_docker.sh
+          command: ./bin/install_docker.sh
           name: Install docker
       - run:
-          command: ./install/install_gcloud.sh
+          command: ./bin/install_gcloud.sh
           name: Install gcloud
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:latest ./install/build_mixer_docker.sh
+          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:latest ./bin/build_mixer_docker.sh
           name: Build and push Docker image with tag latest
 
   build-nightly:
@@ -59,16 +59,16 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          command: INSTALL_PROTOC=1 ./install/local_install.sh
+          command: INSTALL_PROTOC=1 ./bin/local_install.sh
           name: Run local install script
       - run:
-          command: ./install/install_docker.sh
+          command: ./bin/install_docker.sh
           name: Install docker
       - run:
-          command: ./install/install_gcloud.sh
+          command: ./bin/install_gcloud.sh
           name: Install gcloud
       - run:
-          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:nightly ./install/build_mixer_docker.sh
+          command: GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:nightly ./bin/build_mixer_docker.sh
           name: Build and push Docker image with tag nightly
 
 workflows:
