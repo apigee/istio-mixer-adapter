@@ -32,6 +32,14 @@ const (
 	customerProxyURLFormat = "%s/edgemicro-auth"                   // routerBase
 )
 
+type BuildInfoType struct {
+	Version string
+	Commit  string
+	Date    string
+}
+
+var BuildInfo BuildInfoType
+
 type RootArgs struct {
 	RouterBase     string // "https://org-env.apigee.net"
 	ManagementBase string // "https://api.enterprise.apigee.com"

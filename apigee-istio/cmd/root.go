@@ -39,29 +39,47 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 	c.SetArgs(args)
 	c.PersistentFlags().AddGoFlagSet(flag.CommandLine)
 
-	c.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
-		shared.DefaultRouterBase, "Apigee router base")
-	c.PersistentFlags().StringVarP(&rootArgs.ManagementBase, "managementBase", "m",
-		shared.DefaultManagementBase, "Apigee management base")
-	c.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
-		false, "verbose output")
+	var addCommand = func(cmds ...*cobra.Command) {
+		for _, subC := range cmds {
+			// add general flags
+			subC.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
+				shared.DefaultRouterBase, "Apigee router base")
+			subC.PersistentFlags().StringVarP(&rootArgs.ManagementBase, "managementBase", "m",
+				shared.DefaultManagementBase, "Apigee management base")
+			subC.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
+				false, "verbose output")
 
-	c.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
-		"", "Apigee organization name")
-	c.PersistentFlags().StringVarP(&rootArgs.Env, "env", "e",
-		"", "Apigee environment name")
-	c.PersistentFlags().StringVarP(&rootArgs.Username, "username", "u",
-		"", "Apigee username")
-	c.PersistentFlags().StringVarP(&rootArgs.Password, "password", "p",
-		"", "Apigee password")
+			subC.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
+				"", "Apigee organization name")
+			subC.PersistentFlags().StringVarP(&rootArgs.Env, "env", "e",
+				"", "Apigee environment name")
+			subC.PersistentFlags().StringVarP(&rootArgs.Username, "username", "u",
+				"", "Apigee username")
+			subC.PersistentFlags().StringVarP(&rootArgs.Password, "password", "p",
+				"", "Apigee password")
 
-	c.MarkPersistentFlagRequired("org")
-	c.MarkPersistentFlagRequired("env")
+			subC.MarkPersistentFlagRequired("org")
+			subC.MarkPersistentFlagRequired("env")
 
-	c.AddCommand(provision.Cmd(rootArgs, printf, fatalf))
-	c.AddCommand(bindings.Cmd(rootArgs, printf, fatalf))
+			c.AddCommand(subC)
+		}
+	}
 
-	//c.AddCommand(version.CobraCommand())
+	addCommand(provision.Cmd(rootArgs, printf, fatalf))
+	addCommand(bindings.Cmd(rootArgs, printf, fatalf))
+
+	c.AddCommand(version(printf))
 
 	return c
+}
+
+func version(printf shared.FormatFn) *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Prints build version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			printf("apigee-istio version %s %s [%s]",
+				shared.BuildInfo.Version, shared.BuildInfo.Date, shared.BuildInfo.Commit)
+		},
+	}
 }

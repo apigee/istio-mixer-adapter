@@ -21,6 +21,21 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 )
 
+// populated via ldflags
+var (
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+)
+
+func init() {
+	shared.BuildInfo = shared.BuildInfoType{
+		Version: version,
+		Commit:  commit,
+		Date:    date,
+	}
+}
+
 func main() {
 	rootCmd := cmd.GetRootCmd(os.Args[1:], shared.Printf, shared.Fatalf)
 

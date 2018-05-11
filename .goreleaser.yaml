@@ -1,0 +1,23 @@
+# .goreleaser.yml
+# Build customization
+builds:
+  - main: ./apigee-istio/main.go
+    binary: apigee-istio
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+# Archive customization
+archive:
+  format: tar.gz
+  replacements:
+    darwin: macOS
+    amd64: 64-bit
+  files:
+    - LICENSE
+    - README.md
+    - install/*.yaml
+git:
+  short_hash: true
