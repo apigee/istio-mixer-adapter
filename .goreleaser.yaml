@@ -21,3 +21,6 @@ archive:
     - install/*.yaml
 git:
   short_hash: true
+release:
+  draft: true
+  prerelease: true
