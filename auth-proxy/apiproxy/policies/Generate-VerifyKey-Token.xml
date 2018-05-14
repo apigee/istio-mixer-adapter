@@ -8,7 +8,7 @@
     </PrivateKey>
     <Issuer ref="iss"/>
     <Audience>istio</Audience>
-    <ExpiresIn>1m</ExpiresIn>
+    <ExpiresIn>15m</ExpiresIn>
     <AdditionalClaims>
         <Claim name="client_id" ref="apigee.client_id"/>
         <Claim name="api_product_list" ref="apiProductList" type="string" array="true"/>
