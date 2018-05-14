@@ -359,7 +359,7 @@ func (p *provision) downloadProxy(printf shared.FormatFn) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("error downloading proxy source (%s): %s",
+		return "", fmt.Errorf("error downloading proxy source (%d): %s",
 			resp.StatusCode, p.customerProxySource)
 	}
 
