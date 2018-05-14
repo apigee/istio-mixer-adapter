@@ -44,9 +44,8 @@
         jwk2.alg = alg;
         jwk2.use = use;
     }
+    certificatelist.keys.push(jwk2);
  }
-
- certificatelist.keys.push(jwk2);
 
  context.setVariable("jwkmessage", JSON.stringify(certificatelist));
 
