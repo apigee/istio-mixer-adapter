@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<KeyValueMapOperations encrypted="false" mapIdentifier="microgateway" async="false" continueOnError="false" enabled="true" name="Get-Public-Keys">
+<KeyValueMapOperations encrypted="false" mapIdentifier="istio" async="false" continueOnError="false" enabled="true" name="Get-Public-Keys">
     <DisplayName>Get Public Keys</DisplayName>
     <FaultRules/>
     <Properties/>

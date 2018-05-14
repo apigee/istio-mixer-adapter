@@ -4,5 +4,5 @@
     <FaultRules/>
     <Properties/>
     <ClassName>io.apigee.microgateway.javacallout.Callout</ClassName>
-    <ResourceURL>java://micro-gateway-products-javacallout-2.0.0.jar</ResourceURL>
+    <ResourceURL>java://istio-products-javacallout-2.0.0.jar</ResourceURL>
 </JavaCallout>

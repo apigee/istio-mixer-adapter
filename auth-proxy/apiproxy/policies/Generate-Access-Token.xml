@@ -7,7 +7,7 @@
         <Id>1</Id>
     </PrivateKey>
     <Issuer ref="iss"/>
-    <Audience>microgateway</Audience>
+    <Audience>istio</Audience>
     <ExpiresIn>15m</ExpiresIn>
     <AdditionalClaims>
         <Claim name="client_id" ref="apigee.client_id"/>
