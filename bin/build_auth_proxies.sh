@@ -30,20 +30,23 @@ cp -R "${ADAPTER_DIR}/auth-proxy/apiproxy" "${ADAPTER_DIR}/dist/apiproxy"
 # both vhosts
 ZIP=${ADAPTER_DIR}/dist/proxy-istio-auth.zip
 echo "building ${ZIP}"
-zip -qr ${ZIP} apiproxy
+rm -f "${ZIP}"
+zip -qr "${ZIP}" apiproxy
 
 # secure only
 ZIP=${ADAPTER_DIR}/dist/proxy-istio-secure.zip
 echo "building ${ZIP}"
 PROXIES_FILE="${DIST_DIR}/apiproxy/proxies/default.xml"
 sed -i '' -e 's#<VirtualHost>default</VirtualHost>##g' ${PROXIES_FILE}
-zip -qr ${ZIP} apiproxy
+rm -f "${ZIP}"
+zip -qr "${ZIP}" apiproxy
 
 # default only
 ZIP=${ADAPTER_DIR}/dist/proxy-istio-default.zip
 echo "building ${ZIP}"
 PROXIES_FILE="${DIST_DIR}/apiproxy/proxies/default.xml"
 sed -i '' -e 's#<VirtualHost>secure</VirtualHost>#<VirtualHost>default</VirtualHost>#g' ${PROXIES_FILE}
-zip -qr ${ZIP} apiproxy
+rm -f "${ZIP}"
+zip -qr "${ZIP}" apiproxy
 
 echo "done"
