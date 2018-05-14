@@ -174,7 +174,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 		},
 		"audience":         "microgateway",
 		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
-		"iss":              "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
+		"iss":              "https://theganyo1-eval-test.apigee.net/istio-auth/token",
 		"access_token":     "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
 		"client_id":        "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
 		"application_name": "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
@@ -195,7 +195,7 @@ func generateExpiredJWT(privateKey *rsa.PrivateKey) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"jti": "29e2320b-787c-4625-8599-acc5e05c68d0",
-		"iss": "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
+		"iss": "https://theganyo1-eval-test.apigee.net/istio-auth/token",
 		"nbf": (time.Now().Add(-10 * time.Minute)).Unix(),
 		"iat": (time.Now().Add(-10 * time.Minute)).Unix(),
 		"exp": (time.Now().Add(-1 * time.Minute)).Unix(),
@@ -209,7 +209,7 @@ func generateFutureJWT(privateKey *rsa.PrivateKey) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"jti": "29e2320b-787c-4625-8599-acc5e05c68d0",
-		"iss": "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
+		"iss": "https://theganyo1-eval-test.apigee.net/istio-auth/token",
 		"nbf": (time.Now().Add(5 * time.Second)).Unix(),
 		"iat": (time.Now().Add(5 * time.Second)).Unix(),
 		"exp": (time.Now().Add(2 * time.Minute)).Unix(),

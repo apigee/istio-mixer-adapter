@@ -78,7 +78,7 @@ Once extracted, you will find several .yaml files for configuring Istio in the i
 
 Edit `install/apigee-handler.yaml` and replace the configuration values with your own:
 
-      customer_base: https://{your organization}-{your environment}.apigee.net/edgemicro-auth
+      customer_base: https://{your organization}-{your environment}.apigee.net/istio-auth
       org_name: {your organization name}
       env_name: {your environment name}
       key: {your key}
@@ -164,11 +164,11 @@ Update the `install/authentication-policy.yaml` file to set your correct URLs:
 
     origins:
     - jwt:
-        issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/token
-        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+        issuer: https://{your organization}-{your environment}.apigee.net/istio-auth/token
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/istio-auth/certs
     - jwt:
-        issuer: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey
-        jwks_uri: https://{your organization}-{your environment}.apigee.net/edgemicro-auth/jwkPublicKeys
+        issuer: https://{your organization}-{your environment}.apigee.net/istio-auth/verifyApiKey
+        jwks_uri: https://{your organization}-{your environment}.apigee.net/istio-auth/certs
 
 The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above,
 adjust as appropriate if you are using OPDK.
@@ -187,7 +187,7 @@ Should receive an auth error:
 
 Now get a JWT token:
 
-    curl https://{your organization}-{your environment}.apigee.net/edgemicro-auth/verifyApiKey -d '{ "apiKey":"{your consumer key}" }' -H "Content-Type: application/json"
+    curl https://{your organization}-{your environment}.apigee.net/istio-auth/verifyApiKey -d '{ "apiKey":"{your consumer key}" }' -H "Content-Type: application/json"
 
 or
 

@@ -42,7 +42,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, jwksPath) {
+		if strings.HasSuffix(r.URL.Path, certsPath) {
 			// Handling the JWK verifier
 			key, err := jwk.New(&privateKey.PublicKey)
 			if err != nil {
@@ -194,7 +194,7 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	called := false
 	good := goodHandler(apiKey, t)
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, jwksPath) {
+		if strings.HasSuffix(r.URL.Path, certsPath) {
 			// We don't care about jwks expiry here.
 			good(w, r)
 			return

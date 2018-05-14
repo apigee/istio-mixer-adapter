@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	jwksPath       = "/jwkPublicKeys"
+	certsPath      = "/certs"
 	pollInterval   = 5 * time.Minute
 	acceptableSkew = 10 * time.Second
 )
@@ -99,7 +99,7 @@ func (a *jwtManager) refresh() error {
 
 func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
 	jwksURL := *ctx.CustomerBase()
-	jwksURL.Path = path.Join(jwksURL.Path, jwksPath)
+	jwksURL.Path = path.Join(jwksURL.Path, certsPath)
 	url := jwksURL.String()
 	if _, ok := a.jwkSets.Load(url); !ok {
 		if err := a.ensureSet(url); err != nil {

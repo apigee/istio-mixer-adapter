@@ -67,7 +67,7 @@ Users may extend the Apigee OAuth v2 policy to add support for additional grant 
 #### Support for JSON Web Keys
 
 istio-mixer-adapter stores private keys and public keys in an encrypted kvm on Apigee Edge. 
-The proxy exposes an endpoint '/jwkPublicKeys' to return public keys as JWK.
+The proxy exposes an endpoint '/certs' to return public keys as JWK Set.
 
 #### Support for JWT "kid" - Key Identifiers. 
 

@@ -29,7 +29,7 @@ const (
 	RouterBaseFormat      = "https://%s-%s.apigee.net"
 
 	internalProxyURLFormat = "%s://edgemicroservices.%s/edgemicro" // routerBase scheme, routerBase domain
-	customerProxyURLFormat = "%s/edgemicro-auth"                   // routerBase
+	customerProxyURLFormat = "%s/istio-auth"                       // routerBase
 )
 
 type BuildInfoType struct {

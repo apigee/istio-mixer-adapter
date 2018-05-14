@@ -51,17 +51,15 @@ const (
 
 	credentialURLFormat = "%s/credential/organization/%s/environment/%s" // internalProxyURL, org, env
 
-	// todo: switch to formal release location
-	defaultProxy          = "https://github.com/srinandan/istio-auth/raw/master/istio-auth-default.zip"
-	secureProxy           = "https://github.com/srinandan/istio-auth/raw/master/istio-auth-secure.zip"
-	defaultAndSecureProxy = "https://github.com/srinandan/istio-auth/raw/master/istio-auth.zip"
-	//customerProxySource := "https://github.com/srinandan/microgateway-edgeauth/raw/master/edgemicro-auth.zip"
+	defaultProxy          = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-default.zip"
+	secureProxy           = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-secure.zip"
+	defaultAndSecureProxy = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-auth.zip"
 
-	jwkPublicKeysURLFormat = "%s/jwkPublicKeys"                            // customerProxyURL
-	productsURLFormat      = "%s/products"                                 // customerProxyURL
-	verifyAPIKeyURLFormat  = "%s/verifyApiKey"                             // customerProxyURL
-	analyticsURLFormat     = "%s/analytics/organization/%s/environment/%s" // internalProxyURL, org, env
-	quotasURLFormat        = "%s/quotas/organization/%s/environment/%s"    // internalProxyURL, org, env
+	certsURLFormat        = "%s/certs"                                    // customerProxyURL
+	productsURLFormat     = "%s/products"                                 // customerProxyURL
+	verifyAPIKeyURLFormat = "%s/verifyApiKey"                             // customerProxyURL
+	analyticsURLFormat    = "%s/analytics/organization/%s/environment/%s" // internalProxyURL, org, env
+	quotasURLFormat       = "%s/quotas/organization/%s/environment/%s"    // internalProxyURL, org, env
 )
 
 type provision struct {
@@ -360,6 +358,10 @@ func (p *provision) downloadProxy(printf shared.FormatFn) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("error downloading proxy source (%s): %s",
+			resp.StatusCode, p.customerProxySource)
+	}
 
 	_, err = io.Copy(out, resp.Body)
 	if err != nil {
@@ -373,21 +375,23 @@ func (p *provision) downloadProxy(printf shared.FormatFn) (string, error) {
 func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
 	if !p.forceProxyInstall {
 		printf("checking if proxy %s deployment exists...", customerProxyName)
-		deployments, _, err := p.Client.Proxies.GetDeployments(customerProxyName)
-		if err != nil {
+		deployments, resp, err := p.Client.Proxies.GetDeployments(customerProxyName)
+		if err != nil && resp == nil {
 			return err
 		}
-		var deployment *apigee.EnvironmentDeployment
-		for _, ed := range deployments.Environments {
-			if ed.Name == p.Env {
-				deployment = &ed
-				break
+		if resp.StatusCode != 404 {
+			var deployment *apigee.EnvironmentDeployment
+			for _, ed := range deployments.Environments {
+				if ed.Name == p.Env {
+					deployment = &ed
+					break
+				}
 			}
-		}
-		if deployment != nil {
-			rev := deployment.Revision[0].Number
-			printf("proxy %s revision %s already deployed to %s", customerProxyName, rev, p.Env)
-			return nil
+			if deployment != nil {
+				rev := deployment.Revision[0].Number
+				printf("proxy %s revision %s already deployed to %s", customerProxyName, rev, p.Env)
+				return nil
+			}
 		}
 	}
 
@@ -473,12 +477,12 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf shared.For
 	printVerify(quotasURL, err, printf)
 }
 
-// verify GET customerProxyURL/jwkPublicKeys
+// verify GET customerProxyURL/certs
 // verify GET customerProxyURL/products
 // verify POST customerProxyURL/verifyApiKey
 func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf shared.FormatFn) {
-	jwkPublicKeysURL := fmt.Sprintf(jwkPublicKeysURLFormat, p.CustomerProxyURL)
-	printVerify(jwkPublicKeysURL, p.verifyGET(jwkPublicKeysURL), printf)
+	certsURL := fmt.Sprintf(certsURLFormat, p.CustomerProxyURL)
+	printVerify(certsURL, p.verifyGET(certsURL), printf)
 
 	productsURL := fmt.Sprintf(productsURLFormat, p.CustomerProxyURL)
 	printVerify(productsURL, p.verifyGET(productsURL), printf)
@@ -528,24 +532,24 @@ func (p *provision) verifyGET(targetURL string) error {
 }
 
 type apigeeHandler struct {
-	ApiVersion string        `json:"apiVersion,omitempty"`
-	Kind       string        `json:"kind,omitempty"`
-	Metadata   metadata      `json:"metadata,omitempty"`
-	Spec       specification `json:"spec,omitempty"`
+	ApiVersion string        `yaml:"apiVersion"`
+	Kind       string        `yaml:"kind"`
+	Metadata   metadata      `yaml:"metadata"`
+	Spec       specification `yaml:"spec"`
 }
 
 type metadata struct {
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Name      string `yaml:"name"`
+	Namespace string `yaml:"namespace"`
 }
 
 type specification struct {
-	ApigeeBase   string `json:"apigee_base,omitempty"`
-	CustomerBase string `json:"customer_base,omitempty"`
-	OrgName      string `json:"org_name,omitempty"`
-	EnvName      string `json:"env_name,omitempty"`
-	Key          string `json:"key,omitempty"`
-	Secret       string `json:"secret,omitempty"`
+	ApigeeBase   string `yaml:"apigee_base"`
+	CustomerBase string `yaml:"customer_base"`
+	OrgName      string `yaml:"org_name"`
+	EnvName      string `yaml:"env_name"`
+	Key          string `yaml:"key"`
+	Secret       string `yaml:"secret"`
 }
 
 // ASN.1 structure of a PKCS#1 public key

@@ -239,7 +239,7 @@ func cloudMockHandler(t *testing.T) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		switch {
-		case strings.HasPrefix(r.URL.Path, "/jwkPublicKeys"):
+		case strings.HasPrefix(r.URL.Path, "/certs"):
 			key, err := jwk.New(&privateKey.PublicKey)
 			if err != nil {
 				t.Fatal(err)
@@ -318,7 +318,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 		},
 		"audience":         "microgateway",
 		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
-		"iss":              "https://theganyo1-eval-test.apigee.net/edgemicro-auth/token",
+		"iss":              "https://theganyo1-eval-test.apigee.net/istio-auth/token",
 		"access_token":     "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
 		"client_id":        "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
 		"application_name": "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
