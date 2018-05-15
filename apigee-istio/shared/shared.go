@@ -48,6 +48,7 @@ type RootArgs struct {
 	Env            string
 	Username       string
 	Password       string
+	NetrcPath      string
 
 	// the following is derived in Resolve()
 	InternalProxyURL string
@@ -74,8 +75,9 @@ func (p *RootArgs) Resolve() error {
 		Org:     p.Org,
 		Env:     p.Env,
 		Auth: &apigee.EdgeAuth{
-			Username: p.Username,
-			Password: p.Password,
+			NetrcPath: p.NetrcPath,
+			Username:  p.Username,
+			Password:  p.Password,
 		},
 		Debug: p.Verbose,
 	}

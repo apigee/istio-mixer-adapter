@@ -19,6 +19,7 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/bindings"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
+	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/token"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/spf13/cobra"
 )
@@ -48,6 +49,8 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 				shared.DefaultManagementBase, "Apigee management base")
 			subC.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
 				false, "verbose output")
+			subC.PersistentFlags().StringVarP(&rootArgs.NetrcPath, "netrc", "n",
+				"", "Path to a .netrc file to use (default is $HOME/.netrc")
 
 			subC.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
 				"", "Apigee organization name")
