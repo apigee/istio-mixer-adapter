@@ -70,6 +70,7 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 
 	addCommand(provision.Cmd(rootArgs, printf, fatalf))
 	addCommand(bindings.Cmd(rootArgs, printf, fatalf))
+	addCommand(token.Cmd(rootArgs, printf, fatalf))
 
 	c.AddCommand(version(printf))
 
