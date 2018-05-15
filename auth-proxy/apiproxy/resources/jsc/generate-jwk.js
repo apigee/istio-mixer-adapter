@@ -14,17 +14,17 @@
 
  const alg = "RS256";
  const use = "sig";
- var publicKey1 = context.getVariable("private.publicKey1");
- var publicKey2 = context.getVariable("private.publicKey2");
+ var certificate1 = context.getVariable("private.certificate1");
+ var certificate2 = context.getVariable("private.certificate2");
  var certificatelist = {};
 
  certificatelist.keys = [];
  
- if (!publicKey1) {
-    throw Error("No public keys found");     
+ if (!certificate1) {
+    throw Error("No certificate found");
  }
  
- var key1 = KEYUTIL.getKey(publicKey1);
+ var key1 = KEYUTIL.getKey(certificate1);
  var jwk1 = KEYUTIL.getJWKFromKey(key1);
  var public_key1_kid = context.getVariable("private.public_key1_kid") || null;
  
@@ -35,8 +35,8 @@
  }
  certificatelist.keys.push(jwk1);
  
- if (publicKey2) {
-    var key2 = KEYUTIL.getKey(publicKey2);
+ if (certificate2) {
+    var key2 = KEYUTIL.getKey(certificate2);
     var jwk2 = KEYUTIL.getJWKFromKey(key2);
     var public_key2_kid = context.getVariable("private.public_key2_kid") || null;
     if (public_key2_kid !== null) {

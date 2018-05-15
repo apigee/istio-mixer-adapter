@@ -176,7 +176,6 @@ func newHash() string {
 	binary.Read(rand.Reader, binary.BigEndian, &seed)
 	rnd.Seed(seed)
 
-	//rnd.Seed(time.Now().UnixNano())
 	t := time.Now()
 	h := sha256.New()
 	h.Write([]byte(t.String() + string(rnd.Int())))
@@ -194,14 +193,22 @@ func marshalPKCS1PublicKey(key *rsa.PublicKey) []byte {
 }
 
 // generate a self signed key and certificate
-func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, string, error) {
+// returns certBytes, privateKeyBytes, error
+func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, error) {
 	printf("generating a new key and cert...")
 	privateKey, err := rsa.GenerateKey(rand.Reader, p.certKeyStrength)
 	if err != nil {
 		log.Fatalf("failed to generate private key: %s", err)
-		return "", "", "", err
+		return "", "", err
 	}
 	now := time.Now()
+	subKeyIDHash := sha256.New()
+	_, err = subKeyIDHash.Write(privateKey.N.Bytes())
+	if err != nil {
+		log.Fatalf("failed to generate subject key id: %s", err)
+		return "", "", err
+	}
+	subKeyID := subKeyIDHash.Sum(nil)
 	template := x509.Certificate{
 		SerialNumber: new(big.Int).SetInt64(0),
 		Subject: pkix.Name{
@@ -211,28 +218,25 @@ func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, string, 
 		NotBefore:    now.Add(-5 * time.Minute).UTC(),
 		NotAfter:     now.AddDate(p.certExpirationInYears, 0, 0).UTC(),
 		IsCA:         true,
-		SubjectKeyId: []byte{1, 2, 3, 4}, // todo: need to find out how to generate this
-		KeyUsage:     x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		SubjectKeyId: subKeyID,
+		KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature |
+			x509.KeyUsageDataEncipherment,
 	}
 	derBytes, err := x509.CreateCertificate(
 		rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		log.Fatalf("failed to create CA certificate: %s", err)
-		return "", "", "", err
+		return "", "", err
 	}
 
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 	printf("certificate:\n%s", string(certBytes))
 
-	pkBytes := marshalPKCS1PublicKey(&privateKey.PublicKey)
-	publicKeyBytes := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pkBytes})
-	printf("public key:\n%s", string(publicKeyBytes))
-
 	keyBytes := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
 	printf("private key:\n%s", string(keyBytes))
 
-	return string(certBytes), string(publicKeyBytes), string(keyBytes), nil
+	return string(certBytes), string(keyBytes), nil
 }
 
 //check if the KVM exists, if it doesn't, create a new one
@@ -247,25 +251,21 @@ func (p *provision) getOrCreateKVM(printf shared.FormatFn) error {
 		printf("KVM %s exists", kvmName)
 	case 404:
 		printf("KVM %s does not exist, creating a new one...", kvmName)
-		certBytes, publicKeyBytes, keyBytes, err := p.genKeyCert(printf)
+		certBytes, privateKeyBytes, err := p.genKeyCert(printf)
 		if err != nil {
 			return err
 		}
 		kvm := apigee.KVM{
 			Name:      kvmName,
-			Encrypted: false,
+			Encrypted: true,
 			Entries: []apigee.Entry{
 				{
 					Name:  "private_key",
-					Value: keyBytes,
+					Value: privateKeyBytes,
 				},
 				{
-					Name:  "public_key",
+					Name:  "certificate1",
 					Value: certBytes,
-				},
-				{
-					Name:  "public_key1",
-					Value: publicKeyBytes,
 				},
 				{
 					Name:  "public_key1_kid",
@@ -373,15 +373,16 @@ func (p *provision) downloadProxy(printf shared.FormatFn) (string, error) {
 }
 
 func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
+	printf("checking if proxy %s deployment exists...", customerProxyName)
+	existingDeployments, resp, err := p.Client.Proxies.GetDeployments(customerProxyName)
+	if err != nil && resp == nil {
+		return err
+	}
+
 	if !p.forceProxyInstall {
-		printf("checking if proxy %s deployment exists...", customerProxyName)
-		deployments, resp, err := p.Client.Proxies.GetDeployments(customerProxyName)
-		if err != nil && resp == nil {
-			return err
-		}
 		if resp.StatusCode != 404 {
 			var deployment *apigee.EnvironmentDeployment
-			for _, ed := range deployments.Environments {
+			for _, ed := range existingDeployments.Environments {
 				if ed.Name == p.Env {
 					deployment = &ed
 					break
@@ -427,6 +428,19 @@ func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
 		return fmt.Errorf("error importing proxy %s: %v", customerProxyName, e)
 	}
 	defer resp.Body.Close()
+
+	for _, ed := range existingDeployments.Environments {
+		if ed.Name == p.Env {
+			for _, rev := range ed.Revision {
+				if rev.State == "deployed" {
+					printf("undeploying proxy %s revision %d on env %s...",
+						customerProxyName, rev.Number, p.Env)
+					_, resp, e = p.Client.Proxies.Undeploy(customerProxyName, p.Env, rev.Number)
+				}
+			}
+			break
+		}
+	}
 
 	printf("deploying proxy %s revision %d to env %s...", customerProxyName, revision, p.Env)
 	_, resp, e = p.Client.Proxies.Deploy(customerProxyName, p.Env, revision)

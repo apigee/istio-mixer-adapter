@@ -13,7 +13,7 @@ package apigee
 //		return
 //	}
 //
-//	kvm, resp, err := client.KVMService.Get("microgateway")
+//	kvm, resp, err := client.KVMService.Get("istio")
 //
 //	if err != nil {
 //		t.Error(err)

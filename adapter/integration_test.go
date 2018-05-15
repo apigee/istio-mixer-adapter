@@ -316,7 +316,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 			"EdgeMicroTestProduct",
 			"ExceededQuota",
 		},
-		"audience":         "microgateway",
+		"audience":         "istio",
 		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
 		"iss":              "https://theganyo1-eval-test.apigee.net/istio-auth/token",
 		"access_token":     "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
