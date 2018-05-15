@@ -51,9 +51,9 @@ const (
 
 	credentialURLFormat = "%s/credential/organization/%s/environment/%s" // internalProxyURL, org, env
 
-	defaultProxy          = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-default.zip"
-	secureProxy           = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-secure.zip"
-	defaultAndSecureProxy = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-auth.zip"
+	defaultProxy          = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-2/proxy-istio-default.zip"
+	secureProxy           = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-2/proxy-istio-secure.zip"
+	defaultAndSecureProxy = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-2/proxy-istio-auth.zip"
 
 	certsURLFormat        = "%s/certs"                                    // customerProxyURL
 	productsURLFormat     = "%s/products"                                 // customerProxyURL
