@@ -150,10 +150,16 @@ func (m *manager) crashRecovery() error {
 				// File couldn't be read, attempt recovery.
 				if err.Error() != "unexpected EOF" {
 					errs = multierror.Append(errs, fmt.Errorf("readall(%s): %s", fi.Name(), err))
-				} else if err := m.recoverFile(oldPath, newPath); err != nil {
-					errs = multierror.Append(errs, err)
+					m.log.Infof("Attempting file recovery for %s", oldPath)
+					if err := m.recoverFile(oldPath, newPath); err != nil {
+						errs = multierror.Append(errs, err)
+					}
+				} else {
+					// The zip file is invalid avoid it to be moved
+					// to the staging directory.
+					fmt.Errorf("readall(%s): %s. The file is broken; skip it", fi.Name(), err)
+					continue
 				}
-				continue
 			}
 			if err := os.Rename(oldPath, newPath); err != nil {
 				errs = multierror.Append(errs, err)
@@ -557,6 +563,10 @@ func (m *manager) SendRecords(ctx *auth.Context, records []Record) error {
 	}
 	if err := gz.Flush(); err != nil {
 		return fmt.Errorf("gzip.Flush(): %s", err)
+	}
+	// Close the writer stream
+	if err := gz.Close(); err != nil {
+		return fmt.Errorf("gzip.Close(): %s", err)
 	}
 	return nil
 }
