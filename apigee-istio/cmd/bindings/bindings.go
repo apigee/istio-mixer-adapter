@@ -38,6 +38,7 @@ type bindings struct {
 	products []product.APIProduct
 }
 
+// Cmd returns base command
 func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Command {
 	cfg := &bindings{RootArgs: rootArgs}
 

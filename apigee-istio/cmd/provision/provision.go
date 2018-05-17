@@ -73,6 +73,7 @@ type provision struct {
 	verifyOnly            bool
 }
 
+// Cmd returns base command
 func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Command {
 	cfg := &provision{RootArgs: rootArgs}
 
@@ -320,7 +321,7 @@ func (p *provision) createCredential(printf shared.FormatFn) (*credential, error
 
 func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn) error {
 	handler := apigeeHandler{
-		ApiVersion: "config.istio.io/v1alpha2",
+		APIVersion: "config.istio.io/v1alpha2",
 		Kind:       "apigee",
 		Metadata: metadata{
 			Name:      "apigee-handler",
@@ -546,7 +547,7 @@ func (p *provision) verifyGET(targetURL string) error {
 }
 
 type apigeeHandler struct {
-	ApiVersion string        `yaml:"apiVersion"`
+	APIVersion string        `yaml:"apiVersion"`
 	Kind       string        `yaml:"kind"`
 	Metadata   metadata      `yaml:"metadata"`
 	Spec       specification `yaml:"spec"`

@@ -24,22 +24,28 @@ import (
 )
 
 const (
+	// DefaultManagementBase is the default management API URL for Apigee
 	DefaultManagementBase = "https://api.enterprise.apigee.com"
-	DefaultRouterBase     = "https://{org}-{env}.apigee.net"
-	RouterBaseFormat      = "https://%s-%s.apigee.net"
+	// DefaultRouterBase is the default (fake format) for base of the organization router URL
+	DefaultRouterBase = "https://{org}-{env}.apigee.net"
+	// RouterBaseFormat is the real format for base of the organization router URL
+	RouterBaseFormat = "https://%s-%s.apigee.net"
 
 	internalProxyURLFormat = "%s://edgemicroservices.%s/edgemicro" // routerBase scheme, routerBase domain
 	customerProxyURLFormat = "%s/istio-auth"                       // routerBase
 )
 
+// BuildInfoType holds version information
 type BuildInfoType struct {
 	Version string
 	Commit  string
 	Date    string
 }
 
+// BuildInfo is populated by main init()
 var BuildInfo BuildInfoType
 
+// RootArgs is the base struct to hold all command arguments
 type RootArgs struct {
 	RouterBase     string // "https://org-env.apigee.net"
 	ManagementBase string // "https://api.enterprise.apigee.com"
@@ -57,6 +63,7 @@ type RootArgs struct {
 	ClientOpts       *apigee.EdgeClientOptions
 }
 
+// Resolve is used to populate shared args, it's automatically called prior when creating the root command
 func (p *RootArgs) Resolve() error {
 	if p.RouterBase == DefaultRouterBase {
 		p.RouterBase = fmt.Sprintf(RouterBaseFormat, p.Org, p.Env)
