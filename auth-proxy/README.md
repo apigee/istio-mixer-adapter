@@ -71,7 +71,7 @@ The proxy exposes an endpoint '/certs' to return public keys as JWK Set.
 
 #### Support for JWT "kid" - Key Identifiers. 
 
-If the KVM includes a field called 'private_key_kid' (value can be any string), the JWT header will include the "kid".
+If the KVM includes a field called 'certificate1_kid' (value can be any string), the JWT header will include the "kid".
 
     {
       "alg": "RS256",

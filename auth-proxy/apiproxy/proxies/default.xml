@@ -177,7 +177,7 @@
                 </Step>
                 <Step>
                     <Name>Raise-Fault-Unknown-Request</Name>
-                    <Condition>private.certificate1 is null or private.public_key1_kid is null</Condition>
+                    <Condition>private.certificate1 is null or private.certificate1_kid is null</Condition>
                 </Step>
                 <Step>
                     <Name>Generate-JWK</Name>

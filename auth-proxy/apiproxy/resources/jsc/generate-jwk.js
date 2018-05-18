@@ -26,10 +26,10 @@
  
  var key1 = KEYUTIL.getKey(certificate1);
  var jwk1 = KEYUTIL.getJWKFromKey(key1);
- var public_key1_kid = context.getVariable("private.public_key1_kid") || null;
- 
- if (public_key1_kid !== null) {
-    jwk1.kid = public_key1_kid;
+ var cert1_kid = context.getVariable("private.certificate1_kid") || null;
+
+ if (cert1_kid !== null) {
+    jwk1.kid = cert1_kid;
     jwk1.alg = alg;
     jwk1.use = use;
  }
@@ -38,9 +38,9 @@
  if (certificate2) {
     var key2 = KEYUTIL.getKey(certificate2);
     var jwk2 = KEYUTIL.getJWKFromKey(key2);
-    var public_key2_kid = context.getVariable("private.public_key2_kid") || null;
-    if (public_key2_kid !== null) {
-        jwk2.kid = public_key2_kid;
+    var cert2_kid = context.getVariable("private.certificate2_kid") || null;
+    if (cert2_kid !== null) {
+        jwk2.kid = cert2_kid;
         jwk2.alg = alg;
         jwk2.use = use;
     }

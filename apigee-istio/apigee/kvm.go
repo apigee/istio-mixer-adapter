@@ -11,6 +11,8 @@ const kvmPath = "keyvaluemaps"
 type KVMService interface {
 	Get(mapname string) (*KVM, *Response, error)
 	Create(kvm KVM) (*Response, error)
+	UpdateEntry(kvmName string, entry Entry) (*Response, error)
+	AddEntry(kvmName string, entry Entry) (*Response, error)
 }
 
 type Entry struct {
@@ -22,6 +24,15 @@ type KVM struct {
 	Name      string  `json:"name,omitempty"`
 	Encrypted bool    `json:"encrypted,omitempty"`
 	Entries   []Entry `json:"entry,omitempty"`
+}
+
+func (k *KVM) GetValue(name string) (v string, ok bool) {
+	for _, e := range k.Entries {
+		if e.Name == name {
+			return e.Value, true
+		}
+	}
+	return
 }
 
 type KVMServiceOp struct {
@@ -51,5 +62,25 @@ func (s *KVMServiceOp) Create(kvm KVM) (*Response, error) {
 		return nil, e
 	}
 	resp, e := s.client.Do(req, &kvm)
+	return resp, e
+}
+
+func (s *KVMServiceOp) UpdateEntry(kvmName string, entry Entry) (*Response, error) {
+	path := path.Join(kvmPath, kvmName, "entries", entry.Name)
+	req, e := s.client.NewRequest("POST", path, entry)
+	if e != nil {
+		return nil, e
+	}
+	resp, e := s.client.Do(req, &entry)
+	return resp, e
+}
+
+func (s *KVMServiceOp) AddEntry(kvmName string, entry Entry) (*Response, error) {
+	path := path.Join(kvmPath, kvmName, "entries")
+	req, e := s.client.NewRequest("POST", path, entry)
+	if e != nil {
+		return nil, e
+	}
+	resp, e := s.client.Do(req, &entry)
 	return resp, e
 }

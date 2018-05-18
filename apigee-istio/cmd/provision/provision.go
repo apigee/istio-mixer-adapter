@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/big"
 	rnd "math/rand"
 	"net/http"
@@ -39,13 +38,14 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-// todo: switch edgemicro names to istio
 const (
 	kvmName                 = "istio"
+	encryptKVM              = false // todo: currently necessary to enable certificate rotation
 	customerProxyBundleName = "istio-auth.zip"
 	customerProxyName       = "istio-auth"
 
@@ -81,7 +81,7 @@ func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Comma
 		Use:   "provision",
 		Short: "Provision your Apigee environment for Istio",
 		Long: `The provision command will set up your Apigee environment for Istio. This includes creating 
-and installing a KVM with certificates, creating credentials, and deploying a necessary proxy 
+and installing a kvm with certificates, creating credentials, and deploying a necessary proxy 
 to your organization and environment.`,
 		Args: cobra.NoArgs,
 
@@ -131,7 +131,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 	var cred *credential
 	if !p.verifyOnly {
 		if err := p.getOrCreateKVM(verbosef); err != nil {
-			fatalf("error creating KVM: %v", err)
+			fatalf("error retrieving or creating kvm: %v", err)
 		}
 
 		cred, err = p.createCredential(verbosef)
@@ -193,21 +193,18 @@ func marshalPKCS1PublicKey(key *rsa.PublicKey) []byte {
 	return derBytes
 }
 
-// generate a self signed key and certificate
+// GenKeyCert generates a self signed key and certificate
 // returns certBytes, privateKeyBytes, error
-func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, error) {
-	printf("generating a new key and cert...")
-	privateKey, err := rsa.GenerateKey(rand.Reader, p.certKeyStrength)
+func GenKeyCert(keyStrength, certExpirationInYears int) (string, string, error) {
+	privateKey, err := rsa.GenerateKey(rand.Reader, keyStrength)
 	if err != nil {
-		log.Fatalf("failed to generate private key: %s", err)
-		return "", "", err
+		return "", "", errors.Wrap(err, "failed to generate private key")
 	}
 	now := time.Now()
 	subKeyIDHash := sha256.New()
 	_, err = subKeyIDHash.Write(privateKey.N.Bytes())
 	if err != nil {
-		log.Fatalf("failed to generate subject key id: %s", err)
-		return "", "", err
+		return "", "", errors.Wrap(err, "failed to generate key id")
 	}
 	subKeyID := subKeyIDHash.Sum(nil)
 	template := x509.Certificate{
@@ -217,7 +214,7 @@ func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, error) {
 			Organization: []string{kvmName},
 		},
 		NotBefore:    now.Add(-5 * time.Minute).UTC(),
-		NotAfter:     now.AddDate(p.certExpirationInYears, 0, 0).UTC(),
+		NotAfter:     now.AddDate(certExpirationInYears, 0, 0).UTC(),
 		IsCA:         true,
 		SubjectKeyId: subKeyID,
 		KeyUsage: x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature |
@@ -226,54 +223,51 @@ func (p *provision) genKeyCert(printf shared.FormatFn) (string, string, error) {
 	derBytes, err := x509.CreateCertificate(
 		rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		log.Fatalf("failed to create CA certificate: %s", err)
-		return "", "", err
+		return "", "", errors.Wrap(err, "failed to create CA certificate")
 	}
 
 	certBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	printf("certificate:\n%s", string(certBytes))
 
 	keyBytes := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
-	printf("private key:\n%s", string(keyBytes))
 
 	return string(certBytes), string(keyBytes), nil
 }
 
 //check if the KVM exists, if it doesn't, create a new one
 func (p *provision) getOrCreateKVM(printf shared.FormatFn) error {
-	printf("checking if KVM %s exists...", kvmName)
+	printf("checking if kvm %s exists...", kvmName)
 	_, resp, err := p.Client.KVMService.Get(kvmName)
 	if err != nil && resp == nil {
 		return err
 	}
 	switch resp.StatusCode {
 	case 200:
-		printf("KVM %s exists", kvmName)
+		printf("kvm %s exists", kvmName)
 	case 404:
-		printf("KVM %s does not exist, creating a new one...", kvmName)
-		certBytes, privateKeyBytes, err := p.genKeyCert(printf)
+		printf("kvm %s does not exist, creating a new one...", kvmName)
+		printf("generating a new key and cert...")
+		cert, privateKey, err := GenKeyCert(p.certKeyStrength, p.certExpirationInYears)
 		if err != nil {
 			return err
 		}
+		printf("certificate:\n%s", cert)
+		printf("private key:\n%s", privateKey)
+
 		kvm := apigee.KVM{
 			Name:      kvmName,
-			Encrypted: true,
+			Encrypted: encryptKVM,
 			Entries: []apigee.Entry{
 				{
 					Name:  "private_key",
-					Value: privateKeyBytes,
+					Value: privateKey,
 				},
 				{
 					Name:  "certificate1",
-					Value: certBytes,
+					Value: cert,
 				},
 				{
-					Name:  "public_key1_kid",
-					Value: "1",
-				},
-				{
-					Name:  "private_key_kid",
+					Name:  "certificate1_kid",
 					Value: "1",
 				},
 			},
@@ -283,11 +277,11 @@ func (p *provision) getOrCreateKVM(printf shared.FormatFn) error {
 			return err
 		}
 		if resp.StatusCode != 201 {
-			return fmt.Errorf("error creating KVM %s, status code: %v", kvmName, resp.StatusCode)
+			return fmt.Errorf("error creating kvm %s, status code: %v", kvmName, resp.StatusCode)
 		}
-		printf("KVM %s created", kvmName)
+		printf("kvm %s created", kvmName)
 	default:
-		return fmt.Errorf("error checking for KVM %s, status code: %v", kvmName, resp.StatusCode)
+		return fmt.Errorf("error checking for kvm %s, status code: %v", kvmName, resp.StatusCode)
 	}
 	return nil
 }
@@ -380,7 +374,7 @@ func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
 		return err
 	}
 
-	if !p.forceProxyInstall {
+	if !p.forceProxyInstall && existingDeployments != nil {
 		if resp.StatusCode != 404 {
 			var deployment *apigee.EnvironmentDeployment
 			for _, ed := range existingDeployments.Environments {
@@ -430,16 +424,18 @@ func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
 	}
 	defer resp.Body.Close()
 
-	for _, ed := range existingDeployments.Environments {
-		if ed.Name == p.Env {
-			for _, rev := range ed.Revision {
-				if rev.State == "deployed" {
-					printf("undeploying proxy %s revision %d on env %s...",
-						customerProxyName, rev.Number, p.Env)
-					_, resp, e = p.Client.Proxies.Undeploy(customerProxyName, p.Env, rev.Number)
+	if existingDeployments != nil {
+		for _, ed := range existingDeployments.Environments {
+			if ed.Name == p.Env {
+				for _, rev := range ed.Revision {
+					if rev.State == "deployed" {
+						printf("undeploying proxy %s revision %d on env %s...",
+							customerProxyName, rev.Number, p.Env)
+						_, resp, e = p.Client.Proxies.Undeploy(customerProxyName, p.Env, rev.Number)
+					}
 				}
+				break
 			}
-			break
 		}
 	}
 
