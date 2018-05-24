@@ -129,4 +129,5 @@ fi
 cd "${ISTIO}/istio"
 go generate mixer/adapter/doc.go || exit 1
 go generate mixer/template/doc.go || exit 1
-make mixs
+make mixs || exit 1
+make mixc || exit 1
