@@ -16,7 +16,6 @@ package adapter
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
@@ -25,7 +24,6 @@ import (
 	"os"
 	"reflect"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -224,7 +222,6 @@ func TestResolveClaims(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	encoded := base64.StdEncoding.EncodeToString(jsonBytes)
 
 	for _, ea := range []struct {
 		desc   string
@@ -232,13 +229,7 @@ func TestResolveClaims(t *testing.T) {
 	}{
 		{"map of strings", want},
 		{"encoded value", map[string]string{
-			encodedClaimsKey: encoded,
-		}},
-		{"encoded with invalid padding", map[string]string{
-			// This is a bug from production: edgemicro returns strings that are not
-			// padded with =, so the decode fails. Our encoded version is padded
-			// properly, strip off the = so that it is no longer valid.
-			encodedClaimsKey: strings.Replace(encoded, "=", "", -1),
+			jsonClaimsKey: string(jsonBytes),
 		}},
 	} {
 		t.Log(ea.desc)

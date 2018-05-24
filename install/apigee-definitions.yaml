@@ -61,12 +61,7 @@ spec:
   client_sent_start_timestamp: response.time
   client_sent_end_timestamp: response.time
   api_claims: # from jwt
-    encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
-#    api_product_list: request.auth.claims["api_product_list"] | ""
-#    client_id: request.auth.claims["client_id"] | ""
-#    application_name: request.auth.claims["application_name"] | ""
-#    scopes: request.auth.claims["scopes"] | ""
-#    developer_email: request.auth.claims["application_developeremail"] | ""
+    json_claims: request.auth.raw_claims | ""
 ---
 # instance configuration for template 'apigee.authorization'
 apiVersion: config.istio.io/v1alpha2
@@ -80,44 +75,9 @@ spec:
     groups: ""
     properties:
       api_key: request.api_key | request.headers["x-api-key"] | ""
-      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
-#      api_product_list: request.auth.claims["api_product_list"] | ""
-#      client_id: request.auth.claims["client_id"] | ""
-#      application_name: request.auth.claims["application_name"] | ""
-#      scopes: request.auth.claims["scopes"] | ""
-#      developer_email: request.auth.claims["application_developeremail"] | ""
+      json_claims: request.auth.raw_claims | ""
   action:
     namespace: destination.namespace | "default"
     service: api.service | destination.service | ""
     path: api.operation | request.path | ""
     method: request.method | ""
----
-# Deny any request with header 'sec-istio-auth-userinfo'
-apiVersion: "config.istio.io/v1alpha2"
-kind: denier
-metadata:
-  name: restricted-header
-  namespace: istio-system
-spec:
-  status:
-    code: 401
-    message: "Restricted header: sec-istio-auth-userinfo"
----
-apiVersion: "config.istio.io/v1alpha2"
-kind: checknothing
-metadata:
-  name: restricted-header
-  namespace: istio-system
-spec:
----
-apiVersion: "config.istio.io/v1alpha2"
-kind: rule
-metadata:
-  name: restricted-header
-  namespace: istio-system
-spec:
-  match: destination.labels["istio"] == "ingress" && request.headers["sec-istio-auth-userinfo"] != ""
-  actions:
-  - handler: restricted-header.denier
-    instances:
-    - restricted-header.checknothing
