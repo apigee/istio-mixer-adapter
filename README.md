@@ -47,8 +47,8 @@ The first thing you'll need to do is provision Apigee. The `apigee-istio` comman
 You should see a response like this:
 
     verifying internal proxy...
-      ok: https://edgemicroservices.apigee.net/edgemicro/analytics/organization/myorg/environment/myenv
-      ok: https://edgemicroservices.apigee.net/edgemicro/quotas/organization/myorg/environment/myenv
+      ok: https://istioservices.apigee.net/istio/analytics/organization/myorg/environment/myenv
+      ok: https://istioservices.apigee.net/istio/quotas/organization/myorg/environment/myenv
     verifying customer proxy...
       ok: https://myorg-myenv.apigee.net/istio-auth/certs
       ok: https://myorg-myenv.apigee.net/istio-auth/products
@@ -61,7 +61,7 @@ You should see a response like this:
       name: apigee-handler
       namespace: istio-system
     spec:
-      apigee_base: https://edgemicroservices.apigee.net/edgemicro
+      apigee_base: https://istioservices.apigee.net/edgemicro
       customer_base: https://myorg-myenv.apigee.net/istio-auth
       org_name: myorg
       env_name: myenv
@@ -105,7 +105,7 @@ For the following, we'll assume you've installed Istio's [Hello World](https://g
 
 You should be able to access this service successfully:
 
-    curl http://${HELLOWORLD_URL}/hello
+    curl http://${GATEWAY_URL}/hello
 
 ## Configure Apigee Mixer in Istio
 
@@ -117,7 +117,7 @@ Now, apply the Apigee configuration to Istio:
 
 At this point, you should no longer be able to access your helloworld service. If you curl it:
 
-    curl http://${HELLOWORLD_URL}/hello
+    curl http://${GATEWAY_URL}/hello
     
 You should receive a permission denied error:
 
@@ -153,7 +153,7 @@ under the `Consumer Key` heading. Copy that key!
 You should now be able to access the helloworld service in Istio by passing the key you just 
 copied from your Apigee app. Just send it as part of the header:
     
-    curl http://${HELLOWORLD_URL}/hello -H "x-api-key: {your consumer key}"
+    curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
 This call should now be successful.
 
@@ -163,11 +163,11 @@ Remember that Quota you set for 5 requests per minute? Let's max it out.
 
 Make that same request a few more times:
 
-    curl http://${HELLOWORLD_URL}/hello -H "x-api-key: {your consumer key}"
+    curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
 Or, if you're in a Unix shell, you can use repeat:
 
-    repeat 10 curl http://${HELLOWORLD_URL}/hello -H "x-api-key: {your consumer key}"
+    repeat 10 curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
     
 Either way, you should see successful calls then failures that look like this:
 
@@ -197,7 +197,7 @@ Now, apply your Istio authentication policy:
 
 Calls to helloworld should now fail (with or without the API Key):
 
-    curl http://${HELLOWORLD_URL}/hello
+    curl http://${GATEWAY_URL}/hello
     
 And should receive an auth error:
 
@@ -213,7 +213,7 @@ or
 
 Try again with your token:
 
-    curl http://${HELLOWORLD_URL}/hello -H "Authorization: Bearer {your jwt token}"
+    curl http://${GATEWAY_URL}/hello -H "Authorization: Bearer {your jwt token}"
 
 This call should now be successful.
 

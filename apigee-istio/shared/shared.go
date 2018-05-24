@@ -31,8 +31,8 @@ const (
 	// RouterBaseFormat is the real format for base of the organization router URL
 	RouterBaseFormat = "https://%s-%s.apigee.net"
 
-	internalProxyURLFormat = "%s://edgemicroservices.%s/edgemicro" // routerBase scheme, routerBase domain
-	customerProxyURLFormat = "%s/istio-auth"                       // routerBase
+	internalProxyURLFormat = "%s://istioservices.%s/edgemicro" // routerBase scheme, routerBase domain
+	customerProxyURLFormat = "%s/istio-auth"                   // routerBase
 )
 
 // BuildInfoType holds version information
