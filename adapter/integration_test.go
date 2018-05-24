@@ -68,9 +68,7 @@ func TestAuthorization(t *testing.T) {
 				"api.service":     "service",
 				"request.path":    "/path",
 				"request.api_key": "badkey",
-				"request.headers": map[string]string{
-					"sec-istio-auth-userinfo": "",
-				},
+				"request.headers": map[string]string{},
 			},
 			want: `
 			{
@@ -94,11 +92,10 @@ func TestAuthorization(t *testing.T) {
 		},
 		"Good JWT request": {
 			attrs: map[string]interface{}{
-				"api.service":  "service",
-				"request.path": "/path",
-				"request.headers": map[string]string{
-					"sec-istio-auth-userinfo": "eyJhY2Nlc3NfdG9rZW4iOiI4RTdBejNaZ1BIS3JnemNRQTU0cUF6WFQzWjFHIiwiYXBpX3Byb2R1Y3RfbGlzdCI6WyJFZGdlTWljcm9UZXN0UHJvZHVjdCJdLCJhcHBsaWNhdGlvbl9uYW1lIjoiNjFjZDRkODMtMDZiNS00MjcwLWE5ZWUtY2Y5MjU1ZWY0NWMzIiwiYXVkaWVuY2UiOiJtaWNyb2dhdGV3YXkiLCJjbGllbnRfaWQiOiJ5QlE1ZVhaQThyU29pcFlFaTFSbW4wWjhSS3RrR0k0SCIsImV4cCI6MTUyMTg0NTUzMywiaWF0IjoxNTIxODQ1NTMzLCJpc3MiOiJodHRwczovL3RoZWdhbnlvMS1ldmFsLXRlc3QuYXBpZ2VlLm5ldC9lZGdlbWljcm8tYXV0aC90b2tlbiIsImp0aSI6IjI5ZTIzMjBiLTc4N2MtNDYyNS04NTk5LWFjYzVlMDVjNjhkMCIsIm5iZiI6MTUwNzYzNjgwMCwic2NvcGVzIjpbInNjb3BlMSIsInNjb3BlMiJdfQ",
-				},
+				"api.service":             "service",
+				"request.path":            "/path",
+				"request.auth.raw_claims": `{"access_token":"8E7Az3ZgPHKrgzcQA54qAzXT3Z1G","api_product_list":["IstioTestProduct"],"application_name":"61cd4d83-06b5-4270-a9ee-cf9255ef45c3","audience":"istio","client_id":"yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H","exp":1521845533,"iat":1521845533,"iss":"https://theganyo1-eval-test.apigee.net/istio-auth/token","jti":"29e2320b-787c-4625-8599-acc5e05c68d0","nbf":1507636800,"scopes":["scope1","scope2"]}`,
+				"request.headers":         map[string]string{},
 			},
 			want: `
 			{
@@ -148,6 +145,7 @@ func TestAuthorization(t *testing.T) {
 				"api.service":     "service",
 				"request.path":    "/ExceededQuota",
 				"request.api_key": "goodkey",
+				"request.headers": map[string]string{},
 			},
 			want: `
 			{
@@ -216,7 +214,7 @@ func cloudMockHandler(t *testing.T) http.HandlerFunc {
 			Attributes: []product.Attribute{
 				{Name: product.ServicesAttr, Value: "service"},
 			},
-			Name:          "EdgeMicroTestProduct",
+			Name:          "IstioTestProduct",
 			Resources:     []string{"/"},
 			Scopes:        []string{"scope1"},
 			QuotaLimit:    "1",
@@ -313,7 +311,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"api_product_list": []string{
-			"EdgeMicroTestProduct",
+			"IstioTestProduct",
 			"ExceededQuota",
 		},
 		"audience":         "istio",
@@ -389,7 +387,7 @@ spec:
     user: ""
     groups: ""
     properties:
-      encoded_claims: request.headers["sec-istio-auth-userinfo"] | ""
+      json_claims: request.auth.raw_claims | ""
       api_key: request.api_key | request.headers["x-api-key"] | ""
   action:
     namespace: destination.namespace | "default"

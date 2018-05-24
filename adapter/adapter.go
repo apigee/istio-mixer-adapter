@@ -20,11 +20,9 @@ package adapter
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
@@ -40,8 +38,8 @@ import (
 )
 
 const (
-	encodedClaimsKey = "encoded_claims"
-	apiKeyAttribute  = "api_key"
+	jsonClaimsKey   = "json_claims"
+	apiKeyAttribute = "api_key"
 )
 
 type (
@@ -279,7 +277,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	redacts := []interface{}{
 		inst.Subject.Properties[apiKeyAttribute],
-		inst.Subject.Properties[encodedClaimsKey],
+		inst.Subject.Properties[jsonClaimsKey],
 	}
 	redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
 	h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
@@ -354,10 +352,6 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 // resolveClaims ensures that jwt auth claims are properly populated from an
 // incoming map of potential claims values--including extraneous filtering.
-// For future compatibility with Istio, also checks for "encoded_claims" - a
-// base64 string value containing all claims in a JSON format. This is used
-// as the request.auth.claims attribute has not yet been defined in Mixer.
-// see: https://github.com/istio/istio/issues/3194
 func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]interface{} {
 	var claims = map[string]interface{}{}
 	for _, k := range auth.AllValidClaims {
@@ -369,27 +363,17 @@ func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]in
 		return claims
 	}
 
-	if encoded, ok := claimsIn[encodedClaimsKey]; ok {
+	if encoded, ok := claimsIn[jsonClaimsKey]; ok {
 		if encoded == "" {
 			return claims
 		}
 
-		if len(encoded)%4 != 0 {
-			// Encoded base64 must always have a length divisible by 4, or DecodeString
-			// will fail. Pad with "=" to make it happy.
-			encoded += strings.Repeat("=", 4-(len(encoded)%4))
-		}
-		decoded, err := base64.StdEncoding.DecodeString(encoded)
-		if err == nil {
-			err = json.Unmarshal(decoded, &claims)
-		}
+		err := json.Unmarshal([]byte(encoded), &claims)
 
 		if err != nil {
 			log.Errorf("error resolving claims: %v, data: %v", err, encoded)
 			return claims
 		}
-
-		json.Unmarshal(decoded, &claims)
 	}
 
 	return claims

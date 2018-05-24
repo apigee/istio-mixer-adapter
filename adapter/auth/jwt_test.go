@@ -170,7 +170,7 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"api_product_list": []string{
-			"EdgeMicroTestProduct",
+			"IstioTestProduct",
 		},
 		"audience":         "istio",
 		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
