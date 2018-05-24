@@ -43,7 +43,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// todo: switch edgemicro names to istio
 const (
 	kvmName                 = "istio"
 	customerProxyBundleName = "istio-auth.zip"
