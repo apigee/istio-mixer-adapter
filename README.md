@@ -15,15 +15,19 @@ To join the Apigee pre-release program for additional documentation and support,
 
 # Installation and usage
 
+## Version note
+
+The information below assumes release alpha-2 or better and requires Istio 0.8 or higher. To install alpha-1 on Istio 0.7.1, please follow the README [here](https://github.com/apigee/istio-mixer-adapter/blob/3a62ff2a42f0b10d56b14f36b2c5867137748396/README.md).
+
 ## Prerequisite: Apigee
 
 You must have an [Apigee Edge](https://login.apigee.com) account. If you need one, you can create one [here](https://login.apigee.com/sign_up).
 
-## Download the Release
+## Download a Release
 
 Istio Mixer Adapter releases can be found [here](https://github.com/apigee/istio-mixer-adapter/releases).
 
-Download the appropriate release for your operating system and extract it. You should a file list similar to:
+Download the appropriate release package for your operating system and extract it. You should a file list similar to:
 
     LICENSE
     README.md
