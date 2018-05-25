@@ -87,28 +87,23 @@ echo "Running dep ensure..."
 echo "If this fails it is possible things have changed, try deleting your" \
   "vendor directory and Gopkg.lock and attempting again."
 dep ensure || exit 1
-# HACK: the first generate will fail sometimes, because the generation process
-# adds dependencies that were ignored by dep ensure. We need to run dep ensure
-# again after the first generate so that it goes and gets new dependencies, and
-# then run generate again.
-go generate ./...
-dep ensure
+
 go generate ./... || exit 1
 go build ./... || exit 1
 go test ./... || exit 1
 
 echo "Re-building mixer with Apigee adapter..."
 
-rm -rf "${ADAPTER_DIR}/vendor"
-go get github.com/lestrrat/go-jwx
-go get github.com/lestrrat/go-pdebug
+mv "${ADAPTER_DIR}/vendor" "${ADAPTER_DIR}/vendor.bak"
+function finish {
+  mv "${ADAPTER_DIR}/vendor.bak" "${ADAPTER_DIR}/vendor"
+}
+trap finish EXIT
 
-ln -sf "${GOPATH}/src/github.com/lestrrat" \
-  "${ISTIO}/istio/vendor/github.com/lestrrat"
+ln -sf "${ADAPTER_DIR}/vendor.bak/github.com/lestrrat" \
+  "${ISTIO}/istio/vendor/github.com"
 ln -sf "${GOPATH}/src/github.com/apigee" \
-  "${ISTIO}/istio/vendor/github.com/apigee"
-ln -sf "${GOPATH}/src/github.com/gogo/protobuf/protobuf" \
-  "${ISTIO}/istio/vendor/github.com/gogo/protobuf/protobuf"
+  "${ISTIO}/istio/vendor/github.com"
 
 ADAPTER_FILE="${ISTIO}/istio/mixer/adapter/inventory.yaml"
 if [[ `grep "istio-mixer-adapter" "${ADAPTER_FILE}"` == "" ]]; then
