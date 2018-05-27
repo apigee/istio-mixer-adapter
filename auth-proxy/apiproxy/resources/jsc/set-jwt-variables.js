@@ -38,6 +38,7 @@
  }
 
  context.setVariable("apiProductList", apiProductsList.join());
+ context.setVariable("nbf", new Date().toUTCString());
  context.setVariable("iss", context.getVariable("proxyProto") + "://" + context.getVariable("proxyHost") + context.getVariable("proxy.basepath")+context.getVariable("proxy.pathsuffix"));
  context.setVariable("jti", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
