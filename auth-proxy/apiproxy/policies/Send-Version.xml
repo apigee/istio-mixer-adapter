@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage async="false" continueOnError="false" enabled="true" name="Send-Version">
+    <DisplayName>Send Version</DisplayName>
+    <Properties/>
+    <Set>
+        <Headers>
+            <Header name="Cache-Control">public, max-age=604800</Header>
+            <Header name="Content-Type">application/json</Header>
+        </Headers>
+        <Payload contentType="application/json">
+        {"version":"1.0.0-alpha-1"}
+    </Payload>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" transport="http" type="request"/>
+</AssignMessage>
