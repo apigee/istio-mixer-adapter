@@ -190,6 +190,16 @@
             </Response>
             <Condition>(proxy.pathsuffix MatchesPath "/certs") and (request.verb = "GET")</Condition>
         </Flow>
+        <Flow name="Get Version">
+            <Description>Get the version of the API Proxy</Description>
+            <Request/>
+            <Response>
+                <Step>
+                    <Name>Send-Version</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/version") and (request.verb = "GET")</Condition>
+        </Flow>
         <Flow name="Unknow Request">
             <Description>Unknow Request</Description>
             <Request>

@@ -31,6 +31,7 @@
         <Policy>RefreshAccessToken</Policy>
         <Policy>RevokeRefreshToken</Policy>
         <Policy>Send-JWK-Message</Policy>
+        <Policy>Send-Version</Policy>
         <Policy>Set-JWT-Variables</Policy>
         <Policy>Set-Response</Policy>
         <Policy>Verify-API-Key</Policy>
