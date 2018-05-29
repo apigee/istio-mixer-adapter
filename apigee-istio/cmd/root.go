@@ -17,6 +17,11 @@ package cmd
 import (
 	"flag"
 
+	"fmt"
+
+	"io/ioutil"
+	"net/http"
+
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/bindings"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/token"
@@ -72,18 +77,52 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 	addCommand(bindings.Cmd(rootArgs, printf, fatalf))
 	addCommand(token.Cmd(rootArgs, printf, fatalf))
 
-	c.AddCommand(version(printf))
+	c.AddCommand(version(rootArgs, printf, fatalf))
 
 	return c
 }
 
-func version(printf shared.FormatFn) *cobra.Command {
-	return &cobra.Command{
+const versionAPIFormat = "%s/version" // internalProxyURL
+
+func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Command {
+	subC := &cobra.Command{
 		Use:   "version",
-		Short: "Prints build version information",
+		Short: "Prints build version - specify org and env to include proxy version",
 		Run: func(cmd *cobra.Command, args []string) {
 			printf("apigee-istio version %s %s [%s]",
 				shared.BuildInfo.Version, shared.BuildInfo.Date, shared.BuildInfo.Commit)
+
+			if rootArgs.Org == "" || rootArgs.Env == "" {
+				return
+			}
+
+			// check proxy version
+			versionURL := fmt.Sprintf(versionAPIFormat, rootArgs.CustomerProxyURL)
+			req, err := http.NewRequest(http.MethodGet, versionURL, nil)
+			if err != nil {
+				fatalf("error creating request: %v", err)
+			}
+			var version versionResponse
+			resp, err := rootArgs.Client.Do(req, &version)
+			if err != nil {
+				fatalf("error getting proxy version: %v", err)
+			}
+			if err != nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				fatalf("error getting proxy version. response code: %d, body: %s", resp.StatusCode, string(body))
+			}
+			printf("istio-auth proxy version: %v", version.Version)
 		},
 	}
+
+	subC.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
+		"", "Apigee organization name")
+	subC.PersistentFlags().StringVarP(&rootArgs.Env, "env", "e",
+		"", "Apigee environment name")
+
+	return subC
+}
+
+type versionResponse struct {
+	Version string `json:"version"`
 }
