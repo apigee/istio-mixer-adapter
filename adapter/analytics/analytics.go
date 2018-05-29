@@ -73,7 +73,6 @@ type manager struct {
 	collectionInterval time.Duration
 	tempDir            string
 	stagingDir         string
-	analyticsURL       string
 	bufferSize         int
 	bucketsLock        sync.RWMutex
 	buckets            map[string]bucket // Map from dirname -> bucket.
@@ -510,7 +509,7 @@ func (m *manager) signedURL(subdir, filename string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status (code %d) returned from %s: %s", resp.StatusCode, m.analyticsURL, resp.Status)
+		return "", fmt.Errorf("status (code %d) returned from %s: %s", resp.StatusCode, u.String(), resp.Status)
 	}
 
 	var data struct {
