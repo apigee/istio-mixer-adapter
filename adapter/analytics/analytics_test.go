@@ -237,6 +237,124 @@ func TestPushAnalytics(t *testing.T) {
 	}
 }
 
+func TestPushAnalyticsMultipleRecords(t *testing.T) {
+	t.Parallel()
+
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	t1 := "hi~test"
+	t2 := "hi~test"
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	// Use a subdirectory to ensure that we can set up the directory properly.
+	bufferPath := path.Join(d, "subdir")
+
+	baseURL, _ := url.Parse(fs.URL())
+	m, err := newManager(Options{
+		BufferPath: bufferPath,
+		BufferSize: 10,
+		BaseURL:    *baseURL,
+		Key:        "key",
+		Secret:     "secret",
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 100 * time.Millisecond
+
+	wantRecords := map[string][]testRecordPush{
+		t1: {
+			{
+				records: []Record{
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProxy:                     "proxy",
+					},
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						APIProduct:                   "product",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			},
+		},
+		t2: {
+			{
+				records: []Record{
+					{
+						Organization:                 "hi",
+						Environment:                  "test",
+						ClientReceivedStartTimestamp: ts * 1000,
+						ClientReceivedEndTimestamp:   ts * 1000,
+						RequestURI:                   "request URI",
+					},
+				},
+				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			},
+		},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.Start(env)
+	defer m.Close()
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	if err := m.SendRecords(ctx, wantRecords[t1][0].records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Send one more with same org.
+	if err := m.SendRecords(ctx, wantRecords[t2][0].records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.Records()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	// Should have sent things out by now, check it out.
+	if !reflect.DeepEqual(fs.Records(), wantRecords) {
+		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
+	}
+
+	// Should have deleted everything.
+	for _, p := range []string{
+		"/temp/hi~test/",
+		"/staging/hi~test/",
+	} {
+		files, err := ioutil.ReadDir(bufferPath + p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
+		} else if len(files) > 0 {
+			t.Errorf("got %d records on disk, want 0", len(files))
+			for _, f := range files {
+				t.Log(path.Join(bufferPath, f.Name()))
+			}
+		}
+	}
+}
+
 func TestAuthFailure(t *testing.T) {
 	t.Parallel()
 

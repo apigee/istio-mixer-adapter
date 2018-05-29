@@ -4,11 +4,12 @@
     <Algorithm>RS256</Algorithm>
     <PrivateKey>
         <Value ref="private.privateKey"/>
-        <Id>1</Id>
+        <Id ref="private.certificate1_kid"/>
     </PrivateKey>
     <Issuer ref="iss"/>
     <Audience>istio</Audience>
     <ExpiresIn>15m</ExpiresIn>
+    <NotBefore ref="nbf"/>
     <AdditionalClaims>
         <Claim name="client_id" ref="apigee.client_id"/>
         <Claim name="access_token" ref="apigee.access_token"/>

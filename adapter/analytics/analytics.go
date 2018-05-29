@@ -564,10 +564,6 @@ func (m *manager) SendRecords(ctx *auth.Context, records []Record) error {
 	if err := gz.Flush(); err != nil {
 		return fmt.Errorf("gzip.Flush(): %s", err)
 	}
-	// Close the writer stream
-	if err := gz.Close(); err != nil {
-		return fmt.Errorf("gzip.Close(): %s", err)
-	}
 	return nil
 }
 
