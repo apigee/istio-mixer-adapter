@@ -2,6 +2,13 @@
 
 An Apigee Edge proxy to support generating, refreshing and revoking access tokens for istio-mixer-adapter.
 
+## Development
+
+IMPORTANT: If you change the proxy source, you must run `bin/build_proxy_sources.sh` and rebuild the 
+`apigee-istio` CLI to include it.
+
+## Description
+
 The istio-auth proxy acts as an auth server and provides four functions:
 
 * Provides a list of all products in the org (/products)
