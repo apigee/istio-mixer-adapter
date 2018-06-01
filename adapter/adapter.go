@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
@@ -55,6 +56,7 @@ type (
 		envName      string
 		key          string
 		secret       string
+		isOPDK       bool
 
 		productMan   *product.Manager
 		authMan      *auth.Manager
@@ -155,11 +157,13 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
+	isOPDK := !strings.Contains(apigeeBase.Host, "api.enterprise.apigee.com")
+
 	productMan := product.NewManager(customerBase, env)
 	authMan := auth.NewManager(env)
 	quotaMan := quota.NewManager(apigeeBase, env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		LegacyEndpoint: b.adapterConfig.AnalyticOptions.LegacyEndpoint,
+		LegacyEndpoint: isOPDK || b.adapterConfig.AnalyticOptions.LegacyEndpoint,
 		BufferPath:     b.adapterConfig.AnalyticOptions.BufferPath,
 		BufferSize:     int(b.adapterConfig.AnalyticOptions.BufferSize),
 		BaseURL:        *apigeeBase,
@@ -182,6 +186,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		authMan:      authMan,
 		analyticsMan: analyticsMan,
 		quotaMan:     quotaMan,
+		isOPDK:       isOPDK,
 	}
 
 	return h, nil
