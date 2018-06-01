@@ -13,7 +13,7 @@
 # - INSTALL_PROTOC - installs protoc if set to 1. Used for CI.
 # - ISTIO_VERSION - set to appropriate Istio tag or branch to build Mixer from.
 
-DEFAULT_ISTIO_VERSION=release-0.8
+DEFAULT_ISTIO_VERSION=0.8.0
 
 ISTIO_VERSION=${ISTIO_VERSION:-${DEFAULT_ISTIO_VERSION}}
 
