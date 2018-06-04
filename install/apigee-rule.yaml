@@ -10,7 +10,7 @@ metadata:
   name: apigee-rule
   namespace: istio-system
 spec:
-  match: destination.labels["istio"] != "ingress"
+  match: destination.labels["istio"] != "ingressgateway"
   actions:
   - handler: apigee-handler.apigee
     instances:
