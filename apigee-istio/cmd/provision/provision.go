@@ -20,23 +20,29 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math/big"
 	rnd "math/rand"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"path/filepath"
+
+	"io"
+
+	"archive/zip"
+
+	"encoding/xml"
+
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
+	"github.com/apigee/istio-mixer-adapter/apigee-istio/proxies"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -44,22 +50,24 @@ import (
 )
 
 const (
-	kvmName                 = "istio"
-	encryptKVM              = false // todo: currently necessary to enable certificate rotation
-	customerProxyBundleName = "istio-auth.zip"
-	customerProxyName       = "istio-auth"
+	kvmName           = "istio"
+	encryptKVM        = false // this is necessary to enable certificate rotation
+	authProxyName     = "istio-auth"
+	internalProxyName = "edgemicro-internal"
 
 	credentialURLFormat = "%s/credential/organization/%s/environment/%s" // internalProxyURL, org, env
 
-	defaultProxy          = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-default.zip"
-	secureProxy           = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-secure.zip"
-	defaultAndSecureProxy = "https://github.com/apigee/istio-mixer-adapter/releases/download/1.0.0-alpha-1/proxy-istio-auth.zip"
+	authProxyZip     = "istio-auth.zip"
+	internalProxyZip = "istio-internal.zip"
 
 	certsURLFormat        = "%s/certs"                                    // customerProxyURL
 	productsURLFormat     = "%s/products"                                 // customerProxyURL
 	verifyAPIKeyURLFormat = "%s/verifyApiKey"                             // customerProxyURL
 	analyticsURLFormat    = "%s/analytics/organization/%s/environment/%s" // internalProxyURL, org, env
 	quotasURLFormat       = "%s/quotas/organization/%s/environment/%s"    // internalProxyURL, org, env
+
+	virtualHostReplaceText    = "<VirtualHost>default</VirtualHost>"
+	virtualHostReplacementFmt = "<VirtualHost>%s</VirtualHost>" // each virtualHost
 )
 
 type provision struct {
@@ -69,13 +77,12 @@ type provision struct {
 	forceProxyInstall     bool
 	virtualHosts          string
 	credentialURL         string
-	customerProxySource   string
 	verifyOnly            bool
 }
 
 // Cmd returns base command
 func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Command {
-	cfg := &provision{RootArgs: rootArgs}
+	p := &provision{RootArgs: rootArgs}
 
 	c := &cobra.Command{
 		Use:   "provision",
@@ -86,19 +93,19 @@ to your organization and environment.`,
 		Args: cobra.NoArgs,
 
 		Run: func(cmd *cobra.Command, _ []string) {
-			cfg.run(printf, fatalf)
+			p.run(printf, fatalf)
 		},
 	}
 
-	c.Flags().IntVarP(&cfg.certExpirationInYears, "years", "y", 1,
+	c.Flags().IntVarP(&p.certExpirationInYears, "years", "y", 1,
 		"number of years before the cert expires")
-	c.Flags().IntVarP(&cfg.certKeyStrength, "strength", "s", 2048,
+	c.Flags().IntVarP(&p.certKeyStrength, "strength", "s", 2048,
 		"key strength")
-	c.Flags().BoolVarP(&cfg.forceProxyInstall, "forceProxyInstall", "f", false,
+	c.Flags().BoolVarP(&p.forceProxyInstall, "forceProxyInstall", "f", false,
 		"force new proxy install")
-	c.Flags().StringVarP(&cfg.virtualHosts, "virtualHosts", "", "default,secure",
+	c.Flags().StringVarP(&p.virtualHosts, "virtualHosts", "", "default,secure",
 		"override proxy virtualHosts")
-	c.Flags().BoolVarP(&cfg.verifyOnly, "verifyOnly", "x", false,
+	c.Flags().BoolVarP(&p.verifyOnly, "verifyOnly", "x", false,
 		"verify only, don’t provision anything")
 
 	return c
@@ -106,30 +113,100 @@ to your organization and environment.`,
 
 func (p *provision) run(printf, fatalf shared.FormatFn) {
 
+	var cred *credential
 	p.credentialURL = fmt.Sprintf(credentialURLFormat, p.InternalProxyURL, p.Org, p.Env)
-
-	// select proxy source
-	def := strings.Contains(p.virtualHosts, "default")
-	sec := strings.Contains(p.virtualHosts, "secure")
-	switch {
-	case def && sec:
-		p.customerProxySource = defaultAndSecureProxy
-	case def:
-		p.customerProxySource = defaultProxy
-	case sec:
-		p.customerProxySource = secureProxy
-	default:
-		fatalf("invalid virtualHosts: %s, must be: default|secure|default,secure", p.virtualHosts)
-	}
 
 	var verbosef = shared.NoPrintf
 	if p.Verbose {
 		verbosef = printf
 	}
 
-	var err error
-	var cred *credential
 	if !p.verifyOnly {
+
+		tempDir, err := ioutil.TempDir("", "apigee")
+		if err != nil {
+			fatalf("error creating temp dir: %v", err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		replaceVirtualHosts := func(proxyDir string) error {
+			proxiesFile := filepath.Join(proxyDir, "proxies", "default.xml")
+			bytes, err := ioutil.ReadFile(proxiesFile)
+			if err != nil {
+				return errors.Wrapf(err, "error reading file %s", proxiesFile)
+			}
+			newVH := ""
+			for _, vh := range strings.Split(p.virtualHosts, ",") {
+				if strings.TrimSpace(vh) != "" {
+					newVH = newVH + fmt.Sprintf(virtualHostReplacementFmt, vh)
+				}
+			}
+			bytes = []byte(strings.Replace(string(bytes), virtualHostReplaceText, newVH, 1))
+			if err := ioutil.WriteFile(proxiesFile, bytes, 0); err != nil {
+				return errors.Wrapf(err, "error writing %s", proxiesFile)
+			}
+			return nil
+		}
+
+		if p.IsOPDK {
+
+			customizedZip, err := getCustomizedProxy(tempDir, internalProxyZip, func(proxyDir string) error {
+
+				// change server locations
+				calloutFile := filepath.Join(proxyDir, "policies", "Callout.xml")
+				bytes, err := ioutil.ReadFile(calloutFile)
+				if err != nil {
+					return errors.Wrapf(err, "error reading file %s", calloutFile)
+				}
+				var callout JavaCallout
+				if err := xml.Unmarshal(bytes, &callout); err != nil {
+					return errors.Wrapf(err, "error unmarshalling %s", calloutFile)
+				}
+				setMgmtUrl := false
+				for i, cp := range callout.Properties {
+					if cp.Name == "REGION_MAP" {
+						callout.Properties[i].Value = fmt.Sprintf("DN=%s", p.RouterBase)
+					}
+					if cp.Name == "MGMT_URL_PREFIX" {
+						setMgmtUrl = true
+						callout.Properties[i].Value = p.ManagementBase
+					}
+				}
+				if !setMgmtUrl {
+					callout.Properties = append(callout.Properties,
+						javaCalloutProperty{
+							Name:  "MGMT_URL_PREFIX",
+							Value: p.ManagementBase,
+						})
+				}
+
+				writer, err := os.OpenFile(calloutFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+				if err != nil {
+					return errors.Wrapf(err, "error writing %s", calloutFile)
+				}
+				writer.WriteString(xml.Header)
+				encoder := xml.NewEncoder(writer)
+				encoder.Indent("", "  ")
+				err = encoder.Encode(callout)
+				if err != nil {
+					return errors.Wrapf(err, "error encoding xml to %s", calloutFile)
+				}
+				err = writer.Close()
+				if err != nil {
+					return errors.Wrapf(err, "error closing file %s", calloutFile)
+				}
+
+				return replaceVirtualHosts(proxyDir)
+			})
+			if err != nil {
+				fatalf(err.Error())
+			}
+
+			if err := p.checkAndDeployProxy(internalProxyName, customizedZip, printf); err != nil {
+				fatalf("error deploying internal proxy: %v", err)
+			}
+		}
+
 		if err := p.getOrCreateKVM(verbosef); err != nil {
 			fatalf("error retrieving or creating kvm: %v", err)
 		}
@@ -139,8 +216,13 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			fatalf("error generating credential: %v", err)
 		}
 
-		if err := p.importAndDeployProxy(verbosef); err != nil {
-			fatalf("error deploying proxy: %v", err)
+		customizedProxy, err := getCustomizedProxy(tempDir, authProxyZip, replaceVirtualHosts)
+		if err != nil {
+			fatalf(err.Error())
+		}
+
+		if err := p.checkAndDeployProxy(authProxyName, customizedProxy, printf); err != nil {
+			fatalf("error deploying auth proxy: %v", err)
 		}
 	}
 
@@ -151,8 +233,8 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			Username: cred.Key,
 			Password: cred.Secret,
 		}
-		p.Client, err = apigee.NewEdgeClient(&opts)
-		if err != nil {
+		var err error
+		if p.Client, err = apigee.NewEdgeClient(&opts); err != nil {
 			fatalf("can't create new client: %v", err)
 		}
 	}
@@ -170,6 +252,36 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 	}
 }
 
+type proxyModFunc func(name string) error
+
+// returns filename of zipped proxy
+func getCustomizedProxy(tempDir, name string, modFunc proxyModFunc) (string, error) {
+	if err := proxies.RestoreAsset(tempDir, name); err != nil {
+		return "", errors.Wrapf(err, "error restoring asset %s", name)
+	}
+	zipFile := filepath.Join(tempDir, name)
+
+	extractDir, err := ioutil.TempDir(tempDir, "proxy")
+	if err != nil {
+		return "", errors.Wrap(err, "error creating temp dir")
+	}
+	if err := unzipFile(zipFile, extractDir); err != nil {
+		return "", errors.Wrapf(err, "error extracting %s to %s", zipFile, extractDir)
+	}
+
+	if err := modFunc(filepath.Join(extractDir, "apiproxy")); err != nil {
+		return "", err
+	}
+
+	// write zip
+	customizedZip := filepath.Join(tempDir, "customized.zip")
+	if err := zipDir(extractDir, customizedZip); err != nil {
+		return "", errors.Wrapf(err, "error zipping %s to %s", extractDir, customizedZip)
+	}
+
+	return customizedZip, nil
+}
+
 // hash for key and secret
 func newHash() string {
 	// use crypto seed
@@ -182,15 +294,6 @@ func newHash() string {
 	h.Write([]byte(t.String() + string(rnd.Int())))
 	str := hex.EncodeToString(h.Sum(nil))
 	return str
-}
-
-// converts an RSA public key to PKCS#1, ASN.1 DER form
-func marshalPKCS1PublicKey(key *rsa.PublicKey) []byte {
-	derBytes, _ := asn1.Marshal(pkcs1PublicKey{
-		N: key.N,
-		E: key.E,
-	})
-	return derBytes
 }
 
 // GenKeyCert generates a self signed key and certificate
@@ -338,72 +441,36 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn)
 	return nil
 }
 
-// returns directory for downloaded file
-func (p *provision) downloadProxy(printf shared.FormatFn) (string, error) {
-	printf("downloading most recent proxy bundle...")
-	dir, err := ioutil.TempDir("", "apigee")
-	out, err := os.Create(filepath.Join(dir, customerProxyBundleName))
+func (p *provision) checkAndDeployProxy(name, file string, printf shared.FormatFn) error {
+	printf("checking if proxy %s deployment exists...", name)
+	oldRev, err := p.Client.Proxies.GetDeployedRevision(name, p.Env)
 	if err != nil {
-		return "", err
-	}
-	defer out.Close()
-
-	resp, err := http.Get(p.customerProxySource)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("error downloading proxy source (%d): %s",
-			resp.StatusCode, p.customerProxySource)
-	}
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		return "", err
-	}
-	printf("proxy bundle downloaded to: %s", out.Name())
-
-	return dir, nil
-}
-
-func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
-	printf("checking if proxy %s deployment exists...", customerProxyName)
-	existingDeployments, resp, err := p.Client.Proxies.GetDeployments(customerProxyName)
-	if err != nil && resp == nil {
 		return err
 	}
-
-	if !p.forceProxyInstall && existingDeployments != nil {
-		if resp.StatusCode != 404 {
-			var deployment *apigee.EnvironmentDeployment
-			for _, ed := range existingDeployments.Environments {
-				if ed.Name == p.Env {
-					deployment = &ed
-					break
-				}
-			}
-			if deployment != nil {
-				rev := deployment.Revision[0].Number
-				printf("proxy %s revision %s already deployed to %s", customerProxyName, rev, p.Env)
-				return nil
-			}
+	if oldRev != nil {
+		if p.forceProxyInstall {
+			printf("replacing proxy %s revision %s in %s", name, oldRev, p.Env)
+		} else {
+			printf("proxy %s revision %s already deployed to %s", name, oldRev, p.Env)
+			return nil
 		}
 	}
 
-	dir, err := p.downloadProxy(printf)
-	if err != nil {
+	printf("checking proxy %s status...", name)
+	var resp *apigee.Response
+	proxy, resp, err := p.Client.Proxies.Get(name)
+	if err != nil && (resp == nil || resp.StatusCode != 404) {
 		return err
 	}
-	defer os.RemoveAll(dir)
 
-	printf("checking proxy %s status...", customerProxyName)
-	proxy, resp, e := p.Client.Proxies.Get(customerProxyName)
+	return p.importAndDeployProxy(name, proxy, oldRev, file, printf)
+}
 
-	var revision apigee.Revision = 1
-	if proxy != nil {
-		revision = proxy.Revisions[len(proxy.Revisions)-1] + 1
-		printf("proxy %s exists. highest revision is: %d", customerProxyName, revision-1)
+func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRev *apigee.Revision, file string, printf shared.FormatFn) error {
+	var newRev apigee.Revision = 1
+	if proxy != nil && len(proxy.Revisions) > 0 {
+		newRev = proxy.Revisions[len(proxy.Revisions)-1] + 1
+		printf("proxy %s exists. highest revision is: %d", name, newRev-1)
 	}
 
 	// create a new client to avoid dumping the proxy binary to stdout during Import
@@ -411,40 +478,33 @@ func (p *provision) importAndDeployProxy(printf shared.FormatFn) error {
 	if p.Verbose {
 		opts := *p.ClientOpts
 		opts.Debug = false
+		var err error
 		noDebugClient, err = apigee.NewEdgeClient(&opts)
 		if err != nil {
 			return err
 		}
 	}
 
-	printf("creating new proxy %s revision: %d...", customerProxyName, revision)
-	_, resp, e = noDebugClient.Proxies.Import(customerProxyName, filepath.Join(dir, customerProxyBundleName))
-	if e != nil {
-		return fmt.Errorf("error importing proxy %s: %v", customerProxyName, e)
+	printf("creating new proxy %s revision: %d...", name, newRev)
+	_, resp, err := noDebugClient.Proxies.Import(name, file)
+	if err != nil {
+		return errors.Wrapf(err, "error importing proxy %s", name)
 	}
 	defer resp.Body.Close()
 
-	if existingDeployments != nil {
-		for _, ed := range existingDeployments.Environments {
-			if ed.Name == p.Env {
-				for _, rev := range ed.Revision {
-					if rev.State == "deployed" {
-						printf("undeploying proxy %s revision %d on env %s...",
-							customerProxyName, rev.Number, p.Env)
-						_, resp, e = p.Client.Proxies.Undeploy(customerProxyName, p.Env, rev.Number)
-					}
-				}
-				break
-			}
-		}
+	if oldRev != nil {
+		printf("undeploying proxy %s revision %d on env %s...",
+			name, oldRev, p.Env)
+		_, resp, err = p.Client.Proxies.Undeploy(name, p.Env, *oldRev)
 	}
 
-	printf("deploying proxy %s revision %d to env %s...", customerProxyName, revision, p.Env)
-	_, resp, e = p.Client.Proxies.Deploy(customerProxyName, p.Env, revision)
-	if e != nil {
-		return fmt.Errorf("error deploying proxy %s: %v", customerProxyName, e)
+	printf("deploying proxy %s revision %d to env %s...", name, newRev, p.Env)
+	_, resp, err = p.Client.Proxies.Deploy(name, p.Env, newRev)
+	if err != nil {
+		return errors.Wrapf(err, "error deploying proxy %s", name)
 	}
 	defer resp.Body.Close()
+
 	return nil
 }
 
@@ -542,6 +602,111 @@ func (p *provision) verifyGET(targetURL string) error {
 	return nil
 }
 
+func fileReplace(path, old, new string) error {
+	bytesRead, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	newContents := strings.Replace(string(bytesRead), old, new, -1)
+
+	return ioutil.WriteFile(path, []byte(newContents), 0)
+}
+
+func unzipFile(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	os.MkdirAll(dest, 0755)
+
+	extract := func(f *zip.File) error {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+
+		path := filepath.Join(dest, f.Name)
+
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			os.MkdirAll(filepath.Dir(path), f.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	for _, f := range r.File {
+		err := extract(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func zipDir(source, file string) error {
+	zipFile, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	w := zip.NewWriter(zipFile)
+
+	var addFiles func(w *zip.Writer, fileBase, zipBase string) error
+	addFiles = func(w *zip.Writer, fileBase, zipBase string) error {
+		files, err := ioutil.ReadDir(fileBase)
+		if err != nil {
+			return err
+		}
+
+		for _, file := range files {
+			fqName := filepath.Join(fileBase, file.Name())
+			zipFQName := filepath.Join(zipBase, file.Name())
+
+			if file.IsDir() {
+				addFiles(w, fqName, zipFQName)
+				continue
+			}
+
+			bytes, err := ioutil.ReadFile(fqName)
+			if err != nil {
+				return err
+			}
+			f, err := w.Create(zipFQName)
+			if err != nil {
+				return err
+			}
+			if _, err = f.Write(bytes); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	err = addFiles(w, source, "")
+	if err != nil {
+		return err
+	}
+
+	return w.Close()
+}
+
 type apigeeHandler struct {
 	APIVersion string        `yaml:"apiVersion"`
 	Kind       string        `yaml:"kind"`
@@ -563,13 +728,18 @@ type specification struct {
 	Secret       string `yaml:"secret"`
 }
 
-// ASN.1 structure of a PKCS#1 public key
-type pkcs1PublicKey struct {
-	N *big.Int
-	E int
-}
-
 type credential struct {
 	Key    string `json:"key"`
 	Secret string `json:"secret"`
+}
+
+type JavaCallout struct {
+	Name                                string `xml:"name,attr"`
+	DisplayName, ClassName, ResourceURL string
+	Properties                          []javaCalloutProperty `xml:"Properties>Property"`
+}
+
+type javaCalloutProperty struct {
+	Name  string `xml:"name,attr"`
+	Value string `xml:",chardata"`
 }

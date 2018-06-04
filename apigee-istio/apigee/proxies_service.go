@@ -28,6 +28,7 @@ type ProxiesService interface {
 	Undeploy(string, string, Revision) (*ProxyRevisionDeployment, *Response, error)
 	Export(string, Revision) (string, *Response, error)
 	GetDeployments(string) (*ProxyDeployment, *Response, error)
+	GetDeployedRevision(proxy, env string) (*Revision, error)
 }
 
 type ProxiesServiceOp struct {
@@ -440,4 +441,26 @@ func (s *ProxiesServiceOp) GetDeployments(proxy string) (*ProxyDeployment, *Resp
 		return nil, resp, e
 	}
 	return &deployments, resp, e
+}
+
+func (s *ProxiesServiceOp) GetDeployedRevision(proxy, env string) (*Revision, error) {
+	deployment, resp, err := s.GetDeployments(proxy)
+	if err != nil && resp == nil {
+		return nil, err
+	}
+	if deployment != nil {
+		if resp.StatusCode != 404 {
+			for _, ed := range deployment.Environments {
+				if ed.Name == env {
+					for _, rev := range ed.Revision {
+						if rev.State == "deployed" {
+							return &ed.Revision[0].Number, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return nil, nil
 }

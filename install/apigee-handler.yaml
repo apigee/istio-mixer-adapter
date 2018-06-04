@@ -10,7 +10,7 @@ metadata:
   name: apigee-handler
   namespace: istio-system
 spec:
-  apigee_base: https://edgemicroservices.apigee.net/edgemicro/
+  apigee_base: https://istioservices.apigee.net/edgemicro
   customer_base: REPLACE ME
   org_name: REPLACE ME
   env_name: REPLACE ME

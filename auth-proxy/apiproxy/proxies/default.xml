@@ -223,7 +223,6 @@
         <BasePath>/istio-auth</BasePath>
         <Properties/>
         <VirtualHost>default</VirtualHost>
-        <VirtualHost>secure</VirtualHost>
     </HTTPProxyConnection>
     <RouteRule name="noroute"/>
 </ProxyEndpoint>
