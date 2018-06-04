@@ -17,7 +17,7 @@ To join the Apigee pre-release program for additional documentation and support,
 
 ## Version note
 
-The information below assumes release alpha-2 or better and requires Istio 0.8 or higher. To install alpha-1 on Istio 0.7.1, please follow the README [here](https://github.com/apigee/istio-mixer-adapter/blob/3a62ff2a42f0b10d56b14f36b2c5867137748396/README.md).
+The information below assumes release alpha-2 or better and requires Istio 0.8 or higher. (To install alpha-1 on Istio 0.7.1, you may follow the README [here](https://github.com/apigee/istio-mixer-adapter/blob/3a62ff2a42f0b10d56b14f36b2c5867137748396/README.md), but it is not supported).
 
 ## Prerequisite: Apigee
 
@@ -85,7 +85,7 @@ Edit `install/apigee-handler.yaml` and replace the configuration with what you g
 
 ## Install Istio with Apigee mixer
 
-The quickest way to get started with Istio is to follow the [Istio Kubernetes Quick Start](https://istio.io/docs/setup/kubernetes/quick-start.html). 
+The quickest way to get started with Istio is to follow the [Istio Kubernetes Quick Start](https://istio.io/docs/setup/kubernetes/quick-start.html). Be sure to download Istio version 0.8.0.
 
 BUT! Before you install Istio into Kubernetes (step 5: Install Istio’s core components), you'll need to edit Istio's install file to point to the Apigee mixer including the adapter instead of the generic Istio mixer.
 
@@ -93,11 +93,11 @@ In the Istio directory, just edit `install/kubernetes/istio.yaml` or `install/ku
 
 Find:
     
-    gcr.io/istio-release/mixer:0.8.0-pre20180421-09-15
+    docker.io/istio/mixer:0.8.0
     
 and replace with:
 
-    gcr.io/apigee-api-management-istio/istio-mixer:nightly
+    gcr.io/apigee-api-management-istio/istio-mixer:1.0.0-alpha-2
     
 Important: There will two instances: One for policy, one for telemetry. Replace both.
 
@@ -107,7 +107,7 @@ Now you may finish installing and verifying Istio per the Quick Start instructio
 
 For the following, we'll assume you've installed Istio's [Hello World](https://github.com/istio/istio/tree/master/samples/helloworld).
 
-You should be able to access this service successfully:
+Once installed, you should be able to access the service successfully:
 
     curl http://${GATEWAY_URL}/hello
 
@@ -119,7 +119,8 @@ Now, apply the Apigee configuration to Istio:
         kubectl apply -f apigee-handler.yaml
         kubectl apply -f apigee-rule.yaml
 
-At this point, you should no longer be able to access your helloworld service. If you curl it:
+Once this has been done, you should no longer be able to access your helloworld service as it 
+will now be protected per your Apigee policy. If you curl it:
 
     curl http://${GATEWAY_URL}/hello
     
@@ -159,7 +160,7 @@ copied from your Apigee app. Just send it as part of the header:
     
     curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
-This call should now be successful.
+This call should now be successful. Your authentication policy works!
 
 ### Quota: Check your quota (unreleased: nightly build only)
 
@@ -173,13 +174,13 @@ Or, if you're in a Unix shell, you can use repeat:
 
     repeat 10 curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
     
-Either way, you should see successful calls then failures that look like this:
+Either way, you should see some successful calls... followed by failures that look like this:
 
     RESOURCE_EXHAUSTED:apigee-handler.apigee.istio-system:quota exceeded 
 
-(Oh, did you see mixed successes and failures? That's OK! The Quota system is designed to have 
+(Did you see mixed successes and failures? That's OK! The Quota system is designed to have 
 very low latency for your requests, so it uses a cache that is _eventually consistent_ with 
-the remote server. Client requests don't wait for the server to respond and you could even have 
+the remote server. Client requests don't wait for the server to respond and you might have 
 inconsistent results for a second or two, but it will be worked out fairly quickly and nobody 
 has to wait in the meantime.) 
 
