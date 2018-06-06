@@ -89,7 +89,7 @@ The quickest way to get started with Istio is to follow the [Istio Kubernetes Qu
 
 BUT! Before you install Istio into Kubernetes (step 5: Install Istio’s core components), you'll need to edit Istio's install file to point to the Apigee mixer including the adapter instead of the generic Istio mixer.
 
-In the Istio directory, just edit `install/kubernetes/istio.yaml` or `install/kubernetes/istio-auth.yaml` to change the mixer image Istio will use:
+In the Istio directory, just edit `install/kubernetes/istio-demo.yaml` or `install/kubernetes/istio-demo-auth.yaml` to change the mixer image Istio will use:
 
 Find:
     
