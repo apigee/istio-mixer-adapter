@@ -210,7 +210,7 @@ And should receive an auth error:
 
 Now get a JWT Bearer token:
 
-    apigee-istio token get -o {your organization} -e {your environment} -i {your key} -s {your secret}
+    apigee-istio token create -o {your organization} -e {your environment} -i {your key} -s {your secret}
     
 or
 
