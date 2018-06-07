@@ -182,19 +182,24 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 					}
 
 					// parse limit from server
-					if product.QuotaLimit != "" {
+					if product.QuotaLimit != "" && product.QuotaInterval != "null" {
 						product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
 						if err != nil {
 							p.log.Errorf("unable to parse quota limit: %#v", product)
 						}
 					}
 
-					// parse limit from server
-					if product.QuotaInterval != "" {
+					// parse interval from server
+					if product.QuotaInterval != "" && product.QuotaInterval != "null" {
 						product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
 						if err != nil {
 							p.log.Errorf("unable to parse quota interval: %#v", product)
 						}
+					}
+
+					// normalize null from server to empty
+					if product.QuotaTimeUnit == "null" {
+						product.QuotaTimeUnit = ""
 					}
 
 					p.resolveResourceMatchers(&product)
