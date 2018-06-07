@@ -58,6 +58,9 @@ func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Comma
 		Use:   "token",
 		Short: "JWT Token Utilities",
 		Long:  "JWT Token Utilities",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return rootArgs.Resolve(true)
+		},
 	}
 
 	c.AddCommand(cmdCreateToken(t, printf, fatalf))

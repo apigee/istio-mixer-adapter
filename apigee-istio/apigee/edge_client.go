@@ -151,6 +151,9 @@ type EdgeAuth struct {
 
 	// Optional. Used if you explicitly specify a Password.
 	Password string
+
+	// if set to true, no auth will be set
+	SkipAuth bool
 }
 
 func retrieveAuthFromNetrc(netrcPath, host string) (*EdgeAuth, error) {
@@ -198,6 +201,8 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 	var e error = nil
 	if o.Auth == nil {
 		c.auth, e = retrieveAuthFromNetrc("", baseURL.Host)
+	} else if o.Auth.SkipAuth {
+		// do nothing
 	} else if o.Auth.Password == "" {
 		c.auth, e = retrieveAuthFromNetrc(o.Auth.NetrcPath, baseURL.Host)
 	} else {
@@ -317,7 +322,9 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	}
 	req.Header.Add("Accept", appJson)
 	req.Header.Add("User-Agent", c.UserAgent)
-	req.SetBasicAuth(c.auth.Username, c.auth.Password)
+	if c.auth != nil {
+		req.SetBasicAuth(c.auth.Username, c.auth.Password)
+	}
 	return req, nil
 }
 

@@ -91,6 +91,9 @@ func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Comma
 and installing a kvm with certificates, creating credentials, and deploying a necessary proxy 
 to your organization and environment.`,
 		Args: cobra.NoArgs,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return rootArgs.Resolve(false)
+		},
 
 		Run: func(cmd *cobra.Command, _ []string) {
 			p.run(printf, fatalf)
