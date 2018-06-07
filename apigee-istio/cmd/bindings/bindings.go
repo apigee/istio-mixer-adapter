@@ -46,6 +46,9 @@ func Cmd(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.Comma
 		Use:   "bindings",
 		Short: "Manage Apigee Product to Istio Service bindings",
 		Long:  "Manage Apigee Product to Istio Service bindings.",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return rootArgs.Resolve(false)
+		},
 	}
 
 	c.AddCommand(cmdBindingsList(cfg, printf, fatalf))

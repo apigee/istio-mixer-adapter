@@ -66,7 +66,7 @@ type RootArgs struct {
 }
 
 // Resolve is used to populate shared args, it's automatically called prior when creating the root command
-func (r *RootArgs) Resolve() error {
+func (r *RootArgs) Resolve(skipAuth bool) error {
 	if r.RouterBase == DefaultRouterBase {
 		r.RouterBase = fmt.Sprintf(RouterBaseFormat, r.Org, r.Env)
 	}
@@ -93,6 +93,7 @@ func (r *RootArgs) Resolve() error {
 			NetrcPath: r.NetrcPath,
 			Username:  r.Username,
 			Password:  r.Password,
+			SkipAuth:  skipAuth,
 		},
 		Debug: r.Verbose,
 	}
