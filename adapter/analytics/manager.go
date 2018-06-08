@@ -11,6 +11,7 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
+// A Manager wraps all things related to analytics processing
 type Manager interface {
 	Start(env adapter.Env)
 	Close()
