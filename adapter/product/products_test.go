@@ -108,12 +108,14 @@ func TestResolve(t *testing.T) {
 		pMan.resolveResourceMatchers(p)
 	}
 
-	products := []string{"Name 1", "Name 2", "Name 3", "Invalid"}
-	scopes := []string{"scope1", "scope2"}
 	api := "shared.istio"
 	path := "/"
 
-	resolved, failHints := resolve(productsMap, products, scopes, api, path)
+	ac := &auth.Context{
+		APIProducts: []string{"Name 1", "Name 2", "Name 3", "Invalid"},
+		Scopes:      []string{"scope1", "scope2"},
+	}
+	resolved, failHints := resolve(ac, productsMap, api, path)
 	if len(resolved) != 3 {
 		t.Errorf("want: 3, got: %v", failHints)
 	}
@@ -121,8 +123,8 @@ func TestResolve(t *testing.T) {
 		t.Errorf("want: 1, got: %v", failHints)
 	}
 
-	scopes = []string{"scope2"}
-	resolved, failHints = resolve(productsMap, products, scopes, api, path)
+	ac.Scopes = []string{"scope2"}
+	resolved, failHints = resolve(ac, productsMap, api, path)
 	if len(resolved) != 2 {
 		t.Errorf("want: 2, got: %d", len(resolved))
 	} else {
@@ -136,13 +138,25 @@ func TestResolve(t *testing.T) {
 		t.Errorf("want: 2, got: %v", failHints)
 	}
 
-	products = []string{"Name 1"}
-	resolved, failHints = resolve(productsMap, products, scopes, api, path)
+	ac.APIProducts = []string{"Name 1"}
+	resolved, failHints = resolve(ac, productsMap, api, path)
 	if len(resolved) != 0 {
 		t.Errorf("want: 0, got: %d", len(resolved))
 	}
 	if len(failHints) != 1 {
 		t.Errorf("want: 1, got: %v", failHints)
+	}
+
+	// check API Key - no scopes required!
+	ac.APIKey = "x"
+	ac.APIProducts = []string{"Name 1", "Name 2", "Name 3"}
+	ac.Scopes = []string{}
+	resolved, failHints = resolve(ac, productsMap, api, path)
+	if len(resolved) != 3 {
+		t.Errorf("want: 3, got: %d", len(resolved))
+	}
+	if len(failHints) != 0 {
+		t.Errorf("want: 0, got: %v", failHints)
 	}
 }
 

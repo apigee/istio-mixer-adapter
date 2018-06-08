@@ -62,6 +62,7 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
 	ctx.Log().Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
+	// use JWT claims directly if available
 	var ac = &Context{Context: ctx}
 	if claims != nil {
 		err := ac.setClaims(claims)
@@ -74,6 +75,8 @@ func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[st
 		return ac, &NoAuthInfoError{}
 	}
 
+	// use API Key if JWT claims are not available
+	ac.APIKey = apiKey
 	claims, err := a.verifier.Verify(ctx, apiKey)
 	if err != nil {
 		return ac, err

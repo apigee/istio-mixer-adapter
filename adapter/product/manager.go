@@ -268,7 +268,7 @@ type quitSignalError error
 
 // Resolve determines the valid products for a given API.
 func (p *Manager) Resolve(ac *auth.Context, api, path string) []*APIProduct {
-	validProducts, failHints := resolve(p.Products(), ac.APIProducts, ac.Scopes, api, path)
+	validProducts, failHints := resolve(ac, p.Products(), api, path)
 	var selected []string
 	for _, p := range validProducts {
 		selected = append(selected, p.Name)
@@ -280,17 +280,18 @@ Eliminated: %v`, api, path, ac.Scopes, selected, failHints)
 	return validProducts
 }
 
-func resolve(pMap map[string]*APIProduct, products, scopes []string, api,
-	path string) (result []*APIProduct, failHints []string) {
+func resolve(ac *auth.Context, pMap map[string]*APIProduct, api, path string) (
+	result []*APIProduct, failHints []string) {
 
-	for _, name := range products {
+	for _, name := range ac.APIProducts {
 		apiProduct, ok := pMap[name]
 		if !ok {
 			failHints = append(failHints, fmt.Sprintf("%s doesn't exist", name))
 			continue
 		}
-		if !apiProduct.isValidScopes(scopes) {
-			failHints = append(failHints, fmt.Sprintf("%s doesn't match scopes: %s", name, scopes))
+		// if APIKey, scopes don't matter
+		if ac.APIKey == "" && !apiProduct.isValidScopes(ac.Scopes) {
+			failHints = append(failHints, fmt.Sprintf("%s doesn't match scopes: %s", name, ac.Scopes))
 			continue
 		}
 		if !apiProduct.isValidPath(path) {

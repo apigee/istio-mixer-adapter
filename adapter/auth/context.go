@@ -52,6 +52,7 @@ type Context struct {
 	Expires        time.Time
 	DeveloperEmail string
 	Scopes         []string
+	APIKey         string
 }
 
 func parseExp(claims map[string]interface{}) (time.Time, error) {
