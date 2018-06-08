@@ -77,7 +77,7 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 			t.Fatalf("expected: %v, got: %v", apiKey, req)
 		}
 
-		jwt, err := generateJWT(privateKey)
+		jwt, err := generateAPIKeyJWT(privateKey)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,6 +87,28 @@ func goodHandler(apiKey string, t *testing.T) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(jwtResponse)
 	}
+}
+
+// api key JWTs have no scopes
+func generateAPIKeyJWT(privateKey *rsa.PrivateKey) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"api_product_list": []string{
+			"IstioTestProduct",
+		},
+		"audience":         "istio",
+		"jti":              "29e2320b-787c-4625-8599-acc5e05c68d0",
+		"iss":              "https://theganyo1-eval-test.apigee.net/istio-auth/token",
+		"access_token":     "8E7Az3ZgPHKrgzcQA54qAzXT3Z1G",
+		"client_id":        "yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H",
+		"application_name": "61cd4d83-06b5-4270-a9ee-cf9255ef45c3",
+		"nbf":              (time.Now().Add(-10 * time.Minute)).Unix(),
+		"iat":              time.Now().Unix(),
+		"exp":              (time.Now().Add(50 * time.Millisecond)).Unix(),
+	})
+	token.Header["kid"] = "1"
+
+	return token.SignedString(privateKey)
 }
 
 // badHandler gives a handler that just gives a 401 for all requests.
