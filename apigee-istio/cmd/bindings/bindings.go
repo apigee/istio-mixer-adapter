@@ -173,7 +173,7 @@ func (b *bindings) cmdList(printf, fatalf shared.FormatFn) error {
 		if p.QuotaLimit == "null" {
 			p.QuotaLimit = ""
 		}
-		p.Targets = p.GetServicesAttrs()
+		p.Targets = p.GetBoundServices()
 		if p.Targets == nil {
 			unbound = append(bound, p)
 		} else {
@@ -207,11 +207,11 @@ func (b *bindings) cmdList(printf, fatalf shared.FormatFn) error {
 }
 
 func (b *bindings) bindService(p *product.APIProduct, service string, printf, fatalf shared.FormatFn) {
-	attrs := p.GetServicesAttrs()
-	if _, ok := indexOf(attrs, service); ok {
+	boundServices := p.GetBoundServices()
+	if _, ok := indexOf(boundServices, service); ok {
 		fatalf("service %s is already bound to %s", service, p.Name)
 	}
-	err := b.updateServiceBindings(p, append(attrs, service))
+	err := b.updateServiceBindings(p, append(boundServices, service))
 	if err != nil {
 		fatalf("error removing service %s from %s: %v", service, p.Name, err)
 	}
@@ -219,13 +219,13 @@ func (b *bindings) bindService(p *product.APIProduct, service string, printf, fa
 }
 
 func (b *bindings) unbindService(p *product.APIProduct, service string, printf, fatalf shared.FormatFn) {
-	attrs := p.GetServicesAttrs()
-	i, ok := indexOf(attrs, service)
+	boundServices := p.GetBoundServices()
+	i, ok := indexOf(boundServices, service)
 	if !ok {
 		fatalf("service %s is not bound to %s", service, p.Name)
 	}
-	attrs = append(attrs[:i], attrs[i+1:]...)
-	err := b.updateServiceBindings(p, attrs)
+	boundServices = append(boundServices[:i], boundServices[i+1:]...)
+	err := b.updateServiceBindings(p, boundServices)
 	if err != nil {
 		fatalf("error removing service %s from %s: %v", service, p.Name, err)
 	}
