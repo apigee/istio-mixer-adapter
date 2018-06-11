@@ -40,4 +40,5 @@ type Record struct {
 	APIProduct                   string `json:"api_product,omitempty"`
 	Organization                 string `json:"organization"`
 	Environment                  string `json:"environment"`
+	GatewaySource                string `json:"gateway_source"`
 }

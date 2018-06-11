@@ -40,6 +40,7 @@ import (
 const (
 	jsonClaimsKey   = "json_claims"
 	apiKeyAttribute = "api_key"
+	gatewaySource   = "istio"
 )
 
 type (
@@ -258,6 +259,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			ClientIP:                     inst.ClientIp.String(),
 			UserAgent:                    inst.Useragent,
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
+			GatewaySource:                gatewaySource,
 		}
 
 		// important: This assumes that the Auth is the same for all records!
