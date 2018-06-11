@@ -114,9 +114,10 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
-			AnalyticOptions: &config.ParamsAnalytics{
-				BufferPath: "/tmp/apigee-ax/buffer/",
-				BufferSize: 1024,
+			Analytics: &config.ParamsAnalyticsOptions{
+				LegacyEndpoint: false,
+				BufferPath:     "/tmp/apigee-ax/buffer/",
+				BufferSize:     1024,
 			},
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
@@ -160,9 +161,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	authMan := auth.NewManager(env)
 	quotaMan := quota.NewManager(apigeeBase, env)
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		LegacyEndpoint: b.adapterConfig.AnalyticOptions.LegacyEndpoint,
-		BufferPath:     b.adapterConfig.AnalyticOptions.BufferPath,
-		BufferSize:     int(b.adapterConfig.AnalyticOptions.BufferSize),
+		LegacyEndpoint: b.adapterConfig.Analytics.LegacyEndpoint,
+		BufferPath:     b.adapterConfig.Analytics.BufferPath,
+		BufferSize:     int(b.adapterConfig.Analytics.BufferSize),
 		BaseURL:        *apigeeBase,
 		Key:            b.adapterConfig.Key,
 		Secret:         b.adapterConfig.Secret,

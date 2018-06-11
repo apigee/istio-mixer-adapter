@@ -436,6 +436,11 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn)
 			CustomerBase: p.CustomerProxyURL,
 		},
 	}
+	if p.IsOPDK {
+		handler.Spec.AnalyticsOptions = analyticsOptions{
+			LegacyEndpoint: true,
+		}
+	}
 	formattedBytes, err := yaml.Marshal(handler)
 	if err != nil {
 		return err
@@ -605,17 +610,6 @@ func (p *provision) verifyGET(targetURL string) error {
 	return nil
 }
 
-func fileReplace(path, old, new string) error {
-	bytesRead, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	newContents := strings.Replace(string(bytesRead), old, new, -1)
-
-	return ioutil.WriteFile(path, []byte(newContents), 0)
-}
-
 func unzipFile(src, dest string) error {
 	r, err := zip.OpenReader(src)
 	if err != nil {
@@ -723,12 +717,17 @@ type metadata struct {
 }
 
 type specification struct {
-	ApigeeBase   string `yaml:"apigee_base"`
-	CustomerBase string `yaml:"customer_base"`
-	OrgName      string `yaml:"org_name"`
-	EnvName      string `yaml:"env_name"`
-	Key          string `yaml:"key"`
-	Secret       string `yaml:"secret"`
+	ApigeeBase       string           `yaml:"apigee_base"`
+	CustomerBase     string           `yaml:"customer_base"`
+	OrgName          string           `yaml:"org_name"`
+	EnvName          string           `yaml:"env_name"`
+	Key              string           `yaml:"key"`
+	Secret           string           `yaml:"secret"`
+	AnalyticsOptions analyticsOptions `yaml:"analytics,omitempty"`
+}
+
+type analyticsOptions struct {
+	LegacyEndpoint bool `yaml:"legacy_endpoint"`
 }
 
 type credential struct {

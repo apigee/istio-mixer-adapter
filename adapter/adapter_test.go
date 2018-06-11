@@ -104,7 +104,7 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
-		AnalyticOptions: &config.ParamsAnalytics{
+		Analytics: &config.ParamsAnalyticsOptions{
 			BufferPath: d,
 			BufferSize: 10,
 		},
@@ -130,7 +130,7 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      ah.Environment(),
 		Key:          ah.Key(),
 		Secret:       ah.Secret(),
-		AnalyticOptions: &config.ParamsAnalytics{
+		Analytics: &config.ParamsAnalyticsOptions{
 			BufferPath: d,
 			BufferSize: 10,
 		},

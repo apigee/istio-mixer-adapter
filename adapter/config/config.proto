@@ -32,7 +32,7 @@ message Params {
     string key           = 5;
     string secret        = 6;
 
-    message analytics {
+    message analytics_options {
         // if true, use old-style direct communication analytics protocol
         bool legacy_endpoint = 1;
 
@@ -43,5 +43,5 @@ message Params {
         int64 buffer_size = 3;
     }
 
-    analytics analytic_options = 7;
+    analytics_options analytics = 7;
 }
