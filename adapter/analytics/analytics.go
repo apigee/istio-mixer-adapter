@@ -34,6 +34,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 	"istio.io/istio/mixer/pkg/adapter"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 )
 
 const (
@@ -54,6 +55,8 @@ const (
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
+	// Default interval after which the upload should time out
+	defaultUploadTimeout = 1 * time.Hour
 )
 
 // A bucket keeps track of all the things we need to read/write the analytics
@@ -235,16 +238,22 @@ func (m *manager) Close() {
 // uploadLoop runs a timer that periodically pushes everything in the buffer
 // directory to the server.
 func (m *manager) uploadLoop() {
-	t := time.NewTicker(m.collectionInterval)
+	backoff := util.NewExponentialBackoff(200*time.Millisecond, 2 * time.Minute, 2, true)
+	retry := time.After(0 * time.Millisecond)
+
 	for {
 		select {
-		case <-t.C:
+		case <-retry:
 			if err := m.uploadAll(); err != nil {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
+			m.log.Infof("Attempted %d times", backoff.Attempt())
+			retry = time.After(backoff.Duration())
+		case <-time.After(defaultUploadTimeout * time.Second):
+			m.log.Infof("Upload timed out after %d milliseconds", defaultUploadTimeout * time.Second)
 		case <-m.close:
 			m.log.Debugf("analytics close signal received, shutting down")
-			t.Stop()
+			backoff.Reset()
 			return
 		}
 	}

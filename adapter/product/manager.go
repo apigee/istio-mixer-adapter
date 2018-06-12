@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -241,7 +242,7 @@ func (p *Manager) getTokenReadyChannel() <-chan bool {
 
 func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
 
-	backoff := NewExponentialBackoff(200*time.Millisecond, pollInterval, 2, true)
+	backoff := util.NewExponentialBackoff(200*time.Millisecond, pollInterval, 2, true)
 	retry := time.After(0 * time.Millisecond) // start first attempt immediately
 
 	for {
