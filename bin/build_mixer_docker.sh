@@ -10,10 +10,11 @@
 # - GOPATH is set.
 #
 # Variables:
-# - GCLOUD_SERVICE_KEY - auth key for the service account (used in CI to build
-#   nightlies)
+# - GCLOUD_SERVICE_KEY - auth key for the service account (used in CI to build nightly)
 # - GCP_PROJECT - which GCP_PROJECT to upload the image to.
 # - TARGET_DOCKER_IMAGE - the name of the docker image to build.
+# - DEBUG - set DEBUG=1 to also build and push a debug image.
+# - TARGET_DOCKER_DEBUG_IMAGE - the name of the docker debug image to build.
 
 echo "Checking environment settings..."
 
@@ -29,6 +30,11 @@ fi
 if [[ "${TARGET_DOCKER_IMAGE}" == "" ]]; then
   TARGET_DOCKER_IMAGE="gcr.io/${GCP_PROJECT}/istio-mixer"
   echo "TARGET_DOCKER_IMAGE not set, defaulting to ${TARGET_DOCKER_IMAGE}."
+fi
+
+if [[ "${DEBUG}" == "1" && "${TARGET_DOCKER_DEBUG_IMAGE}" == "" ]]; then
+  TARGET_DOCKER_DEBUG_IMAGE="gcr.io/${GCP_PROJECT}/istio-mixer-debug"
+  echo "TARGET_DOCKER_DEBUG_IMAGE not set, defaulting to ${TARGET_DOCKER_DEBUG_IMAGE}."
 fi
 
 if [[ `command -v docker` == "" ]]; then
@@ -89,8 +95,23 @@ if [[ "${IMAGE_ID}" == "" ]]; then
 fi
 
 docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
-echo "Pushing to GCR..."
+echo "Pushing ${TARGET_DOCKER_IMAGE}..."
 gcloud docker -- push "${TARGET_DOCKER_IMAGE}" || exit 1
+
+if [[ "${DEBUG}" == "1" ]]; then
+  make docker.mixer_debug || exit 1
+
+    IMAGE_ID=$(docker images istio/mixer_debug --format "{{.ID}}" | head -n1)
+
+    if [[ "${IMAGE_ID}" == "" ]]; then
+      echo "No image found for istio/mixer_debug. Does it exist?"
+      exit 1
+    fi
+
+    docker tag "${IMAGE_ID}" "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
+    echo "Pushing ${TARGET_DOCKER_DEBUG_IMAGE}..."
+    gcloud docker -- push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
+fi
 
 if [[ "${MAKE_PUBLIC}" == "1" ]]; then
   gsutil iam ch allUsers:objectViewer "gs://artifacts.${GCP_PROJECT}.appspot.com/"

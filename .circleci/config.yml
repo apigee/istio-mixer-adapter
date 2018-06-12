@@ -49,7 +49,7 @@ jobs:
           command: ./bin/install_gcloud.sh
       - run:
           name: Build and push Docker image with tag latest
-          command: TAG=${CIRCLE_TAG:-latest} GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG ./bin/build_mixer_docker.sh
+          command: TAG=${CIRCLE_TAG:-latest} GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer-debug:$TAG ./bin/build_mixer_docker.sh
 
   build-nightly:
     docker:
@@ -69,7 +69,7 @@ jobs:
           command: ./bin/install_gcloud.sh
       - run:
           name: Build and push Docker image with tag nightly
-          command: TAG=nightly GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG ./bin/build_mixer_docker.sh
+          command: TAG=nightly GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer-debug:$TAG ./bin/build_mixer_docker.sh
 
 workflows:
   version: 2
