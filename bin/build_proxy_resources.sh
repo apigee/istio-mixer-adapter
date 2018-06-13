@@ -9,6 +9,11 @@ if [[ "${GOPATH}" == "" ]]; then
   exit 1
 fi
 
+if [[ `command -v go-bindata` == "" ]]; then
+  echo "go-bindata not installed, installing..."
+  go get -u github.com/go-bindata/go-bindata/...
+fi
+
 ADAPTER_DIR="${GOPATH}/src/github.com/apigee/istio-mixer-adapter"
 DIST_DIR="${ADAPTER_DIR}/dist"
 PROXIES_DIR="${DIST_DIR}/proxies"
