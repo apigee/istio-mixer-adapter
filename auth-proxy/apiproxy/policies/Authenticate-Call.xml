@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ServiceCallout async="false" continueOnError="false" enabled="true" name="Authenticate-Call">
+    <DisplayName>Authenticate Call</DisplayName>
+    <Properties/>
+    <Request clearPayload="false">
+        <IgnoreUnresolvedVariables>false</IgnoreUnresolvedVariables>
+        <Set>
+            <Headers>
+                <Header name="Authorization">{request.header.Authorization}</Header>
+            </Headers>
+            <Verb>GET</Verb>
+            <Path>/edgemicro/bootstrap/organization/{organization.name}/environment/{environment.name}</Path>
+        </Set>
+    </Request>
+    <Response>calloutResponse</Response>
+    <HTTPTargetConnection>
+        <Properties/>
+        <URL>https://edgemicroservices.apigee.net</URL>
+    </HTTPTargetConnection>
+</ServiceCallout>

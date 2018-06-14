@@ -1,24 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<APIProxy revision="1" name="istio-auth">
+<APIProxy revision="2" name="istio-auth">
     <Basepaths>/istio-auth</Basepaths>
     <ConfigurationVersion majorVersion="4" minorVersion="0"/>
-    <CreatedAt>1524447429819</CreatedAt>
-    <CreatedBy>defaultUser</CreatedBy>
+    <CreatedAt>1528322629490</CreatedAt>
+    <CreatedBy>srinandans@google.com</CreatedBy>
     <Description>istio-auth</Description>
     <DisplayName>istio-auth</DisplayName>
-    <LastModifiedAt>1525127429243</LastModifiedAt>
+    <LastModifiedAt>1528959390573</LastModifiedAt>
     <LastModifiedBy>defaultUser</LastModifiedBy>
-    <ManifestVersion>SHA-512:acd451ff5ef9bd54ebebe78e34e80259e5fa69e00d4aaf19a9785db871494c613ad31449b86878e4539f9c3e0afaf1f75b8fefce7934659bf5c146cecbe4e8f7</ManifestVersion>
+    <ManifestVersion>SHA-512:800be8d931da84d051289543ac8ac64d79b80a29e8559bc62352c93f4a837400034f1186cc23db4d0c0de116796fdb3c30c0d11266b96f83e51e0c9d62a7e705</ManifestVersion>
     <Policies>
         <Policy>Access-App-Info-2</Policy>
         <Policy>Access-App-Info</Policy>
         <Policy>AccessTokenRequest</Policy>
+        <Policy>Authenticate-Call</Policy>
         <Policy>Create-OAuth-Request</Policy>
         <Policy>Create-Refresh-Request</Policy>
         <Policy>Extract-API-Key</Policy>
         <Policy>Extract-OAuth-Params</Policy>
         <Policy>Extract-Refresh-Params</Policy>
         <Policy>Extract-Revoke-Params</Policy>
+        <Policy>Extract-Rotate-Variables</Policy>
         <Policy>Generate-Access-Token</Policy>
         <Policy>Generate-JWK</Policy>
         <Policy>Generate-VerifyKey-Token</Policy>
@@ -29,18 +31,21 @@
         <Policy>Products-to-JSON</Policy>
         <Policy>Raise-Fault-Unknown-Request</Policy>
         <Policy>RefreshAccessToken</Policy>
+        <Policy>Retrieve-Cert</Policy>
         <Policy>RevokeRefreshToken</Policy>
         <Policy>Send-JWK-Message</Policy>
         <Policy>Send-Version</Policy>
+        <Policy>Set-Basic-Authentication</Policy>
         <Policy>Set-JWT-Variables</Policy>
         <Policy>Set-Response</Policy>
+        <Policy>Update-Keys</Policy>
         <Policy>Verify-API-Key</Policy>
     </Policies>
     <ProxyEndpoints>
         <ProxyEndpoint>default</ProxyEndpoint>
     </ProxyEndpoints>
     <Resources>
-        <Resource>java://micro-gateway-products-javacallout-2.0.0.jar</Resource>
+        <Resource>java://istio-products-javacallout-2.0.0.jar</Resource>
         <Resource>jsc://generate-jwk.js</Resource>
         <Resource>jsc://jsrsasign-all-min.js</Resource>
         <Resource>jsc://jwt-initialization.js</Resource>
