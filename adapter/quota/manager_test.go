@@ -178,7 +178,7 @@ func TestSync(t *testing.T) {
 	m.buckets = map[string]*bucket{quotaID: b}
 	b.refreshAfter = time.Millisecond
 
-	time.Sleep(10 * time.Millisecond) // allow idle sync
+	time.Sleep(15 * time.Millisecond) // allow idle sync
 	if len(b.requests) != 0 {
 		t.Errorf("pending requests got: %d, want: %d", len(b.requests), 0)
 	}
