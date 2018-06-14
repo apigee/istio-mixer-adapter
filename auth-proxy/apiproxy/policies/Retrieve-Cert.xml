@@ -4,12 +4,12 @@
     <Properties/>
     <ExclusiveCache>false</ExclusiveCache>
     <ExpiryTimeInSecs>2</ExpiryTimeInSecs>
-    <Get assignTo="cert1" index="1">
+    <Get assignTo="private.certificate1" index="1">
         <Key>
             <Parameter>certificate1</Parameter>
         </Key>
     </Get>
-    <Get assignTo="kid1" index="1">
+    <Get assignTo="private.certificate1_kid" index="1">
         <Key>
             <Parameter>certificate1_kid</Parameter>
         </Key>

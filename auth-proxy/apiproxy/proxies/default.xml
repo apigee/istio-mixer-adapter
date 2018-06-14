@@ -208,7 +208,7 @@
                 </Step>
                 <Step>
                     <Name>Raise-Fault-Unknown-Request</Name>
-                    <Condition>key is null or secret is null or cert2 is null or kid2 is null or privateKey is null</Condition>
+                    <Condition>key is null or secret is null or certificate1 is null or certificate1_kid is null or private_key is null</Condition>
                 </Step>
                 <Step>
                     <Name>Set-Basic-Authentication</Name>
@@ -226,8 +226,8 @@
             <Response/>
             <Condition>(proxy.pathsuffix MatchesPath "/rotate") and (request.verb = "POST")</Condition>
         </Flow>
-        <Flow name="Unknow Request">
-            <Description>Unknow Request</Description>
+        <Flow name="Unknown Request">
+            <Description>Unknown Request</Description>
             <Request>
                 <Step>
                     <FaultRules/>
@@ -249,7 +249,6 @@
         <BasePath>/istio-auth</BasePath>
         <Properties/>
         <VirtualHost>default</VirtualHost>
-        <VirtualHost>secure</VirtualHost>
     </HTTPProxyConnection>
     <RouteRule name="noroute"/>
 </ProxyEndpoint>

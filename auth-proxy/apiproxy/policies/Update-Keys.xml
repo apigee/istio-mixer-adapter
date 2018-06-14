@@ -6,33 +6,33 @@
     <ExpiryTimeInSecs>2</ExpiryTimeInSecs>
     <Put override="true">
         <Key>
-            <Parameter>certificate1_kid</Parameter>
+            <Parameter>certificate2</Parameter>
         </Key>
-        <Value ref="kid2"/>
+        <Value ref="private.certificate1"/>
     </Put>
     <Put override="true">
         <Key>
             <Parameter>certificate2_kid</Parameter>
         </Key>
-        <Value ref="kid1"/>
+        <Value ref="private.certificate1_kid"/>
     </Put>
     <Put override="true">
         <Key>
             <Parameter>certificate1</Parameter>
         </Key>
-        <Value ref="cert2"/>
+        <Value ref="certificate1"/>
     </Put>
     <Put override="true">
         <Key>
-            <Parameter>certificate2</Parameter>
+            <Parameter>certificate1_kid</Parameter>
         </Key>
-        <Value ref="cert1"/>
+        <Value ref="certificate1_kid"/>
     </Put>
     <Put override="true">
         <Key>
             <Parameter>private_key</Parameter>
         </Key>
-        <Value ref="privateKey"/>
+        <Value ref="private_key"/>
     </Put>
     <Scope>environment</Scope>
 </KeyValueMapOperations>
