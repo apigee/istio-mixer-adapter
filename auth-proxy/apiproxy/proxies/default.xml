@@ -200,6 +200,32 @@
             </Response>
             <Condition>(proxy.pathsuffix MatchesPath "/version") and (request.verb = "GET")</Condition>
         </Flow>
+        <Flow name="Rotate Key">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Extract-Rotate-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>key is null or secret is null or cert2 is null or kid2 is null or privateKey is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Set-Basic-Authentication</Name>
+                </Step>
+                <Step>
+                    <Name>Authenticate-Call</Name>
+                </Step>
+                <Step>
+                    <Name>Retrieve-Cert</Name>
+                </Step>
+                <Step>
+                    <Name>Update-Keys</Name>
+                </Step>
+            </Request>
+            <Response/>
+            <Condition>(proxy.pathsuffix MatchesPath "/rotate") and (request.verb = "POST")</Condition>
+        </Flow>
         <Flow name="Unknow Request">
             <Description>Unknow Request</Description>
             <Request>
@@ -223,6 +249,7 @@
         <BasePath>/istio-auth</BasePath>
         <Properties/>
         <VirtualHost>default</VirtualHost>
+        <VirtualHost>secure</VirtualHost>
     </HTTPProxyConnection>
     <RouteRule name="noroute"/>
 </ProxyEndpoint>

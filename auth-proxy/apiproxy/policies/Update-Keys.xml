@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<KeyValueMapOperations async="false" continueOnError="false" enabled="true" name="Update-Keys" mapIdentifier="istio">
+    <DisplayName>Update Keys</DisplayName>
+    <Properties/>
+    <ExclusiveCache>false</ExclusiveCache>
+    <ExpiryTimeInSecs>2</ExpiryTimeInSecs>
+    <Put override="true">
+        <Key>
+            <Parameter>certificate1_kid</Parameter>
+        </Key>
+        <Value ref="kid2"/>
+    </Put>
+    <Put override="true">
+        <Key>
+            <Parameter>certificate2_kid</Parameter>
+        </Key>
+        <Value ref="kid1"/>
+    </Put>
+    <Put override="true">
+        <Key>
+            <Parameter>certificate1</Parameter>
+        </Key>
+        <Value ref="cert2"/>
+    </Put>
+    <Put override="true">
+        <Key>
+            <Parameter>certificate2</Parameter>
+        </Key>
+        <Value ref="cert1"/>
+    </Put>
+    <Put override="true">
+        <Key>
+            <Parameter>private_key</Parameter>
+        </Key>
+        <Value ref="privateKey"/>
+    </Put>
+    <Scope>environment</Scope>
+</KeyValueMapOperations>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<KeyValueMapOperations async="false" continueOnError="false" enabled="true" name="Retrieve-Cert" mapIdentifier="istio">
+    <DisplayName>Retrieve Cert</DisplayName>
+    <Properties/>
+    <ExclusiveCache>false</ExclusiveCache>
+    <ExpiryTimeInSecs>2</ExpiryTimeInSecs>
+    <Get assignTo="cert1" index="1">
+        <Key>
+            <Parameter>certificate1</Parameter>
+        </Key>
+    </Get>
+    <Get assignTo="kid1" index="1">
+        <Key>
+            <Parameter>certificate1_kid</Parameter>
+        </Key>
+    </Get>
+    <Scope>environment</Scope>
+</KeyValueMapOperations>

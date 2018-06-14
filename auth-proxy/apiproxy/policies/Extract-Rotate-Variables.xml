@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ExtractVariables async="false" continueOnError="false" enabled="true" name="Extract-Rotate-Variables">
+    <DisplayName>Extract Rotate Variables</DisplayName>
+    <Properties/>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <JSONPayload>
+        <Variable name="kid2" type="string">
+            <JSONPath>$.kid2</JSONPath>
+        </Variable>
+        <Variable name="cert2" type="string">
+            <JSONPath>$.cert2</JSONPath>
+        </Variable>
+        <Variable name="privateKey" type="string">
+            <JSONPath>$.privateKey</JSONPath>
+        </Variable>
+        <Variable name="key" type="string">
+            <JSONPath>$.key</JSONPath>
+        </Variable>
+        <Variable name="secret" type="string">
+            <JSONPath>$.secret</JSONPath>
+        </Variable>
+    </JSONPayload>
+    <Source clearPayload="true">request</Source>
+</ExtractVariables>
