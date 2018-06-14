@@ -51,7 +51,7 @@ import (
 
 const (
 	kvmName           = "istio"
-	encryptKVM        = false // this is necessary to enable certificate rotation
+	encryptKVM        = true
 	authProxyName     = "istio-auth"
 	internalProxyName = "edgemicro-internal"
 
@@ -100,15 +100,15 @@ to your organization and environment.`,
 		},
 	}
 
-	c.Flags().IntVarP(&p.certExpirationInYears, "years", "y", 1,
+	c.Flags().IntVarP(&p.certExpirationInYears, "years", "", 1,
 		"number of years before the cert expires")
-	c.Flags().IntVarP(&p.certKeyStrength, "strength", "s", 2048,
+	c.Flags().IntVarP(&p.certKeyStrength, "strength", "", 2048,
 		"key strength")
 	c.Flags().BoolVarP(&p.forceProxyInstall, "forceProxyInstall", "f", false,
 		"force new proxy install")
 	c.Flags().StringVarP(&p.virtualHosts, "virtualHosts", "", "default,secure",
 		"override proxy virtualHosts")
-	c.Flags().BoolVarP(&p.verifyOnly, "verifyOnly", "x", false,
+	c.Flags().BoolVarP(&p.verifyOnly, "verifyOnly", "", false,
 		"verify only, don’t provision anything")
 
 	return c

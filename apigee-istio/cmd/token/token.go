@@ -23,7 +23,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/apigee-istio/apigee"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/lestrrat/go-jwx/jwk"
@@ -34,9 +33,9 @@ import (
 )
 
 const (
-	kvmName                = "istio"
-	tokenURLFormat         = "%s/token" // customerProxyURL
-	certsURLFormat         = "%s/certs" // customerProxyURL
+	tokenURLFormat         = "%s/token"  // customerProxyURL
+	certsURLFormat         = "%s/certs"  // customerProxyURL
+	rotateURLFormat        = "%s/rotate" // customerProxyURL
 	clientCredentialsGrant = "client_credentials"
 )
 
@@ -78,7 +77,7 @@ func cmdCreateToken(t *token, printf, fatalf shared.FormatFn) *cobra.Command {
 		Args:  cobra.NoArgs,
 
 		Run: func(cmd *cobra.Command, _ []string) {
-			err := t.createToken(printf, fatalf)
+			_, err := t.createToken(printf, fatalf)
 			if err != nil {
 				fatalf("error creating token: %v", err)
 			}
@@ -126,16 +125,22 @@ func cmdRotateCert(t *token, printf, fatalf shared.FormatFn) *cobra.Command {
 		},
 	}
 
-	c.Flags().StringVarP(&t.keyID, "kid", "k", "1", "new key id")
-	c.Flags().IntVarP(&t.certExpirationInYears, "years", "y", 1,
+	c.Flags().StringVarP(&t.keyID, "kid", "", "1", "new key id")
+	c.Flags().IntVarP(&t.certExpirationInYears, "years", "", 1,
 		"number of years before the cert expires")
-	c.Flags().IntVarP(&t.certKeyStrength, "strength", "s", 2048,
+	c.Flags().IntVarP(&t.certKeyStrength, "strength", "", 2048,
 		"key strength")
+
+	c.Flags().StringVarP(&t.clientID, "key", "k", "", "istio provision key")
+	c.Flags().StringVarP(&t.clientSecret, "secret", "s", "", "istio provision secret")
+
+	c.MarkFlagRequired("key")
+	c.MarkFlagRequired("secret")
 
 	return c
 }
 
-func (t *token) createToken(printf, fatalf shared.FormatFn) error {
+func (t *token) createToken(printf, fatalf shared.FormatFn) (string, error) {
 	tokenReq := &tokenRequest{
 		ClientID:     t.clientID,
 		ClientSecret: t.clientSecret,
@@ -147,7 +152,7 @@ func (t *token) createToken(printf, fatalf shared.FormatFn) error {
 	tokenURL := fmt.Sprintf(tokenURLFormat, t.CustomerProxyURL)
 	req, err := http.NewRequest(http.MethodPost, tokenURL, body)
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
@@ -155,12 +160,12 @@ func (t *token) createToken(printf, fatalf shared.FormatFn) error {
 	var tokenRes tokenResponse
 	resp, err := t.Client.Do(req, &tokenRes)
 	if err != nil {
-		return fmt.Errorf("error creating token: %v", err)
+		return "", fmt.Errorf("error creating token: %v", err)
 	}
 	defer resp.Body.Close()
 
 	printf(tokenRes.Token)
-	return nil
+	return tokenRes.Token, nil
 }
 
 func (t *token) inspectToken(printf, fatalf shared.FormatFn) error {
@@ -223,74 +228,54 @@ func (t *token) rotateCert(printf, fatalf shared.FormatFn) {
 		verbosef = printf
 	}
 
-	kvmS, resp, err := t.Client.KVMService.Get(kvmName)
-	if err != nil {
-		if resp.StatusCode == 404 {
-			fatalf("kvm '%s' for %s/%s not found. May not have been provisioned.", kvmName, t.Org, t.Env)
-		} else {
-			fatalf("error getting kvm: %v", err)
-		}
-	}
-	defer resp.Body.Close()
-
-	priorCert, _ := kvmS.GetValue("certificate1")
-	priorKid, _ := kvmS.GetValue("certificate1_kid")
-	if priorCert == "" {
-		fatalf("no prior cert found: %v", err)
-	}
-
 	verbosef("generating a new key and cert...")
 	cert, privateKey, err := provision.GenKeyCert(t.certKeyStrength, t.certExpirationInYears)
 	if err != nil {
 		fatalf("error generating new cert: %v", err)
 	}
-	verbosef("certificate:\n%s", cert)
-	verbosef("private key:\n%s", privateKey)
 
-	entries := []apigee.Entry{
-		{
-			Name:  "certificate2",
-			Value: priorCert,
-		},
-		{
-			Name:  "certificate2_kid",
-			Value: priorKid,
-		},
-		{
-			Name:  "private_key",
-			Value: privateKey,
-		},
-		{
-			Name:  "certificate1",
-			Value: cert,
-		},
-		{
-			Name:  "certificate1_kid",
-			Value: t.keyID,
-		},
+	rotateReq := rotateRequest{
+		Key:         t.clientID,
+		Secret:      t.clientSecret,
+		PrivateKey:  privateKey,
+		Certificate: cert,
+		KeyID:       t.keyID,
 	}
 
-	// todo: no atomic update API available, update individually
-	verbosef("updating kvm entries...")
-	first := true
-	for _, e := range entries {
-		var err error
-		if _, exists := kvmS.GetValue(e.Name); exists {
-			_, err = t.Client.KVMService.UpdateEntry(kvmName, e)
-		} else {
-			_, err = t.Client.KVMService.AddEntry(kvmName, e)
-		}
-		if err != nil {
-			if !first {
-				printf("WARNING: KVM MAY BE IN INCONSISTENT STATE!")
-			}
-			fatalf("error updating kvm entry %s: %v", e.Name, err)
-		}
-		resp.Body.Close()
-		first = false
+	verbosef("rotating certificate...")
+
+	body := new(bytes.Buffer)
+	err = json.NewEncoder(body).Encode(rotateReq)
+	if err != nil {
+		fatalf("encoding error: %v", err)
 	}
+
+	rotateURL := fmt.Sprintf(rotateURLFormat, t.CustomerProxyURL)
+	req, err := http.NewRequest(http.MethodPost, rotateURL, body)
+	if err != nil {
+		fatalf("unable to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := t.Client.Do(req, nil)
+	if err != nil {
+		fatalf("rotation request error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	verbosef("new certificate:\n%s", cert)
+	verbosef("new private key:\n%s", privateKey)
 
 	printf("certificate successfully rotated")
+}
+
+type rotateRequest struct {
+	Key         string `json:"key"`
+	Secret      string `json:"secret"`
+	PrivateKey  string `json:"private_key"`
+	Certificate string `json:"certificate"`
+	KeyID       string `json:"kid"`
 }
 
 type tokenRequest struct {
