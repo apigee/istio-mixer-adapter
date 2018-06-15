@@ -62,7 +62,7 @@ func badJWTRequest(w http.ResponseWriter, r *http.Request) {
 
 func TestJWTCaching(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
 
@@ -91,7 +91,7 @@ func TestJWTCaching(t *testing.T) {
 		ctx := authtest.NewContext(ts.URL, test.NewEnv(t))
 
 		// Do a first request and confirm that things look good.
-		_, err = jwtMan.verifyJWT(ctx, jwt)
+		_, err = jwtMan.parseJWT(ctx, jwt, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +106,7 @@ func TestJWTCaching(t *testing.T) {
 
 func TestGoodAndBadJWT(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
 
@@ -126,7 +126,7 @@ func TestGoodAndBadJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = jwtMan.verifyJWT(ctx, jwt)
+	_, err = jwtMan.parseJWT(ctx, jwt, true)
 	if err != nil {
 		t.Errorf("good JWT should not get error: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestGoodAndBadJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = jwtMan.verifyJWT(ctx, jwt)
+	_, err = jwtMan.parseJWT(ctx, jwt, true)
 	if err == nil {
 		t.Errorf("expired JWT should get error")
 	}
@@ -146,7 +146,7 @@ func TestGoodAndBadJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = jwtMan.verifyJWT(ctx, jwt)
+	_, err = jwtMan.parseJWT(ctx, jwt, true)
 	if err != nil {
 		t.Errorf("near future JWT should not get error")
 	}
@@ -160,7 +160,7 @@ func TestGoodAndBadJWT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = jwtMan.verifyJWT(ctx, jwt)
+	_, err = jwtMan.parseJWT(ctx, jwt, true)
 	if err == nil {
 		t.Errorf("JWT with wrong key should get error")
 	}

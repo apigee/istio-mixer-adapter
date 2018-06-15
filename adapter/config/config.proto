@@ -32,16 +32,23 @@ message Params {
     string key           = 5;
     string secret        = 6;
 
+    // http timeout in seconds
+    string temp_dir = 7;
+
+    // http timeout in seconds
+    int64 server_timeout_secs = 8;
+
+    message product_options {
+        // products refresh rate in minutes
+        int64 refresh_rate_mins = 1;
+    }
+    product_options products = 15;
+
     message analytics_options {
         // if true, use old-style direct communication analytics protocol
         bool legacy_endpoint = 1;
-
-        // Path to where analytics records are persisted before uploading
-        string buffer_path = 2;
-
-        // How many files can be stored in staging before we start deleting old files
-        int64 buffer_size = 3;
+        // number of files can be stored in staging before we start deleting old files
+        int64 file_limit = 2;
     }
-
-    analytics_options analytics = 7;
+    analytics_options analytics = 16;
 }

@@ -33,8 +33,6 @@ import (
 
 const productsURL = "/products"
 
-var pollInterval = 2 * time.Minute
-
 /*
 Usage:
 	pp := createManager()
@@ -44,11 +42,11 @@ Usage:
 	pp.close() // when done
 */
 
-func createManager(baseURL *url.URL, log adapter.Logger) *Manager {
+func createManager(options Options, log adapter.Logger) *Manager {
 	isClosedInt := int32(0)
 
 	return &Manager{
-		baseURL:         baseURL,
+		baseURL:         options.BaseURL,
 		log:             log,
 		products:        map[string]*APIProduct{},
 		quitPollingChan: make(chan bool, 1),
@@ -57,6 +55,8 @@ func createManager(baseURL *url.URL, log adapter.Logger) *Manager {
 		returnChan:      make(chan map[string]*APIProduct),
 		updatedChan:     make(chan bool, 1),
 		isClosed:        &isClosedInt,
+		refreshRate:     options.RefreshRate,
+		client:          options.Client,
 	}
 }
 
@@ -71,7 +71,9 @@ type Manager struct {
 	getProductsChan  chan bool
 	returnChan       chan map[string]*APIProduct
 	updatedChan      chan bool
+	refreshRate      time.Duration
 	refreshTimerChan <-chan time.Time
+	client           *http.Client
 }
 
 func (p *Manager) start(env adapter.Env) {
@@ -94,7 +96,7 @@ func (p *Manager) Products() map[string]*APIProduct {
 }
 
 func (p *Manager) pollingLoop() {
-	tick := time.Tick(pollInterval)
+	tick := time.Tick(p.refreshRate)
 	for {
 		select {
 		case <-p.closedChan:
@@ -141,8 +143,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 
 		p.log.Debugf("retrieving products from: %s", apiURL.String())
 
-		client := http.DefaultClient
-		resp, err := client.Do(req)
+		resp, err := p.client.Do(req)
 		if err != nil {
 			return err
 		}
@@ -241,7 +242,7 @@ func (p *Manager) getTokenReadyChannel() <-chan bool {
 
 func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
 
-	backoff := NewExponentialBackoff(200*time.Millisecond, pollInterval, 2, true)
+	backoff := NewExponentialBackoff(200*time.Millisecond, p.refreshRate, 2, true)
 	retry := time.After(0 * time.Millisecond) // start first attempt immediately
 
 	for {

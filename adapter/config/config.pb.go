@@ -34,34 +34,47 @@ var _ = math.Inf
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
 type Params struct {
-	ApigeeBase   string                  `protobuf:"bytes,1,opt,name=apigee_base,json=apigeeBase,proto3" json:"apigee_base,omitempty"`
-	CustomerBase string                  `protobuf:"bytes,2,opt,name=customer_base,json=customerBase,proto3" json:"customer_base,omitempty"`
-	OrgName      string                  `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
-	EnvName      string                  `protobuf:"bytes,4,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
-	Key          string                  `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
-	Secret       string                  `protobuf:"bytes,6,opt,name=secret,proto3" json:"secret,omitempty"`
-	Analytics    *ParamsAnalyticsOptions `protobuf:"bytes,7,opt,name=analytics" json:"analytics,omitempty"`
+	ApigeeBase   string `protobuf:"bytes,1,opt,name=apigee_base,json=apigeeBase,proto3" json:"apigee_base,omitempty"`
+	CustomerBase string `protobuf:"bytes,2,opt,name=customer_base,json=customerBase,proto3" json:"customer_base,omitempty"`
+	OrgName      string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	EnvName      string `protobuf:"bytes,4,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
+	Key          string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+	Secret       string `protobuf:"bytes,6,opt,name=secret,proto3" json:"secret,omitempty"`
+	// http timeout in seconds
+	TempDir string `protobuf:"bytes,7,opt,name=temp_dir,json=tempDir,proto3" json:"temp_dir,omitempty"`
+	// http timeout in seconds
+	ServerTimeoutSecs int64                   `protobuf:"varint,8,opt,name=server_timeout_secs,json=serverTimeoutSecs,proto3" json:"server_timeout_secs,omitempty"`
+	Products          *ParamsProductOptions   `protobuf:"bytes,15,opt,name=products" json:"products,omitempty"`
+	Analytics         *ParamsAnalyticsOptions `protobuf:"bytes,16,opt,name=analytics" json:"analytics,omitempty"`
 }
 
 func (m *Params) Reset()                    { *m = Params{} }
 func (*Params) ProtoMessage()               {}
 func (*Params) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0} }
 
+type ParamsProductOptions struct {
+	// products refresh rate in minutes
+	RefreshRateMins int64 `protobuf:"varint,1,opt,name=refresh_rate_mins,json=refreshRateMins,proto3" json:"refresh_rate_mins,omitempty"`
+}
+
+func (m *ParamsProductOptions) Reset()                    { *m = ParamsProductOptions{} }
+func (*ParamsProductOptions) ProtoMessage()               {}
+func (*ParamsProductOptions) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0, 0} }
+
 type ParamsAnalyticsOptions struct {
 	// if true, use old-style direct communication analytics protocol
 	LegacyEndpoint bool `protobuf:"varint,1,opt,name=legacy_endpoint,json=legacyEndpoint,proto3" json:"legacy_endpoint,omitempty"`
-	// Path to where analytics records are persisted before uploading
-	BufferPath string `protobuf:"bytes,2,opt,name=buffer_path,json=bufferPath,proto3" json:"buffer_path,omitempty"`
-	// How many files can be stored in staging before we start deleting old files
-	BufferSize int64 `protobuf:"varint,3,opt,name=buffer_size,json=bufferSize,proto3" json:"buffer_size,omitempty"`
+	// number of files can be stored in staging before we start deleting old files
+	FileLimit int64 `protobuf:"varint,2,opt,name=file_limit,json=fileLimit,proto3" json:"file_limit,omitempty"`
 }
 
 func (m *ParamsAnalyticsOptions) Reset()                    { *m = ParamsAnalyticsOptions{} }
 func (*ParamsAnalyticsOptions) ProtoMessage()               {}
-func (*ParamsAnalyticsOptions) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0, 0} }
+func (*ParamsAnalyticsOptions) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0, 1} }
 
 func init() {
 	proto.RegisterType((*Params)(nil), "config.Params")
+	proto.RegisterType((*ParamsProductOptions)(nil), "config.Params.product_options")
 	proto.RegisterType((*ParamsAnalyticsOptions)(nil), "config.Params.analytics_options")
 }
 func (m *Params) Marshal() (dAtA []byte, err error) {
@@ -115,15 +128,61 @@ func (m *Params) MarshalTo(dAtA []byte) (int, error) {
 		i = encodeVarintConfig(dAtA, i, uint64(len(m.Secret)))
 		i += copy(dAtA[i:], m.Secret)
 	}
-	if m.Analytics != nil {
+	if len(m.TempDir) > 0 {
 		dAtA[i] = 0x3a
 		i++
-		i = encodeVarintConfig(dAtA, i, uint64(m.Analytics.Size()))
-		n1, err := m.Analytics.MarshalTo(dAtA[i:])
+		i = encodeVarintConfig(dAtA, i, uint64(len(m.TempDir)))
+		i += copy(dAtA[i:], m.TempDir)
+	}
+	if m.ServerTimeoutSecs != 0 {
+		dAtA[i] = 0x40
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(m.ServerTimeoutSecs))
+	}
+	if m.Products != nil {
+		dAtA[i] = 0x7a
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(m.Products.Size()))
+		n1, err := m.Products.MarshalTo(dAtA[i:])
 		if err != nil {
 			return 0, err
 		}
 		i += n1
+	}
+	if m.Analytics != nil {
+		dAtA[i] = 0x82
+		i++
+		dAtA[i] = 0x1
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(m.Analytics.Size()))
+		n2, err := m.Analytics.MarshalTo(dAtA[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
+	}
+	return i, nil
+}
+
+func (m *ParamsProductOptions) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalTo(dAtA)
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ParamsProductOptions) MarshalTo(dAtA []byte) (int, error) {
+	var i int
+	_ = i
+	var l int
+	_ = l
+	if m.RefreshRateMins != 0 {
+		dAtA[i] = 0x8
+		i++
+		i = encodeVarintConfig(dAtA, i, uint64(m.RefreshRateMins))
 	}
 	return i, nil
 }
@@ -153,16 +212,10 @@ func (m *ParamsAnalyticsOptions) MarshalTo(dAtA []byte) (int, error) {
 		}
 		i++
 	}
-	if len(m.BufferPath) > 0 {
-		dAtA[i] = 0x12
+	if m.FileLimit != 0 {
+		dAtA[i] = 0x10
 		i++
-		i = encodeVarintConfig(dAtA, i, uint64(len(m.BufferPath)))
-		i += copy(dAtA[i:], m.BufferPath)
-	}
-	if m.BufferSize != 0 {
-		dAtA[i] = 0x18
-		i++
-		i = encodeVarintConfig(dAtA, i, uint64(m.BufferSize))
+		i = encodeVarintConfig(dAtA, i, uint64(m.FileLimit))
 	}
 	return i, nil
 }
@@ -203,9 +256,29 @@ func (m *Params) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovConfig(uint64(l))
 	}
+	l = len(m.TempDir)
+	if l > 0 {
+		n += 1 + l + sovConfig(uint64(l))
+	}
+	if m.ServerTimeoutSecs != 0 {
+		n += 1 + sovConfig(uint64(m.ServerTimeoutSecs))
+	}
+	if m.Products != nil {
+		l = m.Products.Size()
+		n += 1 + l + sovConfig(uint64(l))
+	}
 	if m.Analytics != nil {
 		l = m.Analytics.Size()
-		n += 1 + l + sovConfig(uint64(l))
+		n += 2 + l + sovConfig(uint64(l))
+	}
+	return n
+}
+
+func (m *ParamsProductOptions) Size() (n int) {
+	var l int
+	_ = l
+	if m.RefreshRateMins != 0 {
+		n += 1 + sovConfig(uint64(m.RefreshRateMins))
 	}
 	return n
 }
@@ -216,12 +289,8 @@ func (m *ParamsAnalyticsOptions) Size() (n int) {
 	if m.LegacyEndpoint {
 		n += 2
 	}
-	l = len(m.BufferPath)
-	if l > 0 {
-		n += 1 + l + sovConfig(uint64(l))
-	}
-	if m.BufferSize != 0 {
-		n += 1 + sovConfig(uint64(m.BufferSize))
+	if m.FileLimit != 0 {
+		n += 1 + sovConfig(uint64(m.FileLimit))
 	}
 	return n
 }
@@ -250,7 +319,20 @@ func (this *Params) String() string {
 		`EnvName:` + fmt.Sprintf("%v", this.EnvName) + `,`,
 		`Key:` + fmt.Sprintf("%v", this.Key) + `,`,
 		`Secret:` + fmt.Sprintf("%v", this.Secret) + `,`,
+		`TempDir:` + fmt.Sprintf("%v", this.TempDir) + `,`,
+		`ServerTimeoutSecs:` + fmt.Sprintf("%v", this.ServerTimeoutSecs) + `,`,
+		`Products:` + strings.Replace(fmt.Sprintf("%v", this.Products), "ParamsProductOptions", "ParamsProductOptions", 1) + `,`,
 		`Analytics:` + strings.Replace(fmt.Sprintf("%v", this.Analytics), "ParamsAnalyticsOptions", "ParamsAnalyticsOptions", 1) + `,`,
+		`}`,
+	}, "")
+	return s
+}
+func (this *ParamsProductOptions) String() string {
+	if this == nil {
+		return "nil"
+	}
+	s := strings.Join([]string{`&ParamsProductOptions{`,
+		`RefreshRateMins:` + fmt.Sprintf("%v", this.RefreshRateMins) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -261,8 +343,7 @@ func (this *ParamsAnalyticsOptions) String() string {
 	}
 	s := strings.Join([]string{`&ParamsAnalyticsOptions{`,
 		`LegacyEndpoint:` + fmt.Sprintf("%v", this.LegacyEndpoint) + `,`,
-		`BufferPath:` + fmt.Sprintf("%v", this.BufferPath) + `,`,
-		`BufferSize:` + fmt.Sprintf("%v", this.BufferSize) + `,`,
+		`FileLimit:` + fmt.Sprintf("%v", this.FileLimit) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -480,6 +561,87 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field TempDir", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= (uint64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.TempDir = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 8:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ServerTimeoutSecs", wireType)
+			}
+			m.ServerTimeoutSecs = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ServerTimeoutSecs |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Products", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= (int(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthConfig
+			}
+			postIndex := iNdEx + msglen
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Products == nil {
+				m.Products = &ParamsProductOptions{}
+			}
+			if err := m.Products.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 16:
+			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Analytics", wireType)
 			}
 			var msglen int
@@ -511,6 +673,75 @@ func (m *Params) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipConfig(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthConfig
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ParamsProductOptions) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowConfig
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= (uint64(b) & 0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: product_options: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: product_options: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RefreshRateMins", wireType)
+			}
+			m.RefreshRateMins = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowConfig
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.RefreshRateMins |= (int64(b) & 0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipConfig(dAtA[iNdEx:])
@@ -582,39 +813,10 @@ func (m *ParamsAnalyticsOptions) Unmarshal(dAtA []byte) error {
 			}
 			m.LegacyEndpoint = bool(v != 0)
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BufferPath", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowConfig
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= (uint64(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthConfig
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.BufferPath = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
 			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BufferSize", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field FileLimit", wireType)
 			}
-			m.BufferSize = 0
+			m.FileLimit = 0
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
 					return ErrIntOverflowConfig
@@ -624,7 +826,7 @@ func (m *ParamsAnalyticsOptions) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.BufferSize |= (int64(b) & 0x7F) << shift
+				m.FileLimit |= (int64(b) & 0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -758,27 +960,33 @@ var (
 func init() { proto.RegisterFile("adapter/config/config.proto", fileDescriptorConfig) }
 
 var fileDescriptorConfig = []byte{
-	// 351 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x91, 0x3f, 0x4f, 0x32, 0x41,
-	0x10, 0x87, 0x6f, 0xe1, 0x7d, 0x0f, 0x58, 0xde, 0x3f, 0x7a, 0x31, 0xe6, 0xc4, 0x64, 0x25, 0x5a,
-	0x48, 0x05, 0x89, 0x36, 0x56, 0x16, 0x24, 0xb6, 0x86, 0x60, 0x67, 0x73, 0x19, 0x8e, 0xe1, 0xb8,
-	0xc8, 0xed, 0x5e, 0x76, 0x17, 0x12, 0x28, 0x8c, 0x1f, 0xc1, 0x8f, 0xe1, 0x47, 0xa1, 0xa4, 0xb4,
-	0xf4, 0xce, 0xc6, 0xca, 0xf0, 0x11, 0x0c, 0xbb, 0x87, 0x9a, 0x58, 0xed, 0xcc, 0xf3, 0xfc, 0xb6,
-	0x98, 0x19, 0x7a, 0x08, 0x43, 0x48, 0x35, 0xca, 0x4e, 0x28, 0xf8, 0x28, 0x8e, 0x8a, 0xa7, 0x9d,
-	0x4a, 0xa1, 0x85, 0xe7, 0xda, 0xae, 0xb1, 0x17, 0x89, 0x48, 0x18, 0xd4, 0xd9, 0x54, 0xd6, 0x1e,
-	0xbf, 0x97, 0xa8, 0xdb, 0x03, 0x09, 0x89, 0xf2, 0x8e, 0x68, 0x1d, 0xd2, 0x38, 0x42, 0x0c, 0x06,
-	0xa0, 0xd0, 0x27, 0x4d, 0xd2, 0xaa, 0xf5, 0xa9, 0x45, 0x5d, 0x50, 0xe8, 0x9d, 0xd0, 0xbf, 0xe1,
-	0x54, 0x69, 0x91, 0xa0, 0xb4, 0x91, 0x92, 0x89, 0xfc, 0xd9, 0x42, 0x13, 0x3a, 0xa0, 0x55, 0x21,
-	0xa3, 0x80, 0x43, 0x82, 0x7e, 0xd9, 0xf8, 0x8a, 0x90, 0xd1, 0x35, 0x24, 0x46, 0x21, 0x9f, 0x59,
-	0xf5, 0xcb, 0x2a, 0xe4, 0x33, 0xa3, 0x76, 0x68, 0xf9, 0x0e, 0xe7, 0xfe, 0x6f, 0x43, 0x37, 0xa5,
-	0xb7, 0x4f, 0x5d, 0x85, 0xa1, 0x44, 0xed, 0xbb, 0x06, 0x16, 0x9d, 0x77, 0x49, 0x6b, 0xc0, 0x61,
-	0x32, 0xd7, 0x71, 0xa8, 0xfc, 0x4a, 0x93, 0xb4, 0xea, 0x67, 0xcd, 0x76, 0x31, 0xb0, 0x1d, 0xa4,
-	0xfd, 0xe9, 0x03, 0x91, 0xea, 0x58, 0x70, 0xd5, 0xff, 0xfa, 0xd2, 0xb8, 0xa7, 0xbb, 0x3f, 0xbc,
-	0x77, 0x4a, 0xff, 0x4f, 0x30, 0x82, 0x70, 0x1e, 0x20, 0x1f, 0xa6, 0x22, 0xe6, 0xda, 0x8c, 0x5f,
-	0xed, 0xff, 0xb3, 0xf8, 0xaa, 0xa0, 0x9b, 0x1d, 0x0d, 0xa6, 0xa3, 0x11, 0xca, 0x20, 0x05, 0x3d,
-	0x2e, 0x16, 0x40, 0x2d, 0xea, 0x81, 0x1e, 0x7f, 0x0b, 0xa8, 0x78, 0x61, 0x37, 0x50, 0xde, 0x06,
-	0x6e, 0xe2, 0x05, 0x76, 0x2f, 0x96, 0x19, 0x73, 0x56, 0x19, 0x73, 0x9e, 0x33, 0xe6, 0xac, 0x33,
-	0xe6, 0x3c, 0xe4, 0x8c, 0x3c, 0xe5, 0xcc, 0x59, 0xe6, 0x8c, 0xac, 0x72, 0x46, 0x5e, 0x72, 0x46,
-	0xde, 0x72, 0xe6, 0xac, 0x73, 0x46, 0x1e, 0x5f, 0x99, 0x73, 0x5b, 0x1c, 0x70, 0xe0, 0x9a, 0x8b,
-	0x9d, 0x7f, 0x04, 0x00, 0x00, 0xff, 0xff, 0x4f, 0x80, 0xd5, 0x88, 0xee, 0x01, 0x00, 0x00,
+	// 439 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x64, 0x92, 0xb1, 0x8e, 0x13, 0x31,
+	0x10, 0x86, 0xd7, 0xec, 0xb1, 0x97, 0xcc, 0x01, 0xb9, 0x18, 0x84, 0x96, 0x20, 0x4c, 0x04, 0x05,
+	0x11, 0x45, 0x4e, 0x82, 0x06, 0x21, 0x41, 0x71, 0x82, 0x0e, 0x10, 0x5a, 0xa8, 0xa0, 0xb0, 0x7c,
+	0x9b, 0xc9, 0x62, 0x11, 0xdb, 0x2b, 0xdb, 0x89, 0x94, 0x8e, 0x47, 0x80, 0xb7, 0xe0, 0x51, 0xae,
+	0xbc, 0x92, 0x92, 0x5d, 0x1a, 0xca, 0x7b, 0x04, 0xb4, 0xf6, 0x12, 0xa4, 0xa3, 0xb2, 0xe7, 0xfb,
+	0xe6, 0x9f, 0xc2, 0x1e, 0xb8, 0x2d, 0x16, 0xa2, 0xf6, 0x68, 0x8f, 0x4a, 0xa3, 0x97, 0xb2, 0xea,
+	0x8f, 0x79, 0x6d, 0x8d, 0x37, 0x34, 0x8b, 0xd5, 0xe4, 0x46, 0x65, 0x2a, 0x13, 0xd0, 0x51, 0x77,
+	0x8b, 0xf6, 0xde, 0xb7, 0x3d, 0xc8, 0xde, 0x0a, 0x2b, 0x94, 0xa3, 0x77, 0xe1, 0x40, 0xd4, 0xb2,
+	0x42, 0xe4, 0x27, 0xc2, 0x61, 0x4e, 0xa6, 0x64, 0x36, 0x2c, 0x20, 0xa2, 0x63, 0xe1, 0x90, 0xde,
+	0x87, 0xab, 0xe5, 0xda, 0x79, 0xa3, 0xd0, 0xc6, 0x96, 0x4b, 0xa1, 0xe5, 0xca, 0x5f, 0x18, 0x9a,
+	0x6e, 0xc1, 0xc0, 0xd8, 0x8a, 0x6b, 0xa1, 0x30, 0x4f, 0x83, 0xdf, 0x37, 0xb6, 0x7a, 0x23, 0x54,
+	0x50, 0xa8, 0x37, 0x51, 0xed, 0x45, 0x85, 0x7a, 0x13, 0xd4, 0x21, 0xa4, 0x9f, 0x71, 0x9b, 0x5f,
+	0x0e, 0xb4, 0xbb, 0xd2, 0x9b, 0x90, 0x39, 0x2c, 0x2d, 0xfa, 0x3c, 0x0b, 0xb0, 0xaf, 0xba, 0x21,
+	0x1e, 0x55, 0xcd, 0x17, 0xd2, 0xe6, 0xfb, 0x71, 0x48, 0x57, 0xbf, 0x90, 0x96, 0xce, 0xe1, 0xba,
+	0x43, 0xbb, 0x41, 0xcb, 0xbd, 0x54, 0x68, 0xd6, 0x9e, 0x3b, 0x2c, 0x5d, 0x3e, 0x98, 0x92, 0x59,
+	0x5a, 0x8c, 0xa3, 0x7a, 0x1f, 0xcd, 0x3b, 0x2c, 0x1d, 0x7d, 0x0a, 0x83, 0xda, 0x9a, 0xc5, 0xba,
+	0xf4, 0x2e, 0x1f, 0x4d, 0xc9, 0xec, 0xe0, 0x11, 0x9b, 0xf7, 0x4f, 0x17, 0x9f, 0x64, 0xde, 0x6b,
+	0x6e, 0x6a, 0x2f, 0x8d, 0x76, 0xc5, 0xae, 0x9f, 0x3e, 0x87, 0xa1, 0xd0, 0x62, 0xb5, 0xf5, 0xb2,
+	0x74, 0xf9, 0x61, 0x08, 0x4f, 0x2f, 0x84, 0x77, 0x7e, 0x17, 0xff, 0x17, 0x99, 0x3c, 0x83, 0xd1,
+	0x85, 0xe1, 0xf4, 0x21, 0x8c, 0x2d, 0x2e, 0x2d, 0xba, 0x4f, 0xdc, 0x0a, 0x8f, 0x5c, 0x49, 0xed,
+	0xc2, 0x2f, 0xa4, 0xc5, 0xa8, 0x17, 0x85, 0xf0, 0xf8, 0x5a, 0x6a, 0x37, 0xf9, 0x08, 0xe3, 0xff,
+	0xc6, 0xd3, 0x07, 0x30, 0x5a, 0x61, 0x25, 0xca, 0x2d, 0x47, 0xbd, 0xa8, 0x8d, 0xd4, 0x3e, 0xc4,
+	0x07, 0xc5, 0xb5, 0x88, 0x5f, 0xf6, 0x94, 0xde, 0x01, 0x58, 0xca, 0x15, 0xf2, 0x95, 0x54, 0xd2,
+	0x87, 0x5f, 0x4c, 0x8b, 0x61, 0x47, 0x5e, 0x75, 0xe0, 0xf8, 0xc9, 0x69, 0xc3, 0x92, 0xb3, 0x86,
+	0x25, 0x3f, 0x1a, 0x96, 0x9c, 0x37, 0x2c, 0xf9, 0xd2, 0x32, 0xf2, 0xbd, 0x65, 0xc9, 0x69, 0xcb,
+	0xc8, 0x59, 0xcb, 0xc8, 0xcf, 0x96, 0x91, 0xdf, 0x2d, 0x4b, 0xce, 0x5b, 0x46, 0xbe, 0xfe, 0x62,
+	0xc9, 0x87, 0x7e, 0xc7, 0x4e, 0xb2, 0xb0, 0x54, 0x8f, 0xff, 0x04, 0x00, 0x00, 0xff, 0xff, 0x3e,
+	0x8c, 0xe9, 0x05, 0x91, 0x02, 0x00, 0x00,
 }

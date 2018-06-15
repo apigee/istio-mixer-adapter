@@ -122,10 +122,12 @@ func badHandler() http.HandlerFunc {
 
 func TestVerifyAPIKeyValid(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{})
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		Client: http.DefaultClient,
+	})
 
 	apiKey := "testID"
 
@@ -150,10 +152,12 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 
 func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{})
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		Client: http.DefaultClient,
+	})
 
 	apiKey := "testID"
 
@@ -200,11 +204,12 @@ func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 
 func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
 	v := newVerifier(jwtMan, keyVerifierOpts{
 		CacheEvictionInterval: 50 * time.Millisecond,
+		Client:                http.DefaultClient,
 	})
 
 	apiKey := "testID"
@@ -259,10 +264,12 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 
 func TestVerifyAPIKeyFail(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{})
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		Client: http.DefaultClient,
+	})
 
 	ts := httptest.NewServer(badHandler())
 	defer ts.Close()
@@ -283,10 +290,12 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 
 func TestVerifyAPIKeyError(t *testing.T) {
 	env := test.NewEnv(t)
-	jwtMan := newJWTManager()
+	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{})
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		Client: http.DefaultClient,
+	})
 
 	ctx := authtest.NewContext("", test.NewEnv(t))
 	success, err := v.Verify(ctx, "badKey")

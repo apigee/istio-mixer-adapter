@@ -15,7 +15,10 @@
 package product
 
 import (
+	"fmt"
+	"net/http"
 	"net/url"
+	"time"
 
 	"istio.io/istio/mixer/pkg/adapter"
 )
@@ -24,8 +27,30 @@ import (
 const ServicesAttr = "istio-services"
 
 // NewManager creates a new product.Manager. Call Close() when done.
-func NewManager(baseURL *url.URL, env adapter.Env) *Manager {
-	pm := createManager(baseURL, env.Logger())
+func NewManager(env adapter.Env, options Options) (*Manager, error) {
+	if err := options.validate(); err != nil {
+		return nil, err
+	}
+	pm := createManager(options, env.Logger())
 	pm.start(env)
-	return pm
+	return pm, nil
+}
+
+// Options allows us to specify options for how this product manager will run.
+type Options struct {
+	// Client is a configured HTTPClient
+	Client *http.Client
+	// BaseURL of the Apigee customer proxy
+	BaseURL *url.URL
+	// RefreshRate determines how often the products are refreshed
+	RefreshRate time.Duration
+}
+
+func (o *Options) validate() error {
+	if o.Client == nil ||
+		o.BaseURL == nil ||
+		o.RefreshRate <= 0 {
+		return fmt.Errorf("all products options are required")
+	}
+	return nil
 }

@@ -64,7 +64,7 @@ func TestAnalyticsSubmit(t *testing.T) {
 	}
 	context.apigeeBase = baseURL
 	context.customerBase = baseURL
-	ab := &legacyAnalytics{}
+	ab := &legacyAnalytics{client: http.DefaultClient}
 	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err != nil {
 		t.Fatal(err)
@@ -103,7 +103,7 @@ func TestMissingOrg(t *testing.T) {
 	}
 	context.apigeeBase = baseURL
 	context.customerBase = baseURL
-	ab := &legacyAnalytics{}
+	ab := &legacyAnalytics{client: http.DefaultClient}
 	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "organization") {
 		t.Errorf("should get missing organization error, got: %s", err)
@@ -133,7 +133,7 @@ func TestMissingEnv(t *testing.T) {
 	}
 	context.apigeeBase = baseURL
 	context.customerBase = baseURL
-	ab := &legacyAnalytics{}
+	ab := &legacyAnalytics{client: http.DefaultClient}
 	err = ab.SendRecords(authContext, []Record{axRecord})
 	if err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Errorf("should get missing environment error, got: %s", err)

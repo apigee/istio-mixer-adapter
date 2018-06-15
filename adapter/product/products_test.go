@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
@@ -55,7 +56,13 @@ func TestStartStop(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := NewManager(serverURL, env)
+	opts := Options{
+		BaseURL:     serverURL,
+		RefreshRate: time.Hour,
+		Client:      http.DefaultClient,
+	}
+	p := createManager(opts, env)
+	p.start(env)
 	defer p.Close()
 	context := authtest.NewContext("", env)
 	ac := &auth.Context{
@@ -103,7 +110,7 @@ func TestResolve(t *testing.T) {
 		},
 	}
 
-	pMan := createManager(nil, nil)
+	pMan := createManager(Options{}, nil)
 	for _, p := range productsMap {
 		pMan.resolveResourceMatchers(p)
 	}
@@ -178,7 +185,7 @@ func TestValidPath(t *testing.T) {
 		{"/v1/weatherapikey/1/a/2/3/", []bool{true, false, true, false}},
 	}
 
-	pMan := createManager(nil, nil)
+	pMan := createManager(Options{}, nil)
 
 	for _, spec := range specs {
 		for j, resource := range resources {

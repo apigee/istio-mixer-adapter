@@ -22,7 +22,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
+	"os"
+	"path"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
@@ -38,9 +41,11 @@ import (
 )
 
 const (
-	jsonClaimsKey   = "json_claims"
-	apiKeyAttribute = "api_key"
-	gatewaySource   = "istio"
+	jsonClaimsKey    = "json_claims"
+	apiKeyAttribute  = "api_key"
+	gatewaySource    = "istio"
+	tempDirMode      = os.FileMode(0700)
+	certPollInterval = 0 // jwt validation not currently needed
 )
 
 type (
@@ -114,10 +119,14 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
+			ServerTimeoutSecs: 30,
+			TempDir:           "/tmp/apigee-istio",
+			Products: &config.ParamsProductOptions{
+				RefreshRateMins: 2,
+			},
 			Analytics: &config.ParamsAnalyticsOptions{
 				LegacyEndpoint: false,
-				BufferPath:     "/tmp/apigee-ax/buffer/",
-				BufferSize:     1024,
+				FileLimit:      1024,
 			},
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
@@ -157,16 +166,48 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	productMan := product.NewManager(customerBase, env)
-	authMan := auth.NewManager(env)
-	quotaMan := quota.NewManager(apigeeBase, env)
+	tempDir := b.adapterConfig.TempDir
+	if err := os.MkdirAll(tempDir, tempDirMode); err != nil {
+		return nil, err
+	}
+
+	httpClient := &http.Client{
+		Timeout: time.Duration(b.adapterConfig.ServerTimeoutSecs) * time.Second,
+	}
+
+	productMan, err := product.NewManager(env, product.Options{
+		Client:      httpClient,
+		BaseURL:     customerBase,
+		RefreshRate: time.Duration(b.adapterConfig.Products.RefreshRateMins) * time.Minute,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	authMan, err := auth.NewManager(env, auth.Options{
+		PollInterval: certPollInterval,
+		Client:       httpClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	quotaMan, err := quota.NewManager(env, quota.Options{
+		BaseURL: apigeeBase,
+		Client:  httpClient,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		LegacyEndpoint: b.adapterConfig.Analytics.LegacyEndpoint,
-		BufferPath:     b.adapterConfig.Analytics.BufferPath,
-		BufferSize:     int(b.adapterConfig.Analytics.BufferSize),
+		BufferPath:     path.Join(tempDir, "analytics"),
+		BufferSize:     int(b.adapterConfig.Analytics.FileLimit),
 		BaseURL:        *apigeeBase,
 		Key:            b.adapterConfig.Key,
 		Secret:         b.adapterConfig.Secret,
+		Client:         httpClient,
 	})
 	if err != nil {
 		return nil, err
