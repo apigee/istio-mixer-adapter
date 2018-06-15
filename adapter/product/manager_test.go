@@ -94,7 +94,12 @@ func TestManager(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createManager(serverURL, env)
+	opts := Options{
+		BaseURL:     serverURL,
+		RefreshRate: time.Hour,
+		Client:      http.DefaultClient,
+	}
+	pp := createManager(opts, env)
 	pp.start(env)
 	defer pp.Close()
 
@@ -118,11 +123,6 @@ func TestManagerPolling(t *testing.T) {
 
 	var count = 0
 	var apiProducts []APIProduct
-	oldPollInterval := pollInterval
-	pollInterval = 5 * time.Millisecond
-	defer func() {
-		pollInterval = oldPollInterval
-	}()
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
@@ -147,7 +147,12 @@ func TestManagerPolling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pp := createManager(serverURL, env)
+	opts := Options{
+		BaseURL:     serverURL,
+		RefreshRate: 5 * time.Millisecond,
+		Client:      http.DefaultClient,
+	}
+	pp := createManager(opts, env)
 	pp.start(env)
 	defer pp.Close()
 
@@ -157,7 +162,7 @@ func TestManagerPolling(t *testing.T) {
 		t.Errorf("number of products should not have incremented")
 	}
 
-	time.Sleep(pollInterval * 2)
+	time.Sleep(opts.RefreshRate * 2)
 	pp2 = len(pp.Products())
 	if pp1 == pp2 {
 		t.Errorf("number of products should have incremented")

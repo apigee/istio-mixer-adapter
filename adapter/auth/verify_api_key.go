@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/context"
+	"github.com/pkg/errors"
 	"istio.io/istio/pkg/cache"
 )
 
@@ -42,12 +43,14 @@ type keyVerifierImpl struct {
 	jwtMan *jwtManager
 	cache  cache.ExpiringCache
 	now    func() time.Time
+	client *http.Client
 }
 
 type keyVerifierOpts struct {
 	CacheTTL              time.Duration
 	CacheEvictionInterval time.Duration
 	MaxCachedEntries      int
+	Client                *http.Client
 }
 
 func newVerifier(jwtMan *jwtManager, opts keyVerifierOpts) keyVerifier {
@@ -64,6 +67,7 @@ func newVerifier(jwtMan *jwtManager, opts keyVerifierOpts) keyVerifier {
 		jwtMan: jwtMan,
 		cache:  cache.NewLRU(opts.CacheTTL, opts.CacheEvictionInterval, int32(opts.MaxCachedEntries)),
 		now:    time.Now,
+		client: opts.Client,
 	}
 }
 
@@ -86,8 +90,7 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (strin
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
-	client := http.DefaultClient
-	resp, err := client.Do(req)
+	resp, err := kv.client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -109,7 +112,7 @@ func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[strin
 		var err error
 		token, err = kv.fetchToken(ctx, apiKey)
 		if err != nil {
-			return nil, fmt.Errorf("fetchToken(): %s", err)
+			return nil, errors.Wrapf(err, "fetching token")
 		}
 	}
 
@@ -117,11 +120,11 @@ func (kv *keyVerifierImpl) Verify(ctx context.Context, apiKey string) (map[strin
 		return nil, fmt.Errorf("invalid api key")
 	}
 
-	jwt, err := kv.jwtMan.verifyJWT(ctx, token)
+	// no need to verify our own token, just parse it
+	jwt, err := kv.jwtMan.parseJWT(ctx, token, false)
 	if err != nil {
-		return nil, fmt.Errorf("verifyJWT(): %s", err)
+		return nil, errors.Wrap(err, "parsing jwt")
 	}
-
 	exp, err := parseExp(jwt)
 	if err != nil {
 		return nil, err

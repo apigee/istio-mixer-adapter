@@ -104,9 +104,12 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
+		TempDir:      d,
 		Analytics: &config.ParamsAnalyticsOptions{
-			BufferPath: d,
-			BufferSize: 10,
+			FileLimit: 10,
+		},
+		Products: &config.ParamsProductOptions{
+			RefreshRateMins: 2,
 		},
 	}
 	b.SetAdapterConfig(&validConfig)
@@ -130,9 +133,12 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      ah.Environment(),
 		Key:          ah.Key(),
 		Secret:       ah.Secret(),
+		TempDir:      d,
 		Analytics: &config.ParamsAnalyticsOptions{
-			BufferPath: d,
-			BufferSize: 10,
+			FileLimit: 10,
+		},
+		Products: &config.ParamsProductOptions{
+			RefreshRateMins: 2,
 		},
 	}
 	if !reflect.DeepEqual(validConfig, derivedConfig) {
@@ -172,6 +178,7 @@ func TestHandleAnalytics(t *testing.T) {
 		BaseURL:    url.URL{},
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("analytics.NewManager: %s", err)

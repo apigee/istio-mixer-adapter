@@ -32,7 +32,6 @@ const (
 	defaultNumSyncWorkers = 10
 	defaultRefreshAfter   = 1 * time.Minute
 	defaultDeleteAfter    = 10 * time.Minute
-	httpTimeout           = 15 * time.Second
 	syncQueueSize         = 100
 )
 
@@ -51,19 +50,20 @@ type Manager struct {
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
-func NewManager(baseURL *url.URL, env adapter.Env) *Manager {
-	m := newManager(baseURL)
+func NewManager(env adapter.Env, options Options) (*Manager, error) {
+	if err := options.validate(); err != nil {
+		return nil, err
+	}
+	m := newManager(options.BaseURL, options.Client)
 	m.Start(env)
-	return m
+	return m, nil
 }
 
 // newManager constructs a new Manager
-func newManager(baseURL *url.URL) *Manager {
+func newManager(baseURL *url.URL, client *http.Client) *Manager {
 	return &Manager{
-		close: make(chan bool),
-		client: &http.Client{
-			Timeout: httpTimeout,
-		},
+		close:          make(chan bool),
+		client:         client,
 		now:            time.Now,
 		syncRate:       defaultSyncRate,
 		buckets:        map[string]*bucket{},
@@ -174,4 +174,20 @@ func (m *Manager) syncBucketWorker() {
 			return
 		}
 	}
+}
+
+// Options allows us to specify options for how this auth manager will run
+type Options struct {
+	// Client is a configured HTTPClient
+	Client *http.Client
+	// BaseURL of the Apigee internal proxy
+	BaseURL *url.URL
+}
+
+func (o *Options) validate() error {
+	if o.Client == nil ||
+		o.BaseURL == nil {
+		return fmt.Errorf("all quota options are required")
+	}
+	return nil
 }

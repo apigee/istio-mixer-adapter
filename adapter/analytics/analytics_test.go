@@ -139,6 +139,7 @@ func TestPushAnalytics(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -263,6 +264,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -377,6 +379,7 @@ func TestAuthFailure(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -470,6 +473,7 @@ func TestUploadFailure(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -634,6 +638,7 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -738,6 +743,7 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -843,6 +849,7 @@ func TestShortCircuit(t *testing.T) {
 		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -963,6 +970,7 @@ func TestStagingSizeCap(t *testing.T) {
 			BaseURL:    *baseURL,
 			Key:        "key",
 			Secret:     "secret",
+			Client:     http.DefaultClient,
 		})
 		if err != nil {
 			t.Fatalf("newManager: %s", err)

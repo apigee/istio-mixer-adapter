@@ -132,8 +132,7 @@ func (b *bucket) sync(m *Manager) {
 
 	m.log.Debugf("Sending to %s: %s", b.quotaURL, body)
 
-	client := http.DefaultClient
-	resp, err := client.Do(req)
+	resp, err := m.client.Do(req)
 	if err != nil {
 		m.log.Errorf("unable to sync quota: %v", err)
 		return

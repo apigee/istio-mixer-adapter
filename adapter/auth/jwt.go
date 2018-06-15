@@ -31,25 +31,26 @@ import (
 
 const (
 	certsPath      = "/certs"
-	pollInterval   = 5 * time.Minute
 	acceptableSkew = 10 * time.Second
 )
 
-func newJWTManager() *jwtManager {
+func newJWTManager(pollInterval time.Duration) *jwtManager {
 	return &jwtManager{
-		closedChan: make(chan bool),
-		jwkSets:    sync.Map{},
+		closedChan:   make(chan bool),
+		jwkSets:      sync.Map{},
+		pollInterval: pollInterval,
 	}
 }
 
 // An jwtManager handles all of the various JWT authentication functionality.
 type jwtManager struct {
-	closedChan chan bool
-	jwkSets    sync.Map
+	closedChan   chan bool
+	jwkSets      sync.Map
+	pollInterval time.Duration
 }
 
 func (a *jwtManager) pollingLoop() {
-	tick := time.Tick(pollInterval)
+	tick := time.Tick(a.pollInterval)
 	for {
 		select {
 		case <-a.closedChan:
@@ -63,16 +64,19 @@ func (a *jwtManager) pollingLoop() {
 }
 
 func (a *jwtManager) start(env adapter.Env) {
-	if err := a.refresh(); err != nil {
-		log.Printf("Error refreshing auth manager: %s", err)
+	if a.pollInterval > 0 {
+		env.Logger().Debugf("starting cert polling")
+		if err := a.refresh(); err != nil {
+			log.Printf("Error refreshing auth manager: %s", err)
+		}
+		env.ScheduleDaemon(func() {
+			a.pollingLoop()
+		})
 	}
-	env.ScheduleDaemon(func() {
-		a.pollingLoop()
-	})
 }
 
 func (a *jwtManager) stop() {
-	if a != nil {
+	if a != nil && a.pollInterval > 0 {
 		a.closedChan <- true
 	}
 }
@@ -110,26 +114,32 @@ func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
 	return set.(*jwk.Set), nil
 }
 
-func (a *jwtManager) verifyJWT(ctx context.Context, raw string) (map[string]interface{}, error) {
-	set, err := a.jwkSet(ctx)
-	if err != nil {
-		return nil, err
+func (a *jwtManager) parseJWT(ctx context.Context, raw string, verify bool) (map[string]interface{}, error) {
+
+	if verify {
+		set, err := a.jwkSet(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		// verify against public keys
+		_, err = jws.VerifyWithJWKSet([]byte(raw), set, nil)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// verify against public keys
-	_, err = jws.VerifyWithJWKSet([]byte(raw), set, nil)
-	if err != nil {
-		return nil, err
-	}
+	if verify {
+		// verify fields
+		token, err := jwt.ParseString(raw)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid jws message")
+		}
 
-	// verify fields
-	token, err := jwt.ParseString(raw)
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid jws message")
-	}
-	err = token.Verify(jwt.WithAcceptableSkew(acceptableSkew))
-	if err != nil {
-		return nil, errors.Wrap(err, "invalid jws message")
+		err = token.Verify(jwt.WithAcceptableSkew(acceptableSkew))
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid jws message")
+		}
 	}
 
 	// get claims

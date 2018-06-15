@@ -39,7 +39,6 @@ import (
 const (
 	analyticsPath = "/analytics/organization/%s/environment/%s"
 	axRecordType  = "APIAnalytics"
-	httpTimeout   = 60 * time.Second
 	pathFmt       = "date=%s/time=%d-%d/"
 	bufferMode    = os.FileMode(0700)
 	tempDir       = "temp"
@@ -96,12 +95,15 @@ type Options struct {
 	Key string
 	// Secret for submit auth
 	Secret string
+	// Client is a configured HTTPClient
+	Client *http.Client
 }
 
 func (o *Options) validate() error {
 	if o.BufferPath == "" ||
 		o.BufferSize <= 0 ||
 		o.Key == "" ||
+		o.Client == nil ||
 		o.Secret == "" {
 		return fmt.Errorf("all analytics options are required")
 	}

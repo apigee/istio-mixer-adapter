@@ -58,7 +58,14 @@ func TestQuota(t *testing.T) {
 		BestEffort:  true,
 	}
 
-	m = NewManager(context.ApigeeBase(), env)
+	var err error
+	m, err = NewManager(env, Options{
+		BaseURL: context.ApigeeBase(),
+		Client:  http.DefaultClient,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer m.Close()
 
 	cases := []struct {
@@ -157,10 +164,8 @@ func TestSync(t *testing.T) {
 	}
 
 	m := &Manager{
-		close: make(chan bool),
-		client: &http.Client{
-			Timeout: httpTimeout,
-		},
+		close:          make(chan bool),
+		client:         http.DefaultClient,
 		now:            now,
 		syncRate:       2 * time.Millisecond,
 		syncQueue:      make(chan *bucket, 10),

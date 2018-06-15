@@ -18,24 +18,33 @@ package auth
 // Authenticate function.
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/apigee/istio-mixer-adapter/adapter/context"
 	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-// NewManager constructs a new Manager and begins the update loop, which
-// will periodically refresh JWT credentials. Call Close() when done.
-func NewManager(env adapter.Env) *Manager {
-	jwtMan := newJWTManager()
-	// TODO(robbrit): allow options to be configurable.
-	v := newVerifier(jwtMan, keyVerifierOpts{})
+// NewManager constructs a new Manager and begins an update loop to
+// periodically refresh JWT credentials if options.pollInterval > 0.
+// Call Close() when done.
+func NewManager(env adapter.Env, options Options) (*Manager, error) {
+	if err := options.validate(); err != nil {
+		return nil, err
+	}
+	jwtMan := newJWTManager(options.PollInterval)
+	v := newVerifier(jwtMan, keyVerifierOpts{
+		Client: options.Client,
+	})
 	am := &Manager{
 		env:      env,
 		jwtMan:   jwtMan,
 		verifier: v,
 	}
 	am.start()
-	return am
+	return am, nil
 }
 
 // An Manager handles all things related to authentication.
@@ -104,4 +113,19 @@ type NoAuthInfoError struct {
 
 func (e *NoAuthInfoError) Error() string {
 	return "missing authentication"
+}
+
+// Options allows us to specify options for how this auth manager will run
+type Options struct {
+	// PollInterval sets refresh rate of JWT credentials, disabled if = 0
+	PollInterval time.Duration
+	// Client is a configured HTTPClient
+	Client *http.Client
+}
+
+func (o *Options) validate() error {
+	if o.Client == nil {
+		return fmt.Errorf("client is required")
+	}
+	return nil
 }

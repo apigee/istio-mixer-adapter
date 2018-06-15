@@ -17,6 +17,7 @@ package auth
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	"github.com/apigee/istio-mixer-adapter/adapter/context"
@@ -64,7 +65,7 @@ func TestAuthenticate(t *testing.T) {
 
 		env := adaptertest.NewEnv(t)
 
-		jwtMan := newJWTManager()
+		jwtMan := newJWTManager(time.Hour)
 		tv := &testVerifier{
 			goodAPIKey: goodAPIKey,
 		}

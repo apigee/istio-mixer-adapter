@@ -2,7 +2,6 @@ package analytics
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"time"
@@ -21,7 +20,7 @@ type Manager interface {
 // NewManager constructs and starts a new manager. Call Close when you are done.
 func NewManager(env adapter.Env, opts Options) (Manager, error) {
 	if opts.LegacyEndpoint {
-		return &legacyAnalytics{}, nil
+		return &legacyAnalytics{client: opts.Client}, nil
 	}
 
 	m, err := newManager(opts)
@@ -47,10 +46,8 @@ func newManager(opts Options) (*manager, error) {
 	}
 
 	return &manager{
-		close: make(chan bool),
-		client: &http.Client{
-			Timeout: httpTimeout,
-		},
+		close:              make(chan bool),
+		client:             opts.Client,
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
 		tempDir:            td,

@@ -30,6 +30,7 @@ const (
 )
 
 type legacyAnalytics struct {
+	client *http.Client
 }
 
 func (oa *legacyAnalytics) Start(env adapter.Env) {}
@@ -58,8 +59,7 @@ func (oa *legacyAnalytics) SendRecords(auth *auth.Context, records []Record) err
 
 	auth.Log().Debugf("sending %d analytics records to: %s", len(records), axURL.String())
 
-	client := http.DefaultClient
-	resp, err := client.Do(req)
+	resp, err := oa.client.Do(req)
 	if err != nil {
 		return err
 	}

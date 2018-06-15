@@ -15,6 +15,7 @@
 package analytics
 
 import (
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -32,6 +33,7 @@ func TestLegacySelect(t *testing.T) {
 		BaseURL:        url.URL{},
 		Key:            "key",
 		Secret:         "secret",
+		Client:         http.DefaultClient,
 	}
 
 	m, err := NewManager(env, opts)
@@ -55,6 +57,7 @@ func TestStandardSelect(t *testing.T) {
 		BaseURL:    url.URL{},
 		Key:        "key",
 		Secret:     "secret",
+		Client:     http.DefaultClient,
 	}
 
 	m, err := NewManager(env, opts)
@@ -78,6 +81,7 @@ func TestStandardBadOptions(t *testing.T) {
 		BaseURL:    url.URL{},
 		Key:        "",
 		Secret:     "",
+		Client:     http.DefaultClient,
 	}
 
 	want := "all analytics options are required"

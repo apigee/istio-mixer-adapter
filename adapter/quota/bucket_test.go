@@ -15,6 +15,7 @@
 package quota
 
 import (
+	"net/http"
 	"net/url"
 	"reflect"
 	"sync"
@@ -101,7 +102,7 @@ func TestBucket(t *testing.T) {
 		},
 	}
 
-	m := newManager(&url.URL{})
+	m := newManager(&url.URL{}, http.DefaultClient)
 
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
