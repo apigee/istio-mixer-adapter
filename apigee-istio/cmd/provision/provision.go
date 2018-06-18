@@ -120,7 +120,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 	p.credentialURL = fmt.Sprintf(credentialURLFormat, p.InternalProxyURL, p.Org, p.Env)
 
 	var verbosef = shared.NoPrintf
-	if p.Verbose {
+	if p.Verbose || p.verifyOnly {
 		verbosef = printf
 	}
 
@@ -205,7 +205,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 				fatalf(err.Error())
 			}
 
-			if err := p.checkAndDeployProxy(internalProxyName, customizedZip, printf); err != nil {
+			if err := p.checkAndDeployProxy(internalProxyName, customizedZip, verbosef); err != nil {
 				fatalf("error deploying internal proxy: %v", err)
 			}
 		}
@@ -224,7 +224,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			fatalf(err.Error())
 		}
 
-		if err := p.checkAndDeployProxy(authProxyName, customizedProxy, printf); err != nil {
+		if err := p.checkAndDeployProxy(authProxyName, customizedProxy, verbosef); err != nil {
 			fatalf("error deploying auth proxy: %v", err)
 		}
 	}
@@ -242,15 +242,20 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 		}
 	}
 
-	printf("verifying internal proxy...")
-	p.verifyInternalProxy(opts.Auth, printf)
+	err := verifyProxies(opts.Auth)
+	if err != nil {
+		fatalf(err)
+	}
 
-	printf("verifying customer proxy...")
-	p.verifyCustomerProxy(opts.Auth, printf)
+	verbosef("verifying internal proxy...")
+	p.verifyInternalProxy(opts.Auth, verbosef)
+
+	verbosef("verifying customer proxy...")
+	p.verifyCustomerProxy(opts.Auth, verbosef)
 
 	if !p.verifyOnly {
 		if err := p.printApigeeHandler(cred, printf); err != nil {
-			fatalf("error printing handler: %v", err)
+			fatalf("error generating handler: %v", err)
 		}
 	}
 }
@@ -518,7 +523,42 @@ func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRe
 
 // verify POST internalProxyURL/analytics/organization/%s/environment/%s
 // verify POST internalProxyURL/quotas/organization/%s/environment/%s
-func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf shared.FormatFn) {
+// verify GET customerProxyURL/certs
+// verify GET customerProxyURL/products
+// verify POST customerProxyURL/verifyApiKey
+func (p *provision) verifyProxies(auth *apigee.EdgeAuth, fatalf shared.FormatFn) error {
+	var verifyErrors error
+	// verify POST internalProxyURL/analytics/organization/%s/environment/%s
+	analyticsURL := fmt.Sprintf(analyticsURLFormat, p.InternalProxyURL, p.Org, p.Env)
+	req, err := http.NewRequest(http.MethodGet, analyticsURL, nil)
+	if err != nil {
+		fatalf("unable to create request", err)
+	}
+	req.SetBasicAuth(auth.Username, auth.Password)
+	q := req.URL.Query()
+	q.Add("tenant", "fake")
+	q.Add("relative_file_path", "fake")
+	q.Add("file_content_type", "application/x-gzip")
+	q.Add("encrypt", "true")
+	req.URL.RawQuery = q.Encode()
+	var resp *apigee.Response
+	resp, err = p.Client.Do(req, nil)
+	if err == nil && resp.StatusCode != 200 {
+		var body []byte
+		if body, err = ioutil.ReadAll(resp.Body); err == nil {
+			err = fmt.Errorf("response code: %d, body: %s", resp.StatusCode, string(body))
+		}
+	}
+	if err != nil {
+		verifyErrors
+	}
+	printVerify(analyticsURL, err, printf)
+
+}
+
+// verify POST internalProxyURL/analytics/organization/%s/environment/%s
+// verify POST internalProxyURL/quotas/organization/%s/environment/%s
+func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf shared.FormatFn) error {
 	analyticsURL := fmt.Sprintf(analyticsURLFormat, p.InternalProxyURL, p.Org, p.Env)
 	req, err := http.NewRequest(http.MethodGet, analyticsURL, nil)
 	if err != nil {
@@ -559,7 +599,7 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf shared.For
 // verify GET customerProxyURL/certs
 // verify GET customerProxyURL/products
 // verify POST customerProxyURL/verifyApiKey
-func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf shared.FormatFn) {
+func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf shared.FormatFn) error {
 	certsURL := fmt.Sprintf(certsURLFormat, p.CustomerProxyURL)
 	printVerify(certsURL, p.verifyGET(certsURL), printf)
 

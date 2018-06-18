@@ -18,7 +18,7 @@ archive:
   files:
     - LICENSE
     - README.md
-    - install/*.yaml
+    - samples/*.yaml
 git:
   short_hash: true
 release:

@@ -37,9 +37,6 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 		Use:   "apigee-istio",
 		Short: "Utility to work with Apigee and Istio.",
 		Long:  "This command lets you interact with Apigee and Istio.",
-		//PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		//	return rootArgs.Resolve()
-		//},
 	}
 	c.SetArgs(args)
 	c.PersistentFlags().AddGoFlagSet(flag.CommandLine)
