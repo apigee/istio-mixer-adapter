@@ -18,7 +18,8 @@ archive:
   files:
     - LICENSE
     - README.md
-    - samples/*.yaml
+    - samples/apigee/*.yaml
+    - samples/istio/*.yaml
 git:
   short_hash: true
 release:
