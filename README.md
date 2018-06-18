@@ -17,7 +17,9 @@ To join the Apigee pre-release program for additional documentation and support,
 
 ## Version note
 
-The information below assumes release alpha-2 or better and requires Istio 0.8 or higher. (To install alpha-1 on Istio 0.7.1, you may follow the README [here](https://github.com/apigee/istio-mixer-adapter/blob/3a62ff2a42f0b10d56b14f36b2c5867137748396/README.md), but it is not supported).
+The current release is based on Istio 0.8. The included sample files and instructions below will 
+automatically install the correct Istio version for you onto Kubernetes. It is recommended that
+you install onto Kubernetes 1.9 or newer. See the [Istio](https://istio.io) web page for more information.  
 
 ## Prerequisite: Apigee
 
@@ -31,20 +33,27 @@ Download the appropriate release package for your operating system and extract i
 
     LICENSE
     README.md
-    install/api-spec.yaml
-    install/apigee-definitions.yaml
-    install/apigee-handler.yaml
-    install/apigee-rule.yaml
+    samples/apigee/authentication-policy.yaml
+    samples/apigee/definitions.yaml
+    install/handler.yaml
+    install/httpapispec.yaml
+    install/rule.yaml
     install/authentication-policy.yaml
+    samples/istio/helloworld.yaml
+    samples/istio/istio-demo.yaml
+    samples/istio/istio-demo-auth.yaml
     apigee-istio
- 
-`apigee-istio` (or apigee-istio.exe on Windows) is the Command Line Interface (CLI) for this project. You may put it on your PATH for quick access - or just remember to specify the path for the commands below.
 
-The yaml files in the install/ directory contain the configuration for the adapter. We'll discuss these in a bit.
+`apigee-istio` (or apigee-istio.exe on Windows) is the Command Line Interface (CLI) for this project. 
+You may add it to your PATH for quick access - or remember to specify the path for the commands below.
+
+The yaml files in the samples/ directory contain the configuration for Istio and the adapter. We discuss 
+these below.
 
 ## Provision Apigee for Istio
 
-The first thing you'll need to do is provision Apigee. The `apigee-istio` command will do the work for you:
+The first thing you'll need to do is provision your Apigee environment to work with the Istio adapter. 
+This will install a proxy, set up a certificate, and generate some credentials for you:  
 
     apigee-istio -u {your username} -p {your password} -o {your organization name} -e {your environment name} provision
 
@@ -76,50 +85,66 @@ That last block is important: It's the configuration for your handler. We'll use
 
 Notes:
 
-* For Apigee Private Cloud (OPDK), you'll need to also specify your `--managementBase` in the command.  
-* `apigee-istio` will automatically pick up the username and password from a [.netrc](https://ec.haxx.se/usingcurl-netrc.html) file in your home directory if you have an entry for `machine api.enterprise.apigee.com` (or whatever you set as managementBase).
+* `apigee-istio` will automatically pick up the username and password from a 
+[.netrc](https://ec.haxx.se/usingcurl-netrc.html) file in your home directory if you have an entry for 
+`machine api.enterprise.apigee.com`.
+* For Apigee Private Cloud (OPDK), you'll need to also specify your `--managementBase` in the command.
+In this case, the .netrc entry should match this host. 
 
 ### Set your configuration 
 
-Edit `install/apigee-handler.yaml` and replace the configuration with what you got during provisioning above. You may simply replace the contents of the entire file with that configuration block.
+Edit `samples/apigee/handler.yaml` and replace the configuration with what you got during provisioning above. 
+You may simply replace the contents of the entire file with that configuration block.
 
 ## Install Istio with Apigee mixer
 
-The quickest way to get started with Istio is to follow the [Istio Kubernetes Quick Start](https://istio.io/docs/setup/kubernetes/quick-start.html). Be sure to download Istio version 0.8.0.
+Be sure both your Kubernetes cluster and `kubectl` CLI are ready to use. Two sample Istio install files have 
+been provided for you in the release as a convenience. 
 
-BUT! Before you install Istio into Kubernetes (step 5: Install Istio’s core components), you'll need to edit Istio's install file to point to the Apigee mixer including the adapter instead of the generic Istio mixer.
+To start Istio without mutual TLS enabled between services, you can simply run:
 
-In the Istio directory, just edit `install/kubernetes/istio-demo.yaml` or `install/kubernetes/istio-demo-auth.yaml` to change the mixer image Istio will use:
+     kubectl apply -f samples/istio/istio-demo.yaml
+     
+Or with mutual TLS enabled with:
 
-Find:
+    kubectl apply -f samples/istio/istio-demo-auth.yaml
     
-    docker.io/istio/mixer:0.8.0
+Note: The key difference between these files and the ones provided with Istio is simply that the pointer 
+to the `docker.io/istio/mixer` docker image in the original files have been replaced with a custom build 
+that includes the Apigee adapter.
+ 
+You should soon be able to now see all the Istio components running in your Kubernetes cluster:
+
+    kubectl get pods -n istio-system
     
-and replace with:
+Be sure istio-pilot, istio-ingressgateway, istio-policy, istio-telemetry, and istio-citadel are running
+before continuing. More information on verifying the Istio installation is
+[here](https://istio.io/docs/setup/kubernetes/quick-start/#verifying-the-installation).
+ 
+## Install a target service
 
-    gcr.io/apigee-api-management-istio/istio-mixer:1.0.0-alpha-2
+We'll install a simple [Hello World](https://github.com/istio/istio/tree/master/samples/helloworld)
+application.
+
+    kubectl apply -f samples/istio/helloworld.yaml
     
-Important: There will two instances: One for policy, one for telemetry. Replace both.
+You should be able to verify two instances are running:
 
-Now you may finish installing and verifying Istio per the Quick Start instructions.  
+    kubectl get pods
 
-## Install your service
-
-For the following, we'll assume you've installed Istio's [Hello World](https://github.com/istio/istio/tree/master/samples/helloworld).
-
-Once installed, you should be able to access the service successfully:
+And now you should be able to access the service successfully:
 
     curl http://${GATEWAY_URL}/hello
 
 ## Configure Apigee Mixer in Istio
 
-Now, apply the Apigee configuration to Istio:
+Now that Istio is running, it's time to add Apigee policies. Apply the Apigee configuration:
 
         kubectl apply -f apigee-definitions.yaml
         kubectl apply -f apigee-handler.yaml
         kubectl apply -f apigee-rule.yaml
 
-Once this has been done, you should no longer be able to access your helloworld service as it 
+Once this has been done, you should no longer be able to access your `helloworld` service as it 
 will now be protected per your Apigee policy. If you curl it:
 
     curl http://${GATEWAY_URL}/hello
@@ -128,49 +153,58 @@ You should receive a permission denied error:
 
     PERMISSION_DENIED:apigee-handler.apigee.istio-system:missing authentication
     
-If only you had some credentials! Let's fix that...
+Great! Now if only you had some credentials. Let's fix that...
 
-### Configure an Apigee API Product to represent your service
+### Configure your policies as an Apigee API Product
 
-Create an [API Product](https://apigee.com/apiproducts) in your Apigee organization:
+[Create an API Product](https://apigee.com/apiproducts) in your Apigee organization:
 
-* Give the API Product definition a name (`helloworld` is fine).
-* Make sure the correct environment is checked.
+* Give the API Product definition a name (`helloworld` is good).
+* Select all environment(s).
 * Set the Quota to `5` requests every `1` `minute`.
-* Add a Path with the `+Custom Resource` button. Set it to `/`.
-* Add an Attribute with the `+Custom Attribute` button. Set the `key` to `istio-services` and the `value` to `helloworld.default.svc.cluster.local`. 
-* Save
+* Add a Path with the `+Custom Resource` button. Set the path to `/`.
+* Save the product.
 
-Create a [Developer](https://apigee.com/developers)
-* Use any values you want
+[Create a Developer](https://apigee.com/developers) using any values you wish.
 
-Create an [App](https://apigee.com/apps)
-* Give your App a name (`helloworld` is fine)
-* Select your developer
-* Add your API Product with the `+Product` button.
+[Create an App](https://apigee.com/apps):
+
+* Give your App a name (`helloworld` is good)
+* Select the developer you just created
+* Add your API Product with the `+Product` button and save.
 * Save
 
 Still on the App page, you should now see a `Credentials` section. Click the `Show` button 
 under the `Consumer Key` heading. Copy that key!
 
+### Bind your Apigee API Product to your service
+
+Now that you have a policy, we just need to bind it to your Istio service:
+
+    apigee-istio -o {your organization name} -e {your environment name} bindings add helloworld.default.svc.cluster.local  helloworld
+
+By the way, a handy way to see the policies bound to your services is using the `bindings list` command:
+
+    apigee-istio -o {your organization name} -e {your environment name} bindings list
+
 ### Access helloworld with your key
 
-You should now be able to access the helloworld service in Istio by passing the key you just 
-copied from your Apigee app. Just send it as part of the header:
+You should now be able to access the helloworld service in Istio by passing the key you  
+copied from your Apigee app above. Just send it as part of the header:
     
     curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
 This call should now be successful. Your authentication policy works!
 
-### Quota: Check your quota (unreleased: nightly build only)
+### Hit your Quota
 
 Remember that Quota you set for 5 requests per minute? Let's max it out.
 
-Make that same request a few more times:
+Make the same request you did above just a few more times:
 
     curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
-Or, if you're in a Unix shell, you can use repeat:
+If you're in a Unix shell, you can use repeat:
 
     repeat 10 curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
     
@@ -178,45 +212,45 @@ Either way, you should see some successful calls... followed by failures that lo
 
     RESOURCE_EXHAUSTED:apigee-handler.apigee.istio-system:quota exceeded 
 
-(Did you see mixed successes and failures? That's OK! The Quota system is designed to have 
+(Did you see mixed successes and failures? That's OK. The Quota system is designed to have 
 very low latency for your requests, so it uses a cache that is _eventually consistent_ with 
-the remote server. Client requests don't wait for the server to respond and you might have 
-inconsistent results for a second or two, but it will be worked out fairly quickly and nobody 
-has to wait in the meantime.) 
+the remote server. Client requests don't wait for the server to respond and you could have 
+inconsistent results for a second or two, but it will be worked out quickly and no clients 
+have to wait in the meantime.) 
 
-### Bonus: Force JWT authentication
+### Bonus: Use JWT authentication instead of API Keys
 
-Update the `install/authentication-policy.yaml` file to set your correct URLs:
+Update the `install/authentication-policy.yaml` file to set correct URLs for your environment:
 
     origins:
     - jwt:
         issuer: https://{your organization}-{your environment}.apigee.net/istio-auth/token
         jwks_uri: https://{your organization}-{your environment}.apigee.net/istio-auth/certs
 
-The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above,
-adjust as appropriate if you are using OPDK.
+The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above
+(adjust as appropriate if you're using OPDK).
 
 Now, apply your Istio authentication policy:
 
-    istioctl create -f authentication-policy.yaml
+    istioctl create -f samples/apigee/authentication-policy.yaml
 
-Calls to helloworld should now fail (with or without the API Key):
+Now calls to `helloworld` (with or without the API Key):
 
     curl http://${GATEWAY_URL}/hello
     
-And should receive an auth error:
+Should receive an auth error similar to:
 
     Origin authentication failed.
 
-Now get a JWT Bearer token:
+We need a JWT token. So have `apigee-istio` get you a JWT token:
 
     apigee-istio token create -o {your organization} -e {your environment} -i {your key} -s {your secret}
     
-or
+Or, you can do it yourself through the API: 
 
     curl https://{your organization}-{your environment}.apigee.net/istio-auth/token -d '{ "client_id":"{your key}", "client_secret":"your secret", "grant_type":"client_credentials" }' -H "Content-Type: application/json"
 
-Try again with your token:
+Now, try again with your newly minted JWT token:
 
     curl http://${GATEWAY_URL}/hello -H "Authorization: Bearer {your jwt token}"
 

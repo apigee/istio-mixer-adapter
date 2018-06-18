@@ -16,3 +16,11 @@ spec:
   env_name: REPLACE ME
   key: REPLACE ME
   secret: REPLACE ME
+
+  temp_dir: "/tmp/apigee-istio"
+  server_timeout_secs: 60,
+  products:
+    refresh_rate_mins: 1
+  analytics:
+    legacy_endpoint: false
+    file_limit: 1024
