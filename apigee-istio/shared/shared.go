@@ -120,13 +120,18 @@ type FormatFn func(format string, args ...interface{})
 // Fatalf is a FormatFn that prints the formatted string to os.Stderr and then
 // calls os.Exit().
 func Fatalf(format string, args ...interface{}) {
-	_, _ = fmt.Fprintf(os.Stderr, format+"\n", args...) // #nosec
+	Errorf(format, args)
 	os.Exit(-1)
 }
 
 // Printf is a FormatFn that prints the formatted string to os.Stdout.
 func Printf(format string, args ...interface{}) {
 	fmt.Printf(format+"\n", args...)
+}
+
+// Errorf is a FormatFn that prints the formatted string to os.Stderr.
+func Errorf(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
 }
 
 // NoPrintf is a FormatFn that does nothing
