@@ -12,7 +12,6 @@ spec:
   targets:
   - name: helloworld
   peers:
-  - mtls:
   origins:
   - jwt:
       issuer: REPLACE ME
