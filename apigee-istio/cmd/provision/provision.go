@@ -61,11 +61,12 @@ const (
 	authProxyZip     = "istio-auth.zip"
 	internalProxyZip = "istio-internal.zip"
 
-	certsURLFormat        = "%s/certs"                                    // customerProxyURL
-	productsURLFormat     = "%s/products"                                 // customerProxyURL
-	verifyAPIKeyURLFormat = "%s/verifyApiKey"                             // customerProxyURL
-	analyticsURLFormat    = "%s/analytics/organization/%s/environment/%s" // internalProxyURL, org, env
-	quotasURLFormat       = "%s/quotas/organization/%s/environment/%s"    // internalProxyURL, org, env
+	certsURLFormat          = "%s/certs"                                      // customerProxyURL
+	productsURLFormat       = "%s/products"                                   // customerProxyURL
+	verifyAPIKeyURLFormat   = "%s/verifyApiKey"                               // customerProxyURL
+	analyticsURLFormat      = "%s/analytics/organization/%s/environment/%s"   // internalProxyURL, org, env
+	quotasURLFormat         = "%s/quotas/organization/%s/environment/%s"      // internalProxyURL, org, env
+	legacyAnalyticURLFormat = "%s/axpublisher/organization/%s/environment/%s" // internalProxyURL, org, env
 
 	virtualHostReplaceText    = "<VirtualHost>default</VirtualHost>"
 	virtualHostReplacementFmt = "<VirtualHost>%s</VirtualHost>" // each virtualHost
@@ -539,18 +540,29 @@ func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRe
 // verify POST internalProxyURL/quotas/organization/%s/environment/%s
 func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf shared.FormatFn) error {
 	var verifyErrors error
-	analyticsURL := fmt.Sprintf(analyticsURLFormat, p.InternalProxyURL, p.Org, p.Env)
-	req, err := http.NewRequest(http.MethodGet, analyticsURL, nil)
-	if err != nil {
-		fatalf("unable to create request", err)
+
+	var req *http.Request
+	var err error
+	if p.IsOPDK {
+		analyticsURL := fmt.Sprintf(legacyAnalyticURLFormat, p.InternalProxyURL, p.Org, p.Env)
+		req, err = http.NewRequest(http.MethodPost, analyticsURL, strings.NewReader("{}"))
+		if err != nil {
+			fatalf("unable to create request", err)
+		}
+	} else {
+		analyticsURL := fmt.Sprintf(analyticsURLFormat, p.InternalProxyURL, p.Org, p.Env)
+		req, err = http.NewRequest(http.MethodGet, analyticsURL, nil)
+		if err != nil {
+			fatalf("unable to create request", err)
+		}
+		q := req.URL.Query()
+		q.Add("tenant", fmt.Sprintf("%s~%s", p.Org, p.Env))
+		q.Add("relative_file_path", "fake")
+		q.Add("file_content_type", "application/x-gzip")
+		q.Add("encrypt", "true")
+		req.URL.RawQuery = q.Encode()
 	}
 	req.SetBasicAuth(auth.Username, auth.Password)
-	q := req.URL.Query()
-	q.Add("tenant", fmt.Sprintf("%s~%s", p.Org, p.Env))
-	q.Add("relative_file_path", "fake")
-	q.Add("file_content_type", "application/x-gzip")
-	q.Add("encrypt", "true")
-	req.URL.RawQuery = q.Encode()
 	resp, err := p.Client.Do(req, nil)
 	defer resp.Body.Close()
 	if err != nil && resp == nil {
