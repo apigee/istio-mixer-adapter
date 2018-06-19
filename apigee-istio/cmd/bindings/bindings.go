@@ -30,7 +30,7 @@ import (
 const (
 	servicesAttr         = "istio-services"
 	productsURLFormat    = "%s/products"                                         // customerProxyURL
-	productAttrURLFormat = "%s/v1/o/theganyo1-eval/apiproducts/%s/attributes/%s" // ManagementBase, prod, attr
+	productAttrURLFormat = "%s/v1/o/%s/apiproducts/%s/attributes/%s" // ManagementBase, prod, attr
 )
 
 type bindings struct {
@@ -242,7 +242,7 @@ func (b *bindings) updateServiceBindings(p *product.APIProduct, bindings []strin
 	if err != nil {
 		return err
 	}
-	path := fmt.Sprintf(productAttrURLFormat, b.ManagementBase, p.Name, servicesAttr)
+	path := fmt.Sprintf(productAttrURLFormat, b.ManagementBase, b.Org, p.Name, servicesAttr)
 	req.URL.Path = path // hack: negate client's incorrect method of determining base URL
 	var attr product.Attribute
 	_, err = b.Client.Do(req, &attr)
