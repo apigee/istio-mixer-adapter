@@ -6,11 +6,15 @@
 #  1. set RELEASE env var
 #     (eg. `RELEASE=1.0.0-alpha-2`)
 #  2. create a release branch: `git checkout -b $RELEASE`
-#  3. Make release updates and commit
-#     a. update README.md to appropriate versions and instructions
-#     b. update DEFAULT_ISTIO_VERSION in `bin/local_install.sh`
-#     c. run `bin/build_proxy_resources.sh`
-#  4. `git tag ${RELEASE};git push origin --tags`
+#  3. make release updates
+#     a. update README.md to appropriate versions and instructions as necessary
+#     b. update DEFAULT_ISTIO_VERSION in `bin/local_install.sh` as necessary
+#     c. replace `samples/istio/istio-demo.yaml`, `istio-demo-auth.yaml`, `helloworld` from base Istio
+#     c. update `samples/istio/istio-demo.yaml`, `samples/istio/istio-demo-auth.yaml` mixer images
+#     d. update version in `auth-proxy/apiproxy/policies/Send-Version.xml`
+#     e. run `bin/build_proxy_resources.sh`
+#     f. commit `git commit -am ${RELEASE}`
+#  4. create tag and push: `git tag ${RELEASE};git push origin --tags`
 #     (CircleCI will automatically build and tag docker image)
 #  5. verify the image
 #     (gcr.io/apigee-api-management-istio/istio-mixer:$RELEASE)
