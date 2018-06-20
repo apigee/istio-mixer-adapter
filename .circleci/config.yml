@@ -57,6 +57,7 @@ jobs:
           command: TAG=${CIRCLE_TAG:-latest} GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer-debug:$TAG ./bin/build_mixer_docker.sh
       - run:
           command: DRYRUN=1 ./bin/build_release.sh
+      - store_artifacts:
           path: /go/src/github.com/apigee/istio-mixer-adapter/dist
           destination: dist
 
@@ -81,6 +82,7 @@ jobs:
           command: TAG=nightly GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer-debug:$TAG ./bin/build_mixer_docker.sh
       - run:
           command: DRYRUN=1 ./bin/build_release.sh
+      - store_artifacts:
           path: /go/src/github.com/apigee/istio-mixer-adapter/dist
           destination: dist
 
