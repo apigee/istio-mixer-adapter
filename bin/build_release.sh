@@ -23,6 +23,8 @@
 #  9. merge and final verifications
 # 10. publish release on Github
 
+# use DRYRUN=1 to test build
+
 if [[ "${GOPATH}" == "" ]]; then
   echo "GOPATH not set, please set it."
   exit 1
@@ -41,5 +43,12 @@ if [ ! -d "${ADAPTER_DIR}" ]; then
   exit 1
 fi
 
+DRYRUN_ARGS=""
+if [[ "${DRYRUN}" == "1" ]]; then
+  echo "Dry run, will not label or push to Github"
+  DRYRUN_ARGS="--skip-publish --skip-validate"
+fi
+
+
 cd "${ADAPTER_DIR}"
-goreleaser --rm-dist
+goreleaser --rm-dist ${DRYRUN_ARGS}
