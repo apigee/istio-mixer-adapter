@@ -14,6 +14,7 @@
         <Policy>Access-App-Info</Policy>
         <Policy>AccessTokenRequest</Policy>
         <Policy>Authenticate-Call</Policy>
+        <Policy>AuthenticationError</Policy>
         <Policy>Create-OAuth-Request</Policy>
         <Policy>Create-Refresh-Request</Policy>
         <Policy>Extract-API-Key</Policy>
