@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <ProxyEndpoint name="default">
     <Description/>
-    <FaultRules/>
+    <FaultRules>
+        <FaultRule name="AuthenticationError">
+            <Condition>(fault.name Matches "ExecutionFailed") </Condition>
+            <Step>
+                <Name>AuthenticationError</Name>
+                <Condition>(calloutResponse.status.code = "401") </Condition>
+            </Step>
+        </FaultRule>
+    </FaultRules>
     <Flows>
         <Flow name="Verify API Key">
             <Description/>
