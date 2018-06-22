@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/context"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -31,6 +32,7 @@ const (
 	scopesClaim          = "scopes"
 	expClaim             = "exp"
 	developerEmailClaim  = "application_developeremail"
+	accessTokenClaim     = "access_token"
 )
 
 var (
@@ -58,7 +60,7 @@ type Context struct {
 func parseExp(claims map[string]interface{}) (time.Time, error) {
 	// JSON decodes this struct to either float64 or string, so we won't
 	// need to check anything else.
-	switch exp := claims["exp"].(type) {
+	switch exp := claims[expClaim].(type) {
 	case float64:
 		return time.Unix(int64(exp), 0), nil
 	case string:
@@ -69,7 +71,7 @@ func parseExp(claims map[string]interface{}) (time.Time, error) {
 		}
 		return time.Unix(expi, 0), nil
 	}
-	return time.Time{}, fmt.Errorf("unknown type for time %s: %T", claims["exp"], claims["exp"])
+	return time.Time{}, fmt.Errorf("unknown type for exp %v: %T", claims[expClaim], claims[expClaim])
 }
 
 // does nothing if claims is nil
@@ -80,12 +82,12 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 
 	products, err := parseArrayOfStrings(claims[apiProductListClaim])
 	if err != nil {
-		return fmt.Errorf("unable to interpret api_product_list: %v", claims[apiProductListClaim])
+		return errors.Wrapf(err, "unable to interpret api_product_list: %v", claims[apiProductListClaim])
 	}
 
 	scopes, err := parseArrayOfStrings(claims[scopesClaim])
 	if err != nil {
-		return fmt.Errorf("unable to interpret scopes: %v", claims[scopesClaim])
+		return errors.Wrapf(err, "unable to interpret scopes: %v", claims[scopesClaim])
 	}
 
 	exp, err := parseExp(claims)
@@ -95,21 +97,26 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 
 	var ok bool
 	if a.ClientID, ok = claims[clientIDClaim].(string); !ok {
-		return fmt.Errorf("unable to interpret %s: %v", clientIDClaim, claims[clientIDClaim])
+		return errors.Wrapf(err, "unable to interpret %s: %v", clientIDClaim, claims[clientIDClaim])
 	}
 	if a.Application, ok = claims[applicationNameClaim].(string); !ok {
-		return fmt.Errorf("unable to interpret %s: %v", applicationNameClaim, claims[applicationNameClaim])
+		return errors.Wrapf(err, "unable to interpret %s: %v", applicationNameClaim, claims[applicationNameClaim])
 	}
 	a.APIProducts = products
 	a.Scopes = scopes
 	a.Expires = exp
 	a.DeveloperEmail, _ = claims[developerEmailClaim].(string)
+	a.AccessToken, _ = claims[accessTokenClaim].(string)
 
 	return nil
 }
 
 func parseArrayOfStrings(obj interface{}) (results []string, err error) {
-	if arr, ok := obj.([]interface{}); ok {
+	if obj == nil {
+		// nil is ok
+	} else if arr, ok := obj.([]string); ok {
+		results = arr
+	} else if arr, ok := obj.([]interface{}); ok {
 		for _, unk := range arr {
 			if obj, ok := unk.(string); ok {
 				results = append(results, obj)
@@ -118,10 +125,10 @@ func parseArrayOfStrings(obj interface{}) (results []string, err error) {
 				break
 			}
 		}
-		return results, err
 	} else if str, ok := obj.(string); ok {
 		err = json.Unmarshal([]byte(str), &results)
-		return
+	} else {
+		err = fmt.Errorf("unable to interpret: %v", obj)
 	}
 	return
 }

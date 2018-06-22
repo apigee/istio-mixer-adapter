@@ -16,6 +16,7 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -43,6 +44,26 @@ func (tv *testVerifier) Verify(ctx context.Context, apiKey string) (map[string]i
 	}
 	// Just return some dummy value.
 	return testJWTClaims, nil
+}
+
+func TestNewManager(t *testing.T) {
+	env := adaptertest.NewEnv(t)
+	opts := Options{
+		PollInterval: time.Hour,
+		Client:       &http.Client{},
+	}
+	man, err := NewManager(env, opts)
+	if err != nil {
+		t.Fatalf("create and start manager: %v", err)
+	}
+	if opts.PollInterval != man.jwtMan.pollInterval {
+		t.Errorf("pollInterval want: %v, got: %v", opts.PollInterval, man.jwtMan.pollInterval)
+	}
+	verifier := man.verifier.(*keyVerifierImpl)
+	if opts.Client != verifier.client {
+		t.Errorf("client want: %v, got: %v", opts.Client, verifier.client)
+	}
+	man.Close()
 }
 
 func TestAuthenticate(t *testing.T) {
