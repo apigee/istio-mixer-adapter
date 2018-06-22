@@ -343,12 +343,21 @@ func (p *APIProduct) isValidScopes(scopes []string) bool {
 	return false
 }
 
-// GetBoundServices returns an array of service names bound to this product
-func (p *APIProduct) GetBoundServices() []string {
+// GetServicesAttribute returns a pointer the services attribute or nil
+func (p *APIProduct) GetServicesAttribute() *Attribute {
 	for _, attr := range p.Attributes {
 		if attr.Name == ServicesAttr {
-			return strings.Split(attr.Value, ",")
+			return &attr
 		}
+	}
+	return nil
+}
+
+// GetBoundServices returns an array of service names bound to this product
+func (p *APIProduct) GetBoundServices() []string {
+	attr := p.GetServicesAttribute()
+	if attr != nil {
+		return strings.Split(attr.Value, ",")
 	}
 	return nil
 }

@@ -28,9 +28,9 @@ import (
 )
 
 const (
-	servicesAttr         = "istio-services"
-	productsURLFormat    = "%s/products"                                         // customerProxyURL
-	productAttrURLFormat = "%s/v1/o/%s/apiproducts/%s/attributes/%s" // ManagementBase, prod, attr
+	servicesAttr          = "istio-services"
+	productsURLFormat     = "%s/products"                        // customerProxyURL
+	productAttrPathFormat = "/v1/o/%s/apiproducts/%s/attributes" // ManagementBase, prod
 )
 
 type bindings struct {
@@ -175,7 +175,7 @@ func (b *bindings) cmdList(printf, fatalf shared.FormatFn) error {
 		}
 		p.Targets = p.GetBoundServices()
 		if p.Targets == nil {
-			unbound = append(bound, p)
+			unbound = append(unbound, p)
 		} else {
 			bound = append(bound, p)
 		}
@@ -213,7 +213,7 @@ func (b *bindings) bindService(p *product.APIProduct, service string, printf, fa
 	}
 	err := b.updateServiceBindings(p, append(boundServices, service))
 	if err != nil {
-		fatalf("error removing service %s from %s: %v", service, p.Name, err)
+		fatalf("error binding service %s to %s: %v", service, p.Name, err)
 	}
 	printf("product %s is now bound to: %s", p.Name, service)
 }
@@ -233,19 +233,28 @@ func (b *bindings) unbindService(p *product.APIProduct, service string, printf, 
 }
 
 func (b *bindings) updateServiceBindings(p *product.APIProduct, bindings []string) error {
-	newAttr := struct {
-		Value string `json:"value"`
-	}{
-		Value: strings.Join(bindings, ","),
+	bindingsString := strings.Join(bindings, ",")
+	var attributes []product.Attribute
+	for _, a := range p.Attributes {
+		if a.Name != servicesAttr {
+			attributes = append(attributes, a)
+		}
 	}
-	req, err := b.Client.NewRequest(http.MethodPost, "", newAttr)
+	attributes = append(attributes, product.Attribute{
+		Name:  servicesAttr,
+		Value: bindingsString,
+	})
+	newAttrs := attrUpdate{
+		Attributes: attributes,
+	}
+	req, err := b.Client.NewRequest(http.MethodPost, "", newAttrs)
 	if err != nil {
 		return err
 	}
-	path := fmt.Sprintf(productAttrURLFormat, b.ManagementBase, b.Org, p.Name, servicesAttr)
+	path := fmt.Sprintf(productAttrPathFormat, b.Org, p.Name)
 	req.URL.Path = path // hack: negate client's incorrect method of determining base URL
-	var attr product.Attribute
-	_, err = b.Client.Do(req, &attr)
+	var attrResult attrUpdate
+	_, err = b.Client.Do(req, &attrResult)
 	return err
 }
 
@@ -259,6 +268,10 @@ func indexOf(array []string, val string) (index int, exists bool) {
 		}
 	}
 	return
+}
+
+type attrUpdate struct {
+	Attributes []product.Attribute `json:"attribute,omitempty"`
 }
 
 type byName []product.APIProduct
