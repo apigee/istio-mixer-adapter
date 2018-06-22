@@ -32,6 +32,7 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
+	"go.uber.org/multierr"
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 
@@ -195,6 +196,11 @@ func TestPushAnalytics(t *testing.T) {
 	ctx := &auth.Context{Context: tc}
 
 	if err := m.SendRecords(ctx, wantRecords[t1][0].records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Send an invalid record
+	if err := m.SendRecords(ctx, []Record{{}}); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
@@ -643,13 +649,11 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	// Set logger so we can log things while debugging.
-	env := adaptertest.NewEnv(t)
-	m.log = env.Logger()
+	m.log = adaptertest.NewEnv(t)
 
 	// Put two files into the temp dir:
 	// - a good gzip file
-	// - a corrupted gzip file
+	// - an unrecoverable file
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 	rec := Record{
 		Organization:                 "hi",
@@ -681,18 +685,13 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 	f.Close()
 
 	f, _ = os.Create(brokeFile)
-	gz = gzip.NewWriter(f)
-	json.NewEncoder(gz).Encode(&rec)
-	// Close the file, but don't close the gzip to ensure it's broken.
-	gz.Flush()
+	f.WriteString("this is not a json record")
 	f.Close()
 
-	// Now attempt recovery.
-	if err := m.crashRecovery(); err != nil {
-		t.Fatal(err)
+	if err := m.crashRecovery(); len(multierr.Errors(err)) != 1 {
+		t.Fatal("should have had an error for the bad file")
 	}
 
-	// We should have two proper gzip files in the staging dir.
 	files, err := ioutil.ReadDir(targetBucket)
 	if err != nil {
 		t.Fatalf("ls %s: %s", targetBucket, err)
@@ -705,7 +704,6 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 		}
 	}
 	for _, fi := range files {
-		// Confirm that it's a valid gzip file.
 		f, err := os.Open(path.Join(targetBucket, fi.Name()))
 		if err != nil {
 			t.Fatalf("error opening %s: %s", fi.Name(), err)
@@ -748,13 +746,11 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	// Set logger so we can log things while debugging.
-	env := adaptertest.NewEnv(t)
-	m.log = env.Logger()
+	m.log = adaptertest.NewEnv(t)
 
 	// Put two files into the temp dir:
 	// - a good gzip file
-	// - a corrupted gzip file
+	// - a corrupted but recoverable gzip file
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 	rec := Record{
 		Organization:                 "hi",
@@ -790,14 +786,13 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 	json.NewEncoder(gz).Encode(&rec)
 	gz.Flush()
 	gz.Close()
+	f.WriteString("this is not a json record")
 	f.Close()
 
-	// Now attempt recovery.
-	if err := m.crashRecovery(); err != nil {
-		t.Fatal(err)
+	if err := m.crashRecovery(); len(multierr.Errors(err)) != 1 {
+		t.Fatal("should have had an error for the bad file")
 	}
 
-	// We should have two proper gzip files in the staging dir.
 	files, err := ioutil.ReadDir(targetBucket)
 	if err != nil {
 		t.Fatalf("ls %s: %s", targetBucket, err)

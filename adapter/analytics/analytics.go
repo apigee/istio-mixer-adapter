@@ -70,8 +70,8 @@ type manager struct {
 	now                func() time.Time
 	log                adapter.Logger
 	collectionInterval time.Duration
-	tempDir            string
-	stagingDir         string
+	tempDir            string // open gzip files being written to
+	stagingDir         string // gzip files staged for upload
 	bufferSize         int
 	bucketsLock        sync.RWMutex
 	buckets            map[string]bucket // Map from dirname -> bucket.
@@ -126,18 +126,18 @@ func (m *manager) crashRecovery() error {
 			continue
 		}
 
-		// Ensure the staging directory exists.
+		// Ensure staging dir
 		p := path.Join(m.stagingDir, bucket)
 		if err := os.MkdirAll(p, bufferMode); err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", p, err))
 			continue
 		}
 
+		// recover temp to staging
 		for _, fi := range files {
-			oldPath := path.Join(m.tempDir, bucket, fi.Name())
-			newPath := path.Join(p, fi.Name())
-			// Check if it is a valid gzip file.
-			f, err := os.Open(oldPath)
+			tempFile := path.Join(m.tempDir, bucket, fi.Name())
+			stagingFile := path.Join(p, fi.Name())
+			f, err := os.Open(tempFile)
 			if err != nil {
 				errs = multierror.Append(errs, err)
 				continue
@@ -145,26 +145,23 @@ func (m *manager) crashRecovery() error {
 			gz, err := gzip.NewReader(f)
 			if err != nil {
 				errs = multierror.Append(errs, fmt.Errorf("gzip.NewReader(%s): %s", fi.Name(), err))
+				f.Close()
 				continue
 			}
 			if _, err := ioutil.ReadAll(gz); err != nil {
-				// File couldn't be read, attempt recovery.
-				if err.Error() != "unexpected EOF" {
-					errs = multierror.Append(errs, fmt.Errorf("readall(%s): %s", fi.Name(), err))
-					m.log.Infof("Attempting file recovery for %s", oldPath)
-					if err := m.recoverFile(oldPath, newPath); err != nil {
-						errs = multierror.Append(errs, err)
-					}
-				} else {
-					// The zip file is invalid avoid it to be moved
-					// to the staging directory.
-					fmt.Errorf("readall(%s): %s. The file is broken; skip it", fi.Name(), err)
-					continue
+				gz.Close()
+				f.Close()
+				errs = multierror.Append(errs,
+					fmt.Errorf("readall(%s): %s. attempting recovery", fi.Name(), err))
+				if err := m.recoverFile(tempFile, stagingFile); err != nil {
+					errs = multierror.Append(errs, err)
 				}
-			}
-			if err := os.Rename(oldPath, newPath); err != nil {
-				errs = multierror.Append(errs, err)
 				continue
+			}
+			gz.Close()
+			f.Close()
+			if err := os.Rename(tempFile, stagingFile); err != nil {
+				errs = multierror.Append(errs, err)
 			}
 		}
 	}
@@ -184,24 +181,29 @@ func (m *manager) recoverFile(old, new string) error {
 	}
 	defer gzr.Close()
 
-	out, err := os.Create(new)
-	if err != nil {
-		return fmt.Errorf("create %s: %s", new, err)
-	}
-	defer out.Close()
-	gzw := gzip.NewWriter(out)
-	defer gzw.Close()
-
-	// The size of this buffer is arbitrary and doesn't really matter.
+	// The size of this buffer is arbitrary and doesn't really matter
 	b := make([]byte, 1000)
+	var gzw *gzip.Writer
 	for {
-		if _, err := gzr.Read(b); err != nil {
+		var nRead int
+		if nRead, err = gzr.Read(b); err != nil {
 			if err.Error() != "unexpected EOF" && err.Error() != "EOF" {
 				return fmt.Errorf("scan %s: %s", old, err)
 			}
 			break
 		}
-		gzw.Write(b)
+		if nRead > 0 {
+			if gzw == nil {
+				out, err := os.Create(new)
+				if err != nil {
+					return fmt.Errorf("create %s: %s", new, err)
+				}
+				defer out.Close()
+				gzw = gzip.NewWriter(out)
+				defer gzw.Close()
+			}
+			gzw.Write(b)
+		}
 	}
 	return nil
 }
