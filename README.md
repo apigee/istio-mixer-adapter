@@ -121,6 +121,12 @@ And you should be able to access the service successfully:
 
     curl http://${GATEWAY_URL}/hello
 
+Note: If you don't know your GATEWAY_URL, you'll need to follow [these instructions](
+https://istio.io/docs/tasks/traffic-management/ingress/#determining-the-ingress-ip-and-ports) to set
+the INGRESS_IP and INGRESS_PORT variables. Then, your GATEWAY_URL can be set with:
+ 
+    export GATEWAY_URL=$INGRESS_HOST:$INGRESS_PORT
+
 ## Configure Apigee Mixer in Istio
 
 Now that Istio is running, it's time to add Apigee policies. Apply the Apigee configuration:
