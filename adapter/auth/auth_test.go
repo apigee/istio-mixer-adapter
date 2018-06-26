@@ -70,17 +70,28 @@ func TestAuthenticate(t *testing.T) {
 	goodAPIKey := "good"
 
 	for _, test := range []struct {
-		desc      string
-		apiKey    string
-		claims    map[string]interface{}
-		wantError bool
+		desc           string
+		apiKey         string
+		apiKeyClaimKey string
+		claims         map[string]interface{}
+		wantError      bool
 	}{
-		{"with valid JWT", "", testJWTClaims, false},
-		{"with invalid JWT", "", map[string]interface{}{
-			"client_id": "bad",
+		{"with valid JWT", "", "", testJWTClaims, false},
+		{"with invalid JWT", "", "", map[string]interface{}{}, true},
+		{"with valid API key", "good", "", nil, false},
+		{"with invalid API key", "bad", "", nil, true},
+		{"with valid claims API key", "", "goodkey", map[string]interface{}{
+			"api_product_list": "[]",
+			"goodkey":          "good",
+		}, false},
+		{"with invalid claims API key", "", "badkey", map[string]interface{}{
+			"api_product_list": "[]",
+			"somekey":          "good",
+			"badkey":           "bad",
 		}, true},
-		{"with valid API key", "good", nil, false},
-		{"with invalid API key", "bad", nil, true},
+		{"with missing claims API key", "", "badkey", map[string]interface{}{
+			"api_product_list": "[]",
+		}, true},
 	} {
 		t.Log(test.desc)
 
@@ -99,7 +110,7 @@ func TestAuthenticate(t *testing.T) {
 		defer authMan.Close()
 
 		ctx := authtest.NewContext("", adaptertest.NewEnv(t))
-		_, err := authMan.Authenticate(ctx, test.apiKey, test.claims)
+		_, err := authMan.Authenticate(ctx, test.apiKey, test.claims, test.apiKeyClaimKey)
 		if err != nil {
 			if !test.wantError {
 				t.Errorf("unexpected error: %s", err)

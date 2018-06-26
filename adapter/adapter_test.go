@@ -212,8 +212,6 @@ func TestHandleAnalytics(t *testing.T) {
 }
 
 func TestResolveClaims(t *testing.T) {
-	env := test.NewEnv(t)
-
 	input := map[string]string{}
 	for i, c := range auth.AllValidClaims {
 		input[c] = strconv.Itoa(i)
@@ -230,6 +228,10 @@ func TestResolveClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	h := handler{
+		env: test.NewEnv(t),
+	}
+
 	for _, ea := range []struct {
 		desc   string
 		claims map[string]string
@@ -241,7 +243,7 @@ func TestResolveClaims(t *testing.T) {
 	} {
 		t.Log(ea.desc)
 
-		claimsOut := resolveClaims(env, ea.claims)
+		claimsOut := h.resolveClaims(ea.claims)
 
 		// normalize the type to same as want
 		got := map[string]string{}

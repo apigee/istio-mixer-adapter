@@ -64,11 +64,8 @@ func TestSetClaims(t *testing.T) {
 		developerEmailClaim:  "email",
 	}
 	err := c.setClaims(claims)
-	if err != nil {
-		t.Fatalf("valid setClaims, got: %v", err)
-	}
-	if c.ClientID != "" {
-		t.Errorf("nil ClientID should be empty, got: %v", c.ClientID)
+	if err == nil {
+		t.Errorf("setClaims without client_id should get error")
 	}
 
 	claims[clientIDClaim] = "clientID"
