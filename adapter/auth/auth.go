@@ -55,56 +55,82 @@ type Manager struct {
 }
 
 // Close shuts down the Manager.
-func (a *Manager) Close() {
-	if a != nil {
-		a.jwtMan.stop()
+func (m *Manager) Close() {
+	if m != nil {
+		m.jwtMan.stop()
 	}
 }
 
 // Authenticate constructs an Apigee context from an existing context and either
 // a set of JWT claims, or an Apigee API key.
-func (a *Manager) Authenticate(ctx context.Context, apiKey string, claims map[string]interface{}) (*Context, error) {
+// The following logic applies:
+// 1. If JWT w/ API Key - use API Key in claims
+// 2. API Key - use API Key
+// 3. Has JWT token - use JWT claims
+// If any method is provided but fails, the next available one(s) will be attempted. If all provided methods fail,
+// the request will be rejected.
+func (m *Manager) Authenticate(ctx context.Context, apiKey string,
+	claims map[string]interface{}, apiKeyClaimKey string) (*Context, error) {
+	log := ctx.Log()
+
 	redacts := []interface{}{
 		claims["access_token"],
 		claims["client_id"],
+		claims[apiKeyClaimKey],
 	}
 	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
-	ctx.Log().Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
+	log.Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
-	// use JWT claims directly if available
-	var ac = &Context{Context: ctx}
-	if claims != nil {
-		err := ac.setClaims(claims)
-		if ac.ClientID != "" || err != nil {
-			return ac, err
+	var authContext = &Context{Context: ctx}
+
+	// use API Key in JWT if available
+	var err error
+	var verifiedClaims map[string]interface{}
+	if claims[apiKeyClaimKey] != nil {
+		if apiKey, ok := claims[apiKeyClaimKey].(string); ok {
+			verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
+			if err == nil {
+				log.Debugf("using api key from jwt claim %s", apiKeyClaimKey)
+				authContext.APIKey = apiKey
+			}
 		}
 	}
 
-	if apiKey == "" {
-		return ac, &NoAuthInfoError{}
+	// else, use API Key if available
+	if verifiedClaims == nil && apiKey != "" {
+		verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
+		if err == nil {
+			log.Debugf("using api key from request")
+			authContext.APIKey = apiKey
+		}
 	}
 
-	// use API Key if JWT claims are not available
-	ac.APIKey = apiKey
-	claims, err := a.verifier.Verify(ctx, apiKey)
-	if err != nil {
-		return ac, err
+	// else, use JWT claims
+	if verifiedClaims == nil && claims != nil {
+		verifiedClaims = claims
 	}
 
-	err = ac.setClaims(claims)
+	err = authContext.setClaims(verifiedClaims)
 
-	redacts = []interface{}{ac.AccessToken, ac.ClientID}
-	redactedAC := util.SprintfRedacts(redacts, "%v", ac)
-	if err == nil {
-		ctx.Log().Debugf("Authenticate success: %s", redactedAC)
-	} else {
-		ctx.Log().Debugf("Authenticate error: %s [%v]", redactedAC, err)
+	if log.DebugEnabled() {
+		redacts = []interface{}{authContext.APIKey, authContext.AccessToken, authContext.ClientID}
+		redactedAC := util.SprintfRedacts(redacts, "%v", authContext)
+		if err == nil {
+			log.Debugf("Authenticate success: %s", redactedAC)
+		} else {
+			log.Debugf("Authenticate error: %s [%v]", redactedAC, err)
+		}
 	}
-	return ac, err
+
+	if verifiedClaims[apiProductListClaim] == nil {
+		err = &NoAuthInfoError{}
+	}
+
+	return authContext, err
 }
 
-func (a *Manager) start() {
-	a.jwtMan.start(a.env)
+func (m *Manager) start() {
+	m.jwtMan.start(m.env)
 }
 
 // NoAuthInfoError indicates that the error was because of missing auth

@@ -38,6 +38,9 @@ message Params {
     // http timeout in seconds
     int64 server_timeout_secs = 8;
 
+    // name of jwt claim from which to look for an api_key
+    string api_key_claim = 9;
+
     message product_options {
         // products refresh rate in minutes
         int64 refresh_rate_mins = 1;

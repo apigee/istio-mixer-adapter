@@ -78,7 +78,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				 "code": 7,
-				 "message": "apigee-handler.apigee.istio-system:invalid api key"
+				 "message": "apigee-handler.apigee.istio-system:missing authentication"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 0
@@ -95,6 +95,107 @@ func TestAuthorization(t *testing.T) {
 				"api.service":             "service",
 				"request.path":            "/path",
 				"request.auth.raw_claims": `{"access_token":"8E7Az3ZgPHKrgzcQA54qAzXT3Z1G","api_product_list":["IstioTestProduct"],"application_name":"61cd4d83-06b5-4270-a9ee-cf9255ef45c3","audience":"istio","client_id":"yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H","exp":1521845533,"iat":1521845533,"iss":"https://theganyo1-eval-test.apigee.net/istio-auth/token","jti":"29e2320b-787c-4625-8599-acc5e05c68d0","nbf":1507636800,"scopes":["scope1","scope2"]}`,
+				"request.headers":         map[string]string{},
+			},
+			want: `
+			{
+			 "AdapterState": null,
+			 "Returns": [
+			  {
+			   "Check": {
+				"Status": {},
+				"ValidDuration": 0,
+				"ValidUseCount": 1
+			   },
+			   "Quota": null,
+			   "Error": null
+			  }
+			 ]
+			}
+			`,
+		},
+		"Good JWT api key request": {
+			attrs: map[string]interface{}{
+				"api.service":             "service",
+				"request.path":            "/path",
+				"request.auth.raw_claims": `{"api_key":"goodkey"}`,
+				"request.headers":         map[string]string{},
+			},
+			want: `
+			{
+			 "AdapterState": null,
+			 "Returns": [
+			  {
+			   "Check": {
+				"Status": {},
+				"ValidDuration": 0,
+				"ValidUseCount": 1
+			   },
+			   "Quota": null,
+			   "Error": null
+			  }
+			 ]
+			}
+			`,
+		},
+		"Bad JWT api key request": {
+			attrs: map[string]interface{}{
+				"api.service":             "service",
+				"request.path":            "/path",
+				"request.auth.raw_claims": `{"api_key":"badkey"}`,
+				"request.headers":         map[string]string{},
+			},
+			want: `
+			{
+			 "AdapterState": null,
+			 "Returns": [
+			  {
+			   "Check": {
+				"Status": {
+				 "code": 7,
+				 "message": "apigee-handler.apigee.istio-system:missing authentication"
+				},
+				"ValidDuration": 0,
+				"ValidUseCount": 0
+			   },
+			   "Quota": null,
+			   "Error": null
+			  }
+			 ]
+			}
+			`,
+		},
+		"Bad JWT api key request, good api key request": {
+			attrs: map[string]interface{}{
+				"api.service":             "service",
+				"request.path":            "/path",
+				"request.auth.raw_claims": `{"api_key":"badkey"}`,
+				"request.api_key":         "goodkey",
+				"request.headers":         map[string]string{},
+			},
+			want: `
+			{
+			 "AdapterState": null,
+			 "Returns": [
+			  {
+			   "Check": {
+				"Status": {},
+				"ValidDuration": 0,
+				"ValidUseCount": 1
+			   },
+			   "Quota": null,
+			   "Error": null
+			  }
+			 ]
+			}
+			`,
+		},
+		"Bad api keys, good JWT request": {
+			attrs: map[string]interface{}{
+				"api.service":             "service",
+				"request.path":            "/path",
+				"request.api_key":         "badkey",
+				"request.auth.raw_claims": `{"access_token":"8E7Az3ZgPHKrgzcQA54qAzXT3Z1G","api_product_list":["IstioTestProduct"],"application_name":"61cd4d83-06b5-4270-a9ee-cf9255ef45c3","audience":"istio","client_id":"yBQ5eXZA8rSoipYEi1Rmn0Z8RKtkGI4H","exp":1521845533,"iat":1521845533,"iss":"https://theganyo1-eval-test.apigee.net/istio-auth/token","jti":"29e2320b-787c-4625-8599-acc5e05c68d0","nbf":1507636800,"scopes":["scope1","scope2"],"api_key":"badkey"}`,
 				"request.headers":         map[string]string{},
 			},
 			want: `
@@ -360,6 +461,7 @@ spec:
   env_name: env
   key: key
   secret: secret
+  api_key_claim: api_key
 
 ---
 

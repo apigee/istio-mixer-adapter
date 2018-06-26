@@ -71,13 +71,13 @@ func parseExp(claims map[string]interface{}) (time.Time, error) {
 		}
 		return time.Unix(expi, 0), nil
 	}
-	return time.Time{}, fmt.Errorf("unknown type for exp %v: %T", claims[expClaim], claims[expClaim])
+	return time.Time{}, fmt.Errorf("unknown type %T for exp %v", claims[expClaim], claims[expClaim])
 }
 
-// does nothing if claims is nil
+// if claims can't be processed, returns error and sets no fields
 func (a *Context) setClaims(claims map[string]interface{}) error {
-	if claims[clientIDClaim] == nil {
-		return nil
+	if claims[apiProductListClaim] == nil {
+		return fmt.Errorf("api_product_list claim is required")
 	}
 
 	products, err := parseArrayOfStrings(claims[apiProductListClaim])

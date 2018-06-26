@@ -54,13 +54,14 @@ type (
 	}
 
 	handler struct {
-		env          adapter.Env
-		apigeeBase   *url.URL
-		customerBase *url.URL
-		orgName      string
-		envName      string
-		key          string
-		secret       string
+		env            adapter.Env
+		apigeeBase     *url.URL
+		customerBase   *url.URL
+		orgName        string
+		envName        string
+		key            string
+		secret         string
+		apiKeyClaimKey string
 
 		productMan   *product.Manager
 		authMan      *auth.Manager
@@ -214,17 +215,18 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	}
 
 	h := &handler{
-		env:          env,
-		apigeeBase:   apigeeBase,
-		customerBase: customerBase,
-		orgName:      b.adapterConfig.OrgName,
-		envName:      b.adapterConfig.EnvName,
-		key:          b.adapterConfig.Key,
-		secret:       b.adapterConfig.Secret,
-		productMan:   productMan,
-		authMan:      authMan,
-		analyticsMan: analyticsMan,
-		quotaMan:     quotaMan,
+		env:            env,
+		apigeeBase:     apigeeBase,
+		customerBase:   customerBase,
+		orgName:        b.adapterConfig.OrgName,
+		envName:        b.adapterConfig.EnvName,
+		key:            b.adapterConfig.Key,
+		secret:         b.adapterConfig.Secret,
+		productMan:     productMan,
+		authMan:        authMan,
+		analyticsMan:   analyticsMan,
+		quotaMan:       quotaMan,
+		apiKeyClaimKey: b.adapterConfig.ApiKeyClaim,
 	}
 
 	return h, nil
@@ -306,7 +308,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 
 		// important: This assumes that the Auth is the same for all records!
 		if authContext == nil {
-			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, resolveClaims(h.Log(), inst.ApiClaims))
+			ac, _ := h.authMan.Authenticate(h, inst.ApiKey, h.resolveClaims(inst.ApiClaims), h.apiKeyClaimKey)
 			// ignore error, take whatever we have
 			authContext = ac
 		}
@@ -326,11 +328,11 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
 	h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 
-	claims := resolveClaimsInterface(h.Log(), inst.Subject.Properties)
+	claims := h.resolveClaimsInterface(inst.Subject.Properties)
 
 	apiKey, _ := inst.Subject.Properties[apiKeyAttribute].(string)
 
-	authContext, err := h.authMan.Authenticate(h, apiKey, claims)
+	authContext, err := h.authMan.Authenticate(h, apiKey, claims, h.apiKeyClaimKey)
 	if err != nil {
 		if _, ok := err.(*auth.NoAuthInfoError); ok {
 			h.Log().Debugf("authenticate err: %v", err)
@@ -396,40 +398,36 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 // resolveClaims ensures that jwt auth claims are properly populated from an
 // incoming map of potential claims values--including extraneous filtering.
-func resolveClaims(log adapter.Logger, claimsIn map[string]string) map[string]interface{} {
+func (h *handler) resolveClaims(claimsIn map[string]string) map[string]interface{} {
 	var claims = map[string]interface{}{}
+
+	if encoded, ok := claimsIn[jsonClaimsKey]; ok && encoded != "" {
+		err := json.Unmarshal([]byte(encoded), &claims)
+		if err != nil {
+			h.Log().Errorf("error resolving %s claims: %v, data: %v", jsonClaimsKey, err, encoded)
+		}
+	}
+
 	for _, k := range auth.AllValidClaims {
 		if v, ok := claimsIn[k]; ok {
 			claims[k] = v
 		}
 	}
-	if len(claims) > 0 {
-		return claims
-	}
 
-	if encoded, ok := claimsIn[jsonClaimsKey]; ok {
-		if encoded == "" {
-			return claims
-		}
-
-		err := json.Unmarshal([]byte(encoded), &claims)
-
-		if err != nil {
-			log.Errorf("error resolving claims: %v, data: %v", err, encoded)
-			return claims
-		}
+	if claimsIn[h.apiKeyClaimKey] != "" {
+		claims[h.apiKeyClaimKey] = claimsIn[h.apiKeyClaimKey]
 	}
 
 	return claims
 }
 
 // convert map[string]interface{} to string[string]string so we can call real resolveClaims
-func resolveClaimsInterface(log adapter.Logger, claimsIn map[string]interface{}) map[string]interface{} {
-	c := map[string]string{}
+func (h *handler) resolveClaimsInterface(claimsIn map[string]interface{}) map[string]interface{} {
+	c := make(map[string]string, len(claimsIn))
 	for k, v := range claimsIn {
 		if s, ok := v.(string); ok {
 			c[k] = s
 		}
 	}
-	return resolveClaims(log, c)
+	return h.resolveClaims(c)
 }
