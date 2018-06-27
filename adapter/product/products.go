@@ -44,12 +44,18 @@ type Options struct {
 	BaseURL *url.URL
 	// RefreshRate determines how often the products are refreshed
 	RefreshRate time.Duration
+	// Key is provisioning key
+	Key string
+	// Secret is provisioning secret
+	Secret string
 }
 
 func (o *Options) validate() error {
 	if o.Client == nil ||
 		o.BaseURL == nil ||
-		o.RefreshRate <= 0 {
+		o.RefreshRate <= 0 ||
+		o.Key == "" ||
+		o.Secret == "" {
 		return fmt.Errorf("all products options are required")
 	}
 	return nil

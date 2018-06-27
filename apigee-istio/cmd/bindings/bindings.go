@@ -29,7 +29,7 @@ import (
 
 const (
 	servicesAttr          = "istio-services"
-	productsURLFormat     = "%s/products"                        // customerProxyURL
+	productsURLFormat     = "/v1/o/%s/apiproducts"               // ManagementBase
 	productAttrPathFormat = "/v1/o/%s/apiproducts/%s/attributes" // ManagementBase, prod
 )
 
@@ -140,13 +140,12 @@ func (b *bindings) getProducts() ([]product.APIProduct, error) {
 	if b.products != nil {
 		return b.products, nil
 	}
-	productsURL := fmt.Sprintf(productsURLFormat, b.CustomerProxyURL)
-	req, err := http.NewRequest(http.MethodGet, productsURL, nil)
+	req, err := b.Client.NewRequest(http.MethodGet, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %v", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	req.URL.Path = fmt.Sprintf(productsURLFormat, b.Org) // hack: negate client's base URL
+	req.URL.RawQuery = "expand=true"
 
 	var res product.APIResponse
 	resp, err := b.Client.Do(req, &res)
@@ -252,7 +251,7 @@ func (b *bindings) updateServiceBindings(p *product.APIProduct, bindings []strin
 		return err
 	}
 	path := fmt.Sprintf(productAttrPathFormat, b.Org, p.Name)
-	req.URL.Path = path // hack: negate client's incorrect method of determining base URL
+	req.URL.Path = path // hack: negate client's base URL
 	var attrResult attrUpdate
 	_, err = b.Client.Do(req, &attrResult)
 	return err

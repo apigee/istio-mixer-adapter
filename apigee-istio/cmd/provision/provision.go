@@ -80,6 +80,8 @@ type provision struct {
 	virtualHosts          string
 	credentialURL         string
 	verifyOnly            bool
+	provisionKey          string
+	provisionSecret       string
 }
 
 // Cmd returns base command
@@ -98,6 +100,9 @@ to your organization and environment.`,
 		},
 
 		Run: func(cmd *cobra.Command, _ []string) {
+			if p.verifyOnly && (p.provisionKey == "" || p.provisionSecret == "") {
+				fatalf("--verifyOnly requires values for --key and --secret")
+			}
 			p.run(printf, fatalf)
 		},
 	}
@@ -112,6 +117,9 @@ to your organization and environment.`,
 		"override proxy virtualHosts")
 	c.Flags().BoolVarP(&p.verifyOnly, "verifyOnly", "", false,
 		"verify only, don’t provision anything")
+
+	c.Flags().StringVarP(&p.provisionKey, "key", "k", "", "istio provision key")
+	c.Flags().StringVarP(&p.provisionSecret, "secret", "s", "", "istio provision secret")
 
 	return c
 }
@@ -229,6 +237,11 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 		if err := p.checkAndDeployProxy(authProxyName, customizedProxy, verbosef); err != nil {
 			fatalf("error deploying auth proxy: %v", err)
 		}
+	} else { // verifyOnly == true
+		cred = &credential{
+			Key:    p.provisionKey,
+			Secret: p.provisionSecret,
+		}
 	}
 
 	// use generated credentials
@@ -268,6 +281,8 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 	if verifyErrors != nil {
 		os.Exit(1)
 	}
+
+	verbosef("provisioning verified OK")
 }
 
 type proxyModFunc func(name string) error
@@ -599,6 +614,7 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		if err != nil {
 			fatalf("unable to create request", err)
 		}
+		req.SetBasicAuth(auth.Username, auth.Password)
 		resp, err := p.Client.Do(req, nil)
 		defer resp.Body.Close()
 		if err != nil && resp == nil {
@@ -623,6 +639,7 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		fatalf("unable to create request", err)
 	}
 	req.Header.Add("Content-Type", "application/json")
+	req.SetBasicAuth(auth.Username, auth.Password)
 	resp, err := p.Client.Do(req, nil)
 	if err != nil && resp == nil {
 		fatalf("%s", err)

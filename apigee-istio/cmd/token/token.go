@@ -235,8 +235,6 @@ func (t *token) rotateCert(printf, fatalf shared.FormatFn) {
 	}
 
 	rotateReq := rotateRequest{
-		Key:         t.clientID,
-		Secret:      t.clientSecret,
 		PrivateKey:  privateKey,
 		Certificate: cert,
 		KeyID:       t.keyID,
@@ -255,6 +253,7 @@ func (t *token) rotateCert(printf, fatalf shared.FormatFn) {
 	if err != nil {
 		fatalf("unable to create request: %v", err)
 	}
+	req.SetBasicAuth(t.clientID, t.clientSecret)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
 
@@ -274,8 +273,6 @@ func (t *token) rotateCert(printf, fatalf shared.FormatFn) {
 }
 
 type rotateRequest struct {
-	Key         string `json:"key"`
-	Secret      string `json:"secret"`
 	PrivateKey  string `json:"private_key"`
 	Certificate string `json:"certificate"`
 	KeyID       string `json:"kid"`

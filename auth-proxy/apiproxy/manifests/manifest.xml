@@ -26,7 +26,6 @@
         <VersionInfo resourceName="RevokeRefreshToken" version="SHA-512:55675f8e017f8afb7430e87bccffabe3ea3f908f3cdc3d3f9deeaadabd237470d61c523fb750296b822a61ed25a789880f00fe386d51b4d9e857adb18a3d96d5"/>
         <VersionInfo resourceName="Send-JWK-Message" version="SHA-512:e8c164598f3258ae9ecd7eb4af8e1b1aa8d53a1a967d19c5f2f4a16420ae5eb811e4d02780b24e8c3b8abbd9211914c8a81acf96fb8f4efb4875fa459a1e91f4"/>
         <VersionInfo resourceName="Send-Version" version="SHA-512:3a27a7cf5a4eeb0c823e6cb2fdd6ab469616a127093809274838e3d3073798e5f7d4399db61ec41cb6ff70b9b5a64f4f3494f07b6c1ed8a19616a23dae828f9d"/>
-        <VersionInfo resourceName="Set-Basic-Authentication" version="SHA-512:840e0b80322d5ad9b09ccd7d52569b33163d3c036b8caa669e8c8f74b31acae1177124d1e70272f3fc72c9223c0a9ceba89d915a5f8071b5fe0719c9f0cff3e5"/>
         <VersionInfo resourceName="Set-JWT-Variables" version="SHA-512:90d33279f3717b985a81ea7dca877fd6694319372a2eee207053b280fdeaea462ba662dd7c6dc3df4429ff7d280237a05feeb58189770289c1d37ac693f39cef"/>
         <VersionInfo resourceName="Set-Response" version="SHA-512:638e7320945fd57ea40448bc9997ec9a2297f4ae51e6e1654e8d273dcc2d9e47c131fb344eea870a465282b475886277db194d379c350fa07380b9d08175ba1c"/>
         <VersionInfo resourceName="Update-Keys" version="SHA-512:4a1f527ab3b9bce65d24e865fa387fa23f081a590f1137928291fd4f4fceb6cb6ef82a87e97a77e505ae81340d21163251737802f1c3cca88272f41902a164a8"/>
