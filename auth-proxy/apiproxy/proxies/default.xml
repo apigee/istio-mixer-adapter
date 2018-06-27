@@ -15,7 +15,13 @@
             <Description/>
             <Request>
                 <Step>
-                    <FaultRules/>
+                    <Name>AuthenticationError</Name>
+                    <Condition>request.header.Authorization is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Authenticate-Call</Name>
+                </Step>
+                <Step>
                     <Name>Extract-API-Key</Name>
                 </Step>
                 <Step>
@@ -23,23 +29,18 @@
                     <Condition> apikey is null</Condition>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Verify-API-Key</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Access-App-Info-2</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Products-to-JSON-2</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Get-Private-Key</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-JWT-Variables</Name>
                 </Step>
                 <Step>
@@ -48,7 +49,6 @@
             </Request>
             <Response>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-Response</Name>
                 </Step>
             </Response>
@@ -56,10 +56,17 @@
         </Flow>
         <Flow name="Get API Products">
             <Description/>
-            <Request/>
+            <Request>
+                <Step>
+                    <Name>AuthenticationError</Name>
+                    <Condition>request.header.Authorization is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Authenticate-Call</Name>
+                </Step>
+            </Request>
             <Response>
                 <Step>
-                    <FaultRules/>
                     <Name>JavaCallout</Name>
                 </Step>
             </Response>
@@ -69,7 +76,6 @@
             <Description/>
             <Request>
                 <Step>
-                    <FaultRules/>
                     <Name>Extract-OAuth-Params</Name>
                 </Step>
                 <Step>
@@ -77,27 +83,21 @@
                     <Condition>client_id is null or client_secret is null or grant_type is null </Condition>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Create-OAuth-Request</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Access-App-Info</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Products-to-JSON</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>AccessTokenRequest</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-JWT-Variables</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Get-Private-Key</Name>
                 </Step>
                 <Step>
@@ -106,7 +106,6 @@
             </Request>
             <Response>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-Response</Name>
                 </Step>
             </Response>
@@ -116,7 +115,6 @@
             <Description/>
             <Request>
                 <Step>
-                    <FaultRules/>
                     <Name>Extract-Refresh-Params</Name>
                 </Step>
                 <Step>
@@ -124,27 +122,21 @@
                     <Condition>client_id is null or client_secret is null or grant_type is null or refresh_token is null</Condition>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Create-Refresh-Request</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Access-App-Info</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Products-to-JSON</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>RefreshAccessToken</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-JWT-Variables</Name>
                 </Step>
                 <Step>
-                    <FaultRules/>
                     <Name>Get-Private-Key</Name>
                 </Step>
                 <Step>
@@ -153,7 +145,6 @@
             </Request>
             <Response>
                 <Step>
-                    <FaultRules/>
                     <Name>Set-Response</Name>
                 </Step>
             </Response>
@@ -180,7 +171,6 @@
             <Description>This flow returns public keys as JWK</Description>
             <Request>
                 <Step>
-                    <FaultRules/>
                     <Name>Get-Public-Keys</Name>
                 </Step>
                 <Step>
@@ -219,9 +209,6 @@
                     <Condition>key is null or secret is null or certificate1 is null or certificate1_kid is null or private_key is null</Condition>
                 </Step>
                 <Step>
-                    <Name>Set-Basic-Authentication</Name>
-                </Step>
-                <Step>
                     <Name>Authenticate-Call</Name>
                 </Step>
                 <Step>
@@ -238,7 +225,6 @@
             <Description>Unknown Request</Description>
             <Request>
                 <Step>
-                    <FaultRules/>
                     <Name>Raise-Fault-Unknown-Request</Name>
                 </Step>
             </Request>

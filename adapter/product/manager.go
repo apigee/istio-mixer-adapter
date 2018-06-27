@@ -57,6 +57,8 @@ func createManager(options Options, log adapter.Logger) *Manager {
 		isClosed:        &isClosedInt,
 		refreshRate:     options.RefreshRate,
 		client:          options.Client,
+		key:             options.Key,
+		secret:          options.Secret,
 	}
 }
 
@@ -74,6 +76,8 @@ type Manager struct {
 	refreshRate      time.Duration
 	refreshTimerChan <-chan time.Time
 	client           *http.Client
+	key              string
+	secret           string
 }
 
 func (p *Manager) start(env adapter.Env) {
@@ -140,6 +144,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
+		req.SetBasicAuth(p.key, p.secret)
 
 		p.log.Debugf("retrieving products from: %s", apiURL.String())
 

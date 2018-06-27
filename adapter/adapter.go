@@ -180,6 +180,8 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		Client:      httpClient,
 		BaseURL:     customerBase,
 		RefreshRate: time.Duration(b.adapterConfig.Products.RefreshRateMins) * time.Minute,
+		Key:         b.adapterConfig.Key,
+		Secret:      b.adapterConfig.Secret,
 	})
 	if err != nil {
 		return nil, err

@@ -36,7 +36,6 @@
         <Policy>RevokeRefreshToken</Policy>
         <Policy>Send-JWK-Message</Policy>
         <Policy>Send-Version</Policy>
-        <Policy>Set-Basic-Authentication</Policy>
         <Policy>Set-JWT-Variables</Policy>
         <Policy>Set-Response</Policy>
         <Policy>Update-Keys</Policy>
