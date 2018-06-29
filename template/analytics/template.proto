@@ -14,43 +14,87 @@
 
 syntax = "proto3";
 
+// $title: Apigee Analytics
+// $description: A template used to provide analytics to Apigee's adapter.
+// $location: https://github.com/apigee/istio-mixer-adapter
+//
+// The `analytics` template defines parameters for extracting and delivering Istio telemetry to
+// Apigee's adapter and ultimately Apigee's analytics processing system.
+// For additional information or support please contact anchor-prega-support@google.com.
+//
+// Example config:
+//
+// ```yaml
+//apiVersion: config.istio.io/v1alpha2
+//kind: analytics
+//metadata:
+//  name: apigee
+//  namespace: istio-system
+//spec:
+//  api_key: request.api_key | request.headers["x-api-key"] | ""
+//  api_proxy: api.service | destination.service | ""
+//  response_status_code: response.code | 0
+//  client_ip: source.ip | ip("0.0.0.0")
+//  request_verb: request.method | ""
+//  request_uri: request.path | ""
+//  request_path: request.path | ""
+//  useragent: request.useragent | ""
+//  client_received_start_timestamp: request.time
+//  client_received_end_timestamp: request.time
+//  target_sent_start_timestamp: request.time
+//  target_sent_end_timestamp: request.time
+//  target_received_start_timestamp: response.time
+//  target_received_end_timestamp: response.time
+//  client_sent_start_timestamp: response.time
+//  client_sent_end_timestamp: response.time
+//  api_claims: # from jwt
+//    json_claims: request.auth.raw_claims | ""
+// ```
 package analytics;
 
-import "mixer/adapter/model/v1beta1/type.proto";
+import "policy/v1beta1/type.proto";
 import "mixer/adapter/model/v1beta1/extensions.proto";
 
 option (istio.mixer.adapter.model.v1beta1.template_variety) = TEMPLATE_VARIETY_REPORT;
 
+// This Template provides Istio telemetry data to the Apigee Analytics engine.
+// For additional information on this adapter or support please contact anchor-prega-support@google.com.
 message Template {
+    // The name of the proxy (usually the Istio API or service name).
     string api_proxy = 1;
+    // HTTP response code
     int64 response_status_code = 2;
-    istio.mixer.adapter.model.v1beta1.IPAddress client_ip = 3;
+    // Client IP address
+    istio.policy.v1beta1.IPAddress client_ip = 3;
+    // HTTP request verb
     string request_verb = 4;
+    // HTTP request URI
     string request_uri = 5;
+    // HTTP request path
     string request_path = 6;
+    // HTTP user agent header
     string useragent = 7;
-    istio.mixer.adapter.model.v1beta1.TimeStamp client_received_start_timestamp = 8;
-    istio.mixer.adapter.model.v1beta1.TimeStamp client_received_end_timestamp = 9;
-    istio.mixer.adapter.model.v1beta1.TimeStamp client_sent_start_timestamp = 10;
-    istio.mixer.adapter.model.v1beta1.TimeStamp client_sent_end_timestamp = 11;
-    istio.mixer.adapter.model.v1beta1.TimeStamp target_sent_start_timestamp = 12;
-    istio.mixer.adapter.model.v1beta1.TimeStamp target_sent_end_timestamp = 13;
-    istio.mixer.adapter.model.v1beta1.TimeStamp target_received_start_timestamp = 14;
-    istio.mixer.adapter.model.v1beta1.TimeStamp target_received_end_timestamp = 15;
+    // Timestamp of when the api_proxy started receiving the request.
+    istio.policy.v1beta1.TimeStamp client_received_start_timestamp = 8;
+    // Timestamp of when the api_proxy  finished receiving the request.
+    istio.policy.v1beta1.TimeStamp client_received_end_timestamp = 9;
+    // Timestamp of when the api_proxy started sending the request to the target.
+    istio.policy.v1beta1.TimeStamp client_sent_start_timestamp = 10;
+    // Timestamp of when the api_proxy finished sending the request to the target.
+    istio.policy.v1beta1.TimeStamp client_sent_end_timestamp = 11;
+    // Timestamp of when the api_proxy started request to target.
+    istio.policy.v1beta1.TimeStamp target_sent_start_timestamp = 12;
+    // Timestamp of when the api_proxy finished sending request to target.
+    istio.policy.v1beta1.TimeStamp target_sent_end_timestamp = 13;
+    // Timestamp of when the api_proxy started receiving response from target.
+    istio.policy.v1beta1.TimeStamp target_received_start_timestamp = 14;
+    // Timestamp of when the api_proxy finished receiving response from target.
+    istio.policy.v1beta1.TimeStamp target_received_end_timestamp = 15;
 
-    // auth: if jwt is available (takes precedence over api_key)
+    // The JWT claims that were used for authenticating the request (if any)
+    // Use subkey "json_claims" for passing all claims in as a single JSON field.
     map<string, string> api_claims = 200;
 
-    // auth: if jwt isn't available and apikey is
+    // The API KEY that was used for authenticating the request (if any)
     string api_key = 201;
 }
-
-// these get added in adapter from auth...
-// DeveloperEmail               string `json:"developer_email,omitempty"`
-// DeveloperApp                 string `json:"developer_app,omitempty"`
-// AccessToken                  string `json:"access_token,omitempty"`
-// ClientID                     string `json:"client_id,omitempty"`
-// APIProduct                   string `json:"api_product,omitempty"`
-
-// not used...
-// APIProxyRevision             int    `json:"apiproxy_revision"`

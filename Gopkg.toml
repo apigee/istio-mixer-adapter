@@ -11,24 +11,16 @@
 
 [[constraint]]
   name = "istio.io/istio"
-  branch = "release-0.8"
+  version = "1.0.0-snapshot.0"
 
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
-  revision = "b7773ae218740a7be65057fc60b366a49b538a44"
+  branch = "master"
 
 [[override]]
   name = "github.com/lestrrat-go/jwx"
-  revision = "c7fda53b85fcef399d5fb71326f492eeccd1cb6f"
+  revision = "master"
 
 [[constraint]]
   name = "github.com/dgrijalva/jwt-go"
   version = "~3.2.0"
-
-# fixes error:
-# vendor/k8s.io/client-go/dynamic/dynamic_util.go:34:19: unknown field 'MetadataAccessor' in struct literal of type meta.VersionInterfaces
-# caused by k8s.io/apimachinery commit 8cd82ca9c2ecc1799da600b08af6c04a112490aa
-# without this override, dep pulls master and gets an incompatible commit
-[[override]]
-  name = "k8s.io/apimachinery"
-  version = "kubernetes-1.8.12"

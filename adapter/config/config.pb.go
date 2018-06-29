@@ -4,6 +4,42 @@
 /*
 	Package config is a generated protocol buffer package.
 
+	$title: Apigee istio-mixer-adapter
+	$description: This adapter for Istio's Mixer brings Apigee's distributed policy checks and analytics to Istio.
+	$location: https://github.com/apigee/istio-mixer-adapter
+
+	The Apigee istio-mixer-adapter provides Apigee's distributed authentication and quota policy checks
+	as well as the ingestion of Istio telemetry for analysis and reporting.
+	For additional information or support please contact anchor-prega-support@google.com.
+
+	This adapter supports the [authorization template](https://istio.io/docs/reference/config/policy-and-telemetry/templates/authorization/).
+	and Apigee's [analytics template](https://istio.io/docs/reference/config/policy-and-telemetry/templates/authorization/).
+
+	Example config:
+
+	```yaml
+	apiVersion: config.istio.io/v1alpha2
+	kind: apigee
+	metadata:
+	 name: apigee-handler
+	 namespace: istio-system
+	spec:
+	 apigee_base: https://istioservices.apigee.net/edgemicro
+	 customer_base: https://myorg-test.apigee.net/istio-auth
+	 org_name: myorg
+	 env_name: test
+	 key: 5f1132b7ff037fa187463c324d029ca26de28b7279df0ea161
+	 secret: fa147e8afc35219b7e1db688c609196923f663b5e835975
+	 temp_dir: "/tmp/apigee-istio"
+	 server_timeout_secs: 60
+	 products:
+	   refresh_rate_mins: 1
+	 analytics:
+	   legacy_endpoint: false
+	   file_limit: 1024
+	 api_key_claim:
+	```
+
 	It is generated from these files:
 		adapter/config/config.proto
 
@@ -33,29 +69,53 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion2 // please upgrade the proto package
 
+// The Configuration for the Apigee adapter provides information on how the adapter should contact
+// the Apigee proxies and how it should operate. Running the `apigee-istio provision` CLI command
+// will ensure that all proxies are installed into your Apigee environment and generate this file
+// with all required settings for you.
+// For additional information on this adapter or support please contact anchor-prega-support@google.com.
 type Params struct {
-	ApigeeBase   string `protobuf:"bytes,1,opt,name=apigee_base,json=apigeeBase,proto3" json:"apigee_base,omitempty"`
+	// Apigee Base is the URI for a shared proxy on Apigee.
+	// Required.
+	ApigeeBase string `protobuf:"bytes,1,opt,name=apigee_base,json=apigeeBase,proto3" json:"apigee_base,omitempty"`
+	// Customer Base is the URI for an organization-specific proxy on Apigee.
+	// Required.
 	CustomerBase string `protobuf:"bytes,2,opt,name=customer_base,json=customerBase,proto3" json:"customer_base,omitempty"`
-	OrgName      string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
-	EnvName      string `protobuf:"bytes,4,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
-	Key          string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
-	Secret       string `protobuf:"bytes,6,opt,name=secret,proto3" json:"secret,omitempty"`
-	// http timeout in seconds
+	// Org Name is the name of the organization on Apigee.
+	// Required.
+	OrgName string `protobuf:"bytes,3,opt,name=org_name,json=orgName,proto3" json:"org_name,omitempty"`
+	// Env Name is the name of the environment on Apigee.
+	// Required.
+	EnvName string `protobuf:"bytes,4,opt,name=env_name,json=envName,proto3" json:"env_name,omitempty"`
+	// Key is used to authenticate to the Apigee proxy endpoints, generated during provisioning.
+	// Required.
+	Key string `protobuf:"bytes,5,opt,name=key,proto3" json:"key,omitempty"`
+	// Secret is used to authenticate to the Apigee proxy endpoints, generated during provisioning.
+	// Required.
+	Secret string `protobuf:"bytes,6,opt,name=secret,proto3" json:"secret,omitempty"`
+	// The local directory to be used by the adapter for temporary files.
+	// Optional. Default: "/tmp/apigee-istio".
 	TempDir string `protobuf:"bytes,7,opt,name=temp_dir,json=tempDir,proto3" json:"temp_dir,omitempty"`
-	// http timeout in seconds
+	// The http timeout to be used for adapter connections to services.
+	// Optional. Default: 60.
 	ServerTimeoutSecs int64 `protobuf:"varint,8,opt,name=server_timeout_secs,json=serverTimeoutSecs,proto3" json:"server_timeout_secs,omitempty"`
-	// name of jwt claim from which to look for an api_key
-	ApiKeyClaim string                  `protobuf:"bytes,9,opt,name=api_key_claim,json=apiKeyClaim,proto3" json:"api_key_claim,omitempty"`
-	Products    *ParamsProductOptions   `protobuf:"bytes,15,opt,name=products" json:"products,omitempty"`
-	Analytics   *ParamsAnalyticsOptions `protobuf:"bytes,16,opt,name=analytics" json:"analytics,omitempty"`
+	// The name of a JWT claim from which to look for an api_key.
+	// Optional. Default: none.
+	ApiKeyClaim string `protobuf:"bytes,9,opt,name=api_key_claim,json=apiKeyClaim,proto3" json:"api_key_claim,omitempty"`
+	// Options specific to to products handling.
+	Products *ParamsProductOptions `protobuf:"bytes,15,opt,name=products" json:"products,omitempty"`
+	// Options specific to to analytics handling.
+	Analytics *ParamsAnalyticsOptions `protobuf:"bytes,16,opt,name=analytics" json:"analytics,omitempty"`
 }
 
 func (m *Params) Reset()                    { *m = Params{} }
 func (*Params) ProtoMessage()               {}
 func (*Params) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0} }
 
+// Options specific to to products handling.
 type ParamsProductOptions struct {
-	// products refresh rate in minutes
+	// The rate at which the list of products is refreshed from Apigee in minutes.
+	// Optional. Default: 1.
 	RefreshRateMins int64 `protobuf:"varint,1,opt,name=refresh_rate_mins,json=refreshRateMins,proto3" json:"refresh_rate_mins,omitempty"`
 }
 
@@ -63,10 +123,13 @@ func (m *ParamsProductOptions) Reset()                    { *m = ParamsProductOp
 func (*ParamsProductOptions) ProtoMessage()               {}
 func (*ParamsProductOptions) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int{0, 0} }
 
+// Options specific to to analytics handling.
 type ParamsAnalyticsOptions struct {
-	// if true, use old-style direct communication analytics protocol
+	// If true, use legacy direct communication analytics protocol instead of buffering. Must be true for OPDK.
+	// Optional. Default: false.
 	LegacyEndpoint bool `protobuf:"varint,1,opt,name=legacy_endpoint,json=legacyEndpoint,proto3" json:"legacy_endpoint,omitempty"`
-	// number of files can be stored in staging before we start deleting old files
+	// The number of analytics files that can be buffered before oldest files are dropped.
+	// Optional. Default: 1024.
 	FileLimit int64 `protobuf:"varint,2,opt,name=file_limit,json=fileLimit,proto3" json:"file_limit,omitempty"`
 }
 
