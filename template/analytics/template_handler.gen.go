@@ -24,48 +24,104 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
+// $title: Apigee Analytics
+// $description: A template used to provide analytics to Apigee's adapter.
+// $location: https://github.com/apigee/istio-mixer-adapter
+//
+// The `analytics` template defines parameters for extracting and delivering Istio telemetry to
+// Apigee's adapter and ultimately Apigee's analytics processing system.
+// For additional information or support please contact anchor-prega-support@google.com.
+//
+// Example config:
+//
+// ```yaml
+// apiVersion: config.istio.io/v1alpha2
+// kind: analytics
+// metadata:
+//  name: apigee
+//  namespace: istio-system
+// spec:
+//  api_key: request.api_key | request.headers["x-api-key"] | ""
+//  api_proxy: api.service | destination.service | ""
+//  response_status_code: response.code | 0
+//  client_ip: source.ip | ip("0.0.0.0")
+//  request_verb: request.method | ""
+//  request_uri: request.path | ""
+//  request_path: request.path | ""
+//  useragent: request.useragent | ""
+//  client_received_start_timestamp: request.time
+//  client_received_end_timestamp: request.time
+//  target_sent_start_timestamp: request.time
+//  target_sent_end_timestamp: request.time
+//  target_received_start_timestamp: response.time
+//  target_received_end_timestamp: response.time
+//  client_sent_start_timestamp: response.time
+//  client_sent_end_timestamp: response.time
+//  api_claims: # from jwt
+//    json_claims: request.auth.raw_claims | ""
+// ```
+
 // Fully qualified name of the template
 const TemplateName = "analytics"
 
 // Instance is constructed by Mixer for the 'analytics' template.
+//
+// This Template provides Istio telemetry data to the Apigee Analytics engine.
+// For additional information on this adapter or support please contact anchor-prega-support@google.com.
 type Instance struct {
 	// Name of the instance as specified in configuration.
 	Name string
 
+	// The name of the proxy (usually the Istio API or service name).
 	ApiProxy string
 
+	// HTTP response code
 	ResponseStatusCode int64
 
+	// Client IP address
 	ClientIp net.IP
 
+	// HTTP request verb
 	RequestVerb string
 
+	// HTTP request URI
 	RequestUri string
 
+	// HTTP request path
 	RequestPath string
 
+	// HTTP user agent header
 	Useragent string
 
+	// Timestamp of when the api_proxy started receiving the request.
 	ClientReceivedStartTimestamp time.Time
 
+	// Timestamp of when the api_proxy  finished receiving the request.
 	ClientReceivedEndTimestamp time.Time
 
+	// Timestamp of when the api_proxy started sending the request to the target.
 	ClientSentStartTimestamp time.Time
 
+	// Timestamp of when the api_proxy finished sending the request to the target.
 	ClientSentEndTimestamp time.Time
 
+	// Timestamp of when the api_proxy started request to target.
 	TargetSentStartTimestamp time.Time
 
+	// Timestamp of when the api_proxy finished sending request to target.
 	TargetSentEndTimestamp time.Time
 
+	// Timestamp of when the api_proxy started receiving response from target.
 	TargetReceivedStartTimestamp time.Time
 
+	// Timestamp of when the api_proxy finished receiving response from target.
 	TargetReceivedEndTimestamp time.Time
 
-	// auth: if jwt is available (takes precedence over api_key)
+	// The JWT claims that were used for authenticating the request (if any)
+	// Use subkey "json_claims" for passing all claims in as a single JSON field.
 	ApiClaims map[string]string
 
-	// auth: if jwt isn't available and apikey is
+	// The API KEY that was used for authenticating the request (if any)
 	ApiKey string
 }
 
