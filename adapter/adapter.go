@@ -283,6 +283,9 @@ func (h *handler) Close() error {
 
 // Handle processing and delivery of Analytics to Apigee
 func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.Instance) error {
+	if len(instances) == 0 {
+		return nil
+	}
 	h.Log().Debugf("HandleAnalytics: %d instances", len(instances))
 
 	var authContext *auth.Context
