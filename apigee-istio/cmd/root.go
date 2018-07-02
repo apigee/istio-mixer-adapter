@@ -84,6 +84,9 @@ func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.C
 	subC := &cobra.Command{
 		Use:   "version",
 		Short: "Prints build version - specify org and env to include proxy version",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return rootArgs.Resolve(false)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			printf("apigee-istio version %s %s [%s]",
 				shared.BuildInfo.Version, shared.BuildInfo.Date, shared.BuildInfo.Commit)
