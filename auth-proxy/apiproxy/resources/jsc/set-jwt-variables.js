@@ -19,7 +19,13 @@
  try {
      
      if (!Array.isArray(apiProducts)) {
-        apiProductsList.push(apiProducts.ApiProducts.ApiProduct.Name);
+       if (Array.isArray(apiProducts.ApiProducts.ApiProduct)) { // hack for broken XML2JSON
+         apiProducts.ApiProducts.ApiProduct.forEach(function(apiProduct){
+           apiProductsList.push(apiProduct.Name);
+         });
+       } else {
+         apiProductsList.push(apiProducts.ApiProducts.ApiProduct.Name);
+       }
      } else {
          //get only the product name; status is not used/sent
          apiProducts.forEach(function(apiProduct){
