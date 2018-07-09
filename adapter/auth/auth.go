@@ -84,9 +84,11 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 	var authContext = &Context{Context: ctx}
 
 	// use API Key in JWT if available
+	authAttempted := false
 	var err error
 	var verifiedClaims map[string]interface{}
 	if claims[apiKeyClaimKey] != nil {
+		authAttempted = true
 		if apiKey, ok := claims[apiKeyClaimKey].(string); ok {
 			verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
 			if err == nil {
@@ -98,6 +100,7 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 
 	// else, use API Key if available
 	if verifiedClaims == nil && apiKey != "" {
+		authAttempted = true
 		verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
 		if err == nil {
 			log.Debugf("using api key from request")
@@ -106,7 +109,8 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 	}
 
 	// else, use JWT claims
-	if verifiedClaims == nil && claims != nil {
+	if len(verifiedClaims) == 0 && len(claims) > 0 {
+		authAttempted = true
 		verifiedClaims = claims
 	}
 
@@ -123,7 +127,11 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 	}
 
 	if verifiedClaims[apiProductListClaim] == nil {
-		err = &NoAuthInfoError{}
+		if authAttempted {
+			err = &BadAuthError{}
+		} else {
+			err = &NoAuthError{}
+		}
 	}
 
 	return authContext, err
@@ -133,12 +141,20 @@ func (m *Manager) start() {
 	m.jwtMan.start(m.env)
 }
 
-// NoAuthInfoError indicates that the error was because of missing auth
-type NoAuthInfoError struct {
+// NoAuthError indicates that the error was because of missing auth
+type NoAuthError struct {
 }
 
-func (e *NoAuthInfoError) Error() string {
+func (e *NoAuthError) Error() string {
 	return "missing authentication"
+}
+
+// BadAuthError indicates that the error was because of invalid auth
+type BadAuthError struct {
+}
+
+func (e *BadAuthError) Error() string {
+	return "invalid authentication"
 }
 
 // Options allows us to specify options for how this auth manager will run
