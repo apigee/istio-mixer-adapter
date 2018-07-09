@@ -339,7 +339,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims, h.apiKeyClaimKey)
 	if err != nil {
-		if _, ok := err.(*auth.NoAuthInfoError); ok {
+		if _, ok := err.(*auth.NoAuthError); ok {
 			h.Log().Debugf("authenticate err: %v", err)
 			return adapter.CheckResult{
 				Status: status.WithPermissionDenied(err.Error()),
@@ -348,13 +348,6 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		h.Log().Errorf("authenticate err: %v", err)
 		return adapter.CheckResult{
 			Status: status.WithPermissionDenied(err.Error()),
-		}, nil
-	}
-
-	if authContext.ClientID == "" {
-		h.Log().Debugf("authenticate failed")
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("not authenticated"),
 		}, nil
 	}
 
