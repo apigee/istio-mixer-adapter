@@ -4,11 +4,7 @@
 /*
 	Package config is a generated protocol buffer package.
 
-	$title: Apigee istio-mixer-adapter
-	$description: This adapter for Istio's Mixer brings Apigee's distributed policy checks and analytics to Istio.
-	$location: https://github.com/apigee/istio-mixer-adapter
-
-	The Apigee istio-mixer-adapter provides Apigee's distributed authentication and quota policy checks
+	The Apigee Mixer adapter provides Apigee's distributed authentication and quota policy checks
 	as well as the ingestion of Istio telemetry for analysis and reporting.
 	For additional information or support please contact anchor-prega-support@google.com.
 
