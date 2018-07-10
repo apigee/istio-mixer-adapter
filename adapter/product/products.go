@@ -58,5 +58,8 @@ func (o *Options) validate() error {
 		o.Secret == "" {
 		return fmt.Errorf("all products options are required")
 	}
+	if o.RefreshRate < time.Minute {
+		return fmt.Errorf("products refresh_rate must be >= 1 minute")
+	}
 	return nil
 }

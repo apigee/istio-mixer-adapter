@@ -35,6 +35,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/adapter/quota"
 	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
+	pbtypes "github.com/gogo/protobuf/types"
 	"istio.io/istio/mixer/pkg/adapter"
 	"istio.io/istio/mixer/pkg/status"
 	authT "istio.io/istio/mixer/template/authorization"
@@ -120,10 +121,10 @@ func GetInfo() adapter.Info {
 			authT.TemplateName,
 		},
 		DefaultConfig: &config.Params{
-			ServerTimeoutSecs: 30,
-			TempDir:           "/tmp/apigee-istio",
+			ClientTimeout: pbtypes.DurationProto(30 * time.Second),
+			TempDir:       "/tmp/apigee-istio",
 			Products: &config.ParamsProductOptions{
-				RefreshRateMins: 2,
+				RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 			},
 			Analytics: &config.ParamsAnalyticsOptions{
 				LegacyEndpoint: false,
@@ -134,11 +135,20 @@ func GetInfo() adapter.Info {
 	}
 }
 
-////////////////// timeToUnix //////////////////////////
+////////////////// util //////////////////////////
 
 // timeToUnix converts a time to a UNIX timestamp in milliseconds.
 func timeToUnix(t time.Time) int64 {
 	return t.UnixNano() / (int64(time.Millisecond) / int64(time.Nanosecond))
+}
+
+// toDuration converts protobuf Duration to time.Duration.
+func toDuration(durationProto *pbtypes.Duration) time.Duration {
+	duration, err := pbtypes.DurationFromProto(durationProto)
+	if err != nil {
+		panic(fmt.Sprintf("invalid Duration proto: %v", err))
+	}
+	return duration
 }
 
 ////////////////// adapter.Builder //////////////////////////
@@ -172,14 +182,17 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
+	if b.adapterConfig.ClientTimeout == nil || toDuration(b.adapterConfig.ClientTimeout) < time.Second {
+		return nil, fmt.Errorf("ClientTimeout must be > 1")
+	}
 	httpClient := &http.Client{
-		Timeout: time.Duration(b.adapterConfig.ServerTimeoutSecs) * time.Second,
+		Timeout: toDuration(b.adapterConfig.ClientTimeout),
 	}
 
 	productMan, err := product.NewManager(env, product.Options{
 		Client:      httpClient,
 		BaseURL:     customerBase,
-		RefreshRate: time.Duration(b.adapterConfig.Products.RefreshRateMins) * time.Minute,
+		RefreshRate: toDuration(b.adapterConfig.Products.RefreshRate),
 		Key:         b.adapterConfig.Key,
 		Secret:      b.adapterConfig.Secret,
 	})

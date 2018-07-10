@@ -31,6 +31,7 @@ import (
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"github.com/apigee/istio-mixer-adapter/adapter/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
+	pbtypes "github.com/gogo/protobuf/types"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/template/authorization"
 )
@@ -98,24 +99,25 @@ func TestValidateBuild(t *testing.T) {
 	// good config
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
 	validConfig := config.Params{
-		ApigeeBase:   serverURL.String(),
-		CustomerBase: serverURL.String(),
-		OrgName:      "org",
-		EnvName:      "env",
-		Key:          "key",
-		Secret:       "secret",
-		TempDir:      d,
+		ApigeeBase:    serverURL.String(),
+		CustomerBase:  serverURL.String(),
+		OrgName:       "org",
+		EnvName:       "env",
+		Key:           "key",
+		Secret:        "secret",
+		TempDir:       d,
+		ClientTimeout: pbtypes.DurationProto(30 * time.Second),
 		Analytics: &config.ParamsAnalyticsOptions{
 			FileLimit: 10,
 		},
 		Products: &config.ParamsProductOptions{
-			RefreshRateMins: 2,
+			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 		},
 	}
 	b.SetAdapterConfig(&validConfig)
 
 	if err := b.Validate(); err != nil {
-		t.Errorf("Validate() resulted in unexpected error: %v", err)
+		t.Fatalf("Validate() resulted in unexpected error: %v", err)
 	}
 
 	// invoke the empty set methods for coverage
@@ -124,21 +126,25 @@ func TestValidateBuild(t *testing.T) {
 
 	// check build
 	h, err := b.Build(context.Background(), test.NewEnv(t))
+	if err != nil {
+		t.Fatalf("Build() resulted in unexpected error: %v", err)
+	}
 
 	ah := h.(*handler)
 	derivedConfig := config.Params{
-		ApigeeBase:   ah.ApigeeBase().String(),
-		CustomerBase: ah.CustomerBase().String(),
-		OrgName:      ah.Organization(),
-		EnvName:      ah.Environment(),
-		Key:          ah.Key(),
-		Secret:       ah.Secret(),
-		TempDir:      d,
+		ApigeeBase:    ah.ApigeeBase().String(),
+		CustomerBase:  ah.CustomerBase().String(),
+		OrgName:       ah.Organization(),
+		EnvName:       ah.Environment(),
+		Key:           ah.Key(),
+		Secret:        ah.Secret(),
+		TempDir:       d,
+		ClientTimeout: validConfig.ClientTimeout,
 		Analytics: &config.ParamsAnalyticsOptions{
 			FileLimit: 10,
 		},
 		Products: &config.ParamsProductOptions{
-			RefreshRateMins: 2,
+			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 		},
 	}
 	if !reflect.DeepEqual(validConfig, derivedConfig) {
@@ -254,5 +260,15 @@ func TestResolveClaims(t *testing.T) {
 		if !reflect.DeepEqual(want, got) {
 			t.Errorf("want: %v, got: %v", want, got)
 		}
+	}
+}
+
+func TestToDuration(t *testing.T) {
+	expected := time.Second + time.Nanosecond
+	protoDuration := pbtypes.DurationProto(expected)
+	convertedDuration := toDuration(protoDuration)
+
+	if convertedDuration != expected {
+		t.Errorf(`expected time.Duration %v, but got %v`, expected, convertedDuration)
 	}
 }
