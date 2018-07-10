@@ -1,15 +1,12 @@
 ---
-title: analytics
+title: Analytics
+description: The Analytics template is used to dispatch runtime telemetry to Apigee.
+location: https://istio.io/docs/reference/config/policy-and-telemetry/templates/analytics.html
 layout: protoc-gen-docs
 generator: protoc-gen-docs
 number_of_entries: 1
 ---
-<p>$title: Apigee Analytics
-$description: A template used to provide analytics to Apigee&rsquo;s adapter.
-$location: https://github.com/apigee/istio-mixer-adapter</p>
-
-<p>The <code>analytics</code> template defines parameters for extracting and delivering Istio telemetry to
-Apigee&rsquo;s adapter and ultimately Apigee&rsquo;s analytics processing system.
+<p>The <code>analytics</code> template represents a single request reported to Apigee&rsquo;s analytics processing system.
 For additional information or support please contact anchor-prega-support@google.com.</p>
 
 <p>Example config:</p>
@@ -17,27 +14,27 @@ For additional information or support please contact anchor-prega-support@google
 <pre><code class="language-yaml">apiVersion: config.istio.io/v1alpha2
 kind: analytics
 metadata:
- name: apigee
- namespace: istio-system
+  name: apigee
+  namespace: istio-system
 spec:
- api_key: request.api_key | request.headers[&quot;x-api-key&quot;] | &quot;&quot;
- api_proxy: api.service | destination.service | &quot;&quot;
- response_status_code: response.code | 0
- client_ip: source.ip | ip(&quot;0.0.0.0&quot;)
- request_verb: request.method | &quot;&quot;
- request_uri: request.path | &quot;&quot;
- request_path: request.path | &quot;&quot;
- useragent: request.useragent | &quot;&quot;
- client_received_start_timestamp: request.time
- client_received_end_timestamp: request.time
- target_sent_start_timestamp: request.time
- target_sent_end_timestamp: request.time
- target_received_start_timestamp: response.time
- target_received_end_timestamp: response.time
- client_sent_start_timestamp: response.time
- client_sent_end_timestamp: response.time
- api_claims: # from jwt
-   json_claims: request.auth.raw_claims | &quot;&quot;
+  api_key: request.api_key | request.headers[&quot;x-api-key&quot;] | &quot;&quot;
+  api_proxy: api.service | destination.service | &quot;&quot;
+  response_status_code: response.code | 0
+  client_ip: source.ip | ip(&quot;0.0.0.0&quot;)
+  request_verb: request.method | &quot;&quot;
+  request_uri: request.path | &quot;&quot;
+  request_path: request.path | &quot;&quot;
+  useragent: request.useragent | &quot;&quot;
+  client_received_start_timestamp: request.time
+  client_received_end_timestamp: request.time
+  target_sent_start_timestamp: request.time
+  target_sent_end_timestamp: request.time
+  target_received_start_timestamp: response.time
+  target_received_end_timestamp: response.time
+  client_sent_start_timestamp: response.time
+  client_sent_end_timestamp: response.time
+  api_claims: # from jwt
+    json_claims: request.auth.raw_claims | &quot;&quot;
 </code></pre>
 
 <h2 id="Template">Template</h2>

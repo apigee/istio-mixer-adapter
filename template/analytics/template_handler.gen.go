@@ -24,12 +24,7 @@ import (
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
-// $title: Apigee Analytics
-// $description: A template used to provide analytics to Apigee's adapter.
-// $location: https://github.com/apigee/istio-mixer-adapter
-//
-// The `analytics` template defines parameters for extracting and delivering Istio telemetry to
-// Apigee's adapter and ultimately Apigee's analytics processing system.
+// The `analytics` template represents a single request reported to Apigee's analytics processing system.
 // For additional information or support please contact anchor-prega-support@google.com.
 //
 // Example config:
@@ -38,27 +33,27 @@ import (
 // apiVersion: config.istio.io/v1alpha2
 // kind: analytics
 // metadata:
-//  name: apigee
-//  namespace: istio-system
+//   name: apigee
+//   namespace: istio-system
 // spec:
-//  api_key: request.api_key | request.headers["x-api-key"] | ""
-//  api_proxy: api.service | destination.service | ""
-//  response_status_code: response.code | 0
-//  client_ip: source.ip | ip("0.0.0.0")
-//  request_verb: request.method | ""
-//  request_uri: request.path | ""
-//  request_path: request.path | ""
-//  useragent: request.useragent | ""
-//  client_received_start_timestamp: request.time
-//  client_received_end_timestamp: request.time
-//  target_sent_start_timestamp: request.time
-//  target_sent_end_timestamp: request.time
-//  target_received_start_timestamp: response.time
-//  target_received_end_timestamp: response.time
-//  client_sent_start_timestamp: response.time
-//  client_sent_end_timestamp: response.time
-//  api_claims: # from jwt
-//    json_claims: request.auth.raw_claims | ""
+//   api_key: request.api_key | request.headers["x-api-key"] | ""
+//   api_proxy: api.service | destination.service | ""
+//   response_status_code: response.code | 0
+//   client_ip: source.ip | ip("0.0.0.0")
+//   request_verb: request.method | ""
+//   request_uri: request.path | ""
+//   request_path: request.path | ""
+//   useragent: request.useragent | ""
+//   client_received_start_timestamp: request.time
+//   client_received_end_timestamp: request.time
+//   target_sent_start_timestamp: request.time
+//   target_sent_end_timestamp: request.time
+//   target_received_start_timestamp: response.time
+//   target_received_end_timestamp: response.time
+//   client_sent_start_timestamp: response.time
+//   client_sent_end_timestamp: response.time
+//   api_claims: # from jwt
+//     json_claims: request.auth.raw_claims | ""
 // ```
 
 // Fully qualified name of the template
