@@ -17,7 +17,7 @@ To join the Apigee pre-release program for additional documentation and support,
 
 ## Version note
 
-The current release is based on Istio 0.8. The included sample files and instructions below will 
+The current release is based on Istio 1.0. The included sample files and instructions below will 
 automatically install the correct Istio version for you onto Kubernetes. It is recommended that
 you install onto Kubernetes 1.9 or newer. See the [Istio](https://istio.io) web page for more information.  
 

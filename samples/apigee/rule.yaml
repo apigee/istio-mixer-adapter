@@ -9,7 +9,7 @@ metadata:
   name: apigee-rule
   namespace: istio-system
 spec:
-  match: destination.namespace == "default"
+  match: context.reporter.kind == "inbound"
   actions:
   - handler: apigee-handler.apigee
     instances:
