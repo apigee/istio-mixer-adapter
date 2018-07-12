@@ -34,7 +34,9 @@
          
      }
  }catch(err){
+   if (apiProducts && apiProducts.Name) {
      apiProductsList.push(apiProducts.Name);
+   }
  }
 
  var scope = context.getVariable("oauthv2accesstoken.AccessTokenRequest.scope");
