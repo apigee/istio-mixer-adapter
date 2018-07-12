@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"500e91bc0f8ee1354f738eb8bf67f5005e77eba8c75d3c238206ef990cc30821","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"ac1110a7c1c9239501eccec6ce21750b0e46fa31c8498737f995852af51f5f4c","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -51,9 +51,9 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15005
+        - istio-pilot.istio-system:15007
         - --discoveryRefreshDelay
-        - 10s
+        - 1s
         - --zipkinAddress
         - zipkin.istio-system:9411
         - --connectTimeout
@@ -63,7 +63,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - MUTUAL_TLS
+        - NONE
         env:
         - name: POD_NAME
           valueFrom:
@@ -83,13 +83,12 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: docker.io/istio/proxyv2:1.0.0-snapshot.0
+        image: gcr.io/istio-release/proxyv2:release-1.0-20180712-09-15
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 10m
         securityContext:
           privileged: false
           readOnlyRootFilesystem: true
@@ -116,7 +115,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: docker.io/istio/proxy_init:1.0.0-snapshot.0
+        image: gcr.io/istio-release/proxy_init:release-1.0-20180712-09-15
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -146,7 +145,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"500e91bc0f8ee1354f738eb8bf67f5005e77eba8c75d3c238206ef990cc30821","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"ac1110a7c1c9239501eccec6ce21750b0e46fa31c8498737f995852af51f5f4c","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -175,9 +174,9 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15005
+        - istio-pilot.istio-system:15007
         - --discoveryRefreshDelay
-        - 10s
+        - 1s
         - --zipkinAddress
         - zipkin.istio-system:9411
         - --connectTimeout
@@ -187,7 +186,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - MUTUAL_TLS
+        - NONE
         env:
         - name: POD_NAME
           valueFrom:
@@ -207,13 +206,12 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: docker.io/istio/proxyv2:1.0.0-snapshot.0
+        image: gcr.io/istio-release/proxyv2:release-1.0-20180712-09-15
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
           requests:
-            cpu: 100m
-            memory: 128Mi
+            cpu: 10m
         securityContext:
           privileged: false
           readOnlyRootFilesystem: true
@@ -240,7 +238,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: docker.io/istio/proxy_init:1.0.0-snapshot.0
+        image: gcr.io/istio-release/proxy_init:release-1.0-20180712-09-15
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
