@@ -289,6 +289,7 @@ func (*builder) SetAuthorizationTypes(map[string]*authT.Type)  {}
 // Implements adapter.Handler
 func (h *handler) Close() error {
 	h.productMan.Close()
+	h.quotaMan.Close()
 	h.authMan.Close()
 	h.analyticsMan.Close()
 	return nil
