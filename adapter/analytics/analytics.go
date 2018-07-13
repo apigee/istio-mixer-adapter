@@ -66,6 +66,7 @@ type bucket struct {
 // A manager is a way for Istio to interact with Apigee's analytics platform.
 type manager struct {
 	close              chan bool
+	closed             chan bool
 	client             *http.Client
 	now                func() time.Time
 	log                adapter.Logger
@@ -233,6 +234,7 @@ func (m *manager) Close() {
 	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
 	}
+	<-m.closed
 	m.log.Infof("closed analytics manager")
 }
 
@@ -249,6 +251,7 @@ func (m *manager) uploadLoop() {
 		case <-m.close:
 			m.log.Debugf("analytics close signal received, shutting down")
 			t.Stop()
+			m.closed <- true
 			return
 		}
 	}

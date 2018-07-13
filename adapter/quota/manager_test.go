@@ -165,6 +165,7 @@ func TestSync(t *testing.T) {
 
 	m := &Manager{
 		close:          make(chan bool),
+		closed:         make(chan bool),
 		client:         http.DefaultClient,
 		now:            now,
 		syncRate:       2 * time.Millisecond,
