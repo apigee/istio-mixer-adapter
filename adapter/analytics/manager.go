@@ -47,6 +47,7 @@ func newManager(opts Options) (*manager, error) {
 
 	return &manager{
 		close:              make(chan bool),
+		closed:             make(chan bool),
 		client:             opts.Client,
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,

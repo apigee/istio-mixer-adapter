@@ -39,6 +39,7 @@ const (
 type Manager struct {
 	baseURL        *url.URL
 	close          chan bool
+	closed         chan bool
 	client         *http.Client
 	now            func() time.Time
 	log            adapter.Logger
@@ -63,6 +64,7 @@ func NewManager(env adapter.Env, options Options) (*Manager, error) {
 func newManager(baseURL *url.URL, client *http.Client) *Manager {
 	return &Manager{
 		close:          make(chan bool),
+		closed:         make(chan bool),
 		client:         client,
 		now:            time.Now,
 		syncRate:       defaultSyncRate,
@@ -97,8 +99,10 @@ func (m *Manager) Close() {
 	}
 	m.log.Infof("closing quota manager")
 	m.close <- true
-	for i := 0; i < m.numSyncWorkers; i++ {
-		m.close <- true
+	close(m.syncQueue)
+	for i := 0; i <= m.numSyncWorkers; i++ {
+		<-m.closed
+		m.log.Infof("closed")
 	}
 	m.log.Infof("closed quota manager")
 }
@@ -158,6 +162,7 @@ func (m *Manager) syncLoop() {
 		case <-m.close:
 			m.log.Debugf("closing quota sync loop")
 			t.Stop()
+			m.closed <- true
 			return
 		}
 	}
@@ -166,11 +171,12 @@ func (m *Manager) syncLoop() {
 // worker routine for syncing a bucket with the server
 func (m *Manager) syncBucketWorker() {
 	for {
-		select {
-		case bucket := <-m.syncQueue:
+		bucket, more := <-m.syncQueue
+		if more {
 			bucket.sync(m)
-		case <-m.close:
+		} else {
 			m.log.Debugf("closing quota sync worker")
+			m.closed <- true
 			return
 		}
 	}
