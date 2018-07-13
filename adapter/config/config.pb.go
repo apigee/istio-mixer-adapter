@@ -29,7 +29,7 @@
 	  temp_dir: "/tmp/apigee-istio"
 	  client_timeout: 30s
 	  products:
-	    refresh_rate: 60s
+	    refresh_rate: 2m
 	  analytics:
 	    legacy_endpoint: false
 	    file_limit: 1024
@@ -94,7 +94,7 @@ type Params struct {
 	// Optional. Default: "/tmp/apigee-istio".
 	TempDir string `protobuf:"bytes,7,opt,name=temp_dir,json=tempDir,proto3" json:"temp_dir,omitempty"`
 	// The timeout to be used for adapter requests to Apigee servers.
-	// Optional. Default: "30s".
+	// Optional. Default: "30s" (30 seconds).
 	ClientTimeout *google_protobuf1.Duration `protobuf:"bytes,8,opt,name=client_timeout,json=clientTimeout" json:"client_timeout,omitempty"`
 	// The name of a JWT claim from which to look for an api_key.
 	// Optional. Default: none.
@@ -112,7 +112,7 @@ func (*Params) Descriptor() ([]byte, []int) { return fileDescriptorConfig, []int
 // Options specific to to products handling.
 type ParamsProductOptions struct {
 	// The rate at which the list of products is refreshed from Apigee.
-	// Optional. Default: "60s".
+	// Optional. Default: "2m" (2 minutes).
 	RefreshRate *google_protobuf1.Duration `protobuf:"bytes,1,opt,name=refresh_rate,json=refreshRate" json:"refresh_rate,omitempty"`
 }
 
