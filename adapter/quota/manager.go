@@ -102,7 +102,6 @@ func (m *Manager) Close() {
 	close(m.syncQueue)
 	for i := 0; i <= m.numSyncWorkers; i++ {
 		<-m.closed
-		m.log.Infof("closed")
 	}
 	m.log.Infof("closed quota manager")
 }
