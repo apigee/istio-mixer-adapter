@@ -118,11 +118,11 @@ func (p *Manager) Close() {
 	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
-	p.log.Infof("closing quota manager")
+	p.log.Infof("closing product manager")
 	p.quitPollingChan <- true
 	p.closedChan <- true
 	close(p.closedChan)
-	p.log.Infof("closed quota manager")
+	p.log.Infof("closed product manager")
 }
 
 // don't call externally. will block until success.
