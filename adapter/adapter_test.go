@@ -15,8 +15,10 @@
 package adapter
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -24,6 +26,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,18 +162,61 @@ func TestValidateBuild(t *testing.T) {
 
 func TestHandleAnalytics(t *testing.T) {
 
+	basePath := "/some/path"
+	queryString := "with=query"
+	pathWithQueryString := basePath + "?" + queryString
+	env := test.NewEnv(t)
+	ctx := context.Background()
+	var baseURL *url.URL
+
+	uploaded := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
+		defer r.Body.Close()
+
+		if strings.HasPrefix(r.URL.Path, "/analytics/") {
+			u := *baseURL
+			u.Path = "/upload"
+			w.Write([]byte(fmt.Sprintf(`{ "url": "%s" }`, u.String())))
+			return
+		}
+
+		if strings.HasPrefix(r.URL.Path, "/upload") {
+			uploaded = true
+
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				t.Fatalf("bad gzip: %v", err)
+			}
+			var recs []analytics.Record
+			if err := json.NewDecoder(gz).Decode(&recs); err != nil {
+				t.Fatalf("bad JSON: %v", err)
+			}
+
+			if len(recs) != 1 {
+				t.Errorf("Should have received 1 rec, got %v", recs)
+			}
+
+			rec := recs[0]
+			if rec.RequestPath != basePath {
+				t.Errorf("RequestPath expected %s, got %s", rec.RequestPath, basePath)
+			}
+
+			if rec.RequestURI != pathWithQueryString {
+				t.Errorf("RequestURI expected %s, got %s", rec.RequestURI, pathWithQueryString)
+			}
+
+			w.WriteHeader(200)
+			return
+		}
+
+		t.Fatalf("invalid URL called: %s", r.URL.String())
 	}))
 	defer ts.Close()
-	baseURL, err := url.Parse(ts.URL)
+	var err error
+	baseURL, err = url.Parse(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	env := test.NewEnv(t)
-
-	ctx := context.Background()
 
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -181,7 +227,7 @@ func TestHandleAnalytics(t *testing.T) {
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		BufferPath: d,
 		BufferSize: 10,
-		BaseURL:    url.URL{},
+		BaseURL:    *baseURL,
 		Key:        "key",
 		Secret:     "secret",
 		Client:     http.DefaultClient,
@@ -204,6 +250,8 @@ func TestHandleAnalytics(t *testing.T) {
 			Name: "name",
 			ClientReceivedStartTimestamp: time.Now(),
 			ClientReceivedEndTimestamp:   time.Now(),
+			RequestUri:                   pathWithQueryString,
+			RequestPath:                  pathWithQueryString,
 		},
 	}
 
@@ -214,6 +262,10 @@ func TestHandleAnalytics(t *testing.T) {
 
 	if err := h.Close(); err != nil {
 		t.Errorf("Close() returned an unexpected error")
+	}
+
+	if !uploaded {
+		t.Errorf("analytics not delivered")
 	}
 }
 

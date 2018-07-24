@@ -28,6 +28,8 @@ import (
 	"path"
 	"time"
 
+	"strings"
+
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 	"github.com/apigee/istio-mixer-adapter/adapter/config"
@@ -317,12 +319,21 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 			TargetSentEndTimestamp:       timeToUnix(inst.TargetSentEndTimestamp),
 			APIProxy:                     inst.ApiProxy,
 			RequestURI:                   inst.RequestUri,
-			RequestPath:                  inst.RequestPath,
 			RequestVerb:                  inst.RequestVerb,
 			ClientIP:                     inst.ClientIp.String(),
 			UserAgent:                    inst.Useragent,
 			ResponseStatusCode:           int(inst.ResponseStatusCode),
 			GatewaySource:                gatewaySource,
+		}
+
+		// Apigee expects RequestURI to include query parameters. Istio's request.path matches this.
+		// However, Apigee expects RequestPath exclude query parameters and there is no corresponding
+		// Istio attribute. Thus, we need to drop the query params from request.path for RequestPath.
+		splits := strings.Split(inst.RequestPath, "?")
+		if len(splits) > 0 {
+			record.RequestPath = splits[0]
+		} else {
+			record.RequestPath = "/"
 		}
 
 		// important: This assumes that the Auth is the same for all records!

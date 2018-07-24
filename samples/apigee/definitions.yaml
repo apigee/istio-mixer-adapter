@@ -52,7 +52,6 @@ spec:
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
   request_uri: request.path | ""
-  request_path: request.path | ""
   useragent: request.useragent | ""
   client_received_start_timestamp: request.time
   client_received_end_timestamp: request.time
