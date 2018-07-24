@@ -539,6 +539,9 @@ func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRe
 		printf("undeploying proxy %s revision %d on env %s...",
 			name, oldRev, p.Env)
 		_, resp, err = p.Client.Proxies.Undeploy(name, p.Env, *oldRev)
+		if err != nil {
+			return errors.Wrapf(err, "error undeploying proxy %s", name)
+		}
 	}
 
 	printf("deploying proxy %s revision %d to env %s...", name, newRev, p.Env)
