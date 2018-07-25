@@ -66,13 +66,14 @@ func TestValidateBuild(t *testing.T) {
 		t.Errorf("Validate() missing config should have errors")
 	} else {
 		want := `6 errors occurred:
+	* apigee_base: required
+	* customer_base: required
+	* org_name: required
+	* env_name: required
+	* key: required
+	* secret: required
 
-* apigee_base: required
-* customer_base: required
-* org_name: required
-* env_name: required
-* key: required
-* secret: required`
+`
 		if errs.String() != want {
 			t.Errorf("Validate() want: \n%s.\nGot: \n%s", want, errs)
 		}
@@ -91,9 +92,10 @@ func TestValidateBuild(t *testing.T) {
 		t.Errorf("Validate() bad config should have errors")
 	} else {
 		want := `2 errors occurred:
+	* apigee_base: must be a valid url: parse not an url: invalid URI for request
+	* customer_base: must be a valid url: parse not an url: invalid URI for request
 
-* apigee_base: must be a valid url: parse not an url: invalid URI for request
-* customer_base: must be a valid url: parse not an url: invalid URI for request`
+`
 		if errs.String() != want {
 			t.Errorf("Validate() want: \n%s.\nGot: \n%s", want, errs)
 		}
