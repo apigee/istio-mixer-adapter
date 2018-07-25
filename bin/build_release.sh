@@ -9,11 +9,12 @@
 #  3. make release updates
 #     a. update README.md to appropriate versions and instructions as necessary
 #     b. update DEFAULT_ISTIO_VERSION in `bin/local_install.sh` as necessary
-#     c. replace `samples/istio/istio-demo.yaml`, `istio-demo-auth.yaml`, `helloworld` from base Istio
-#     c. update `samples/istio/istio-demo.yaml`, `samples/istio/istio-demo-auth.yaml` mixer images
-#     d. update version in `auth-proxy/apiproxy/policies/Send-Version.xml`
-#     e. run `bin/build_proxy_resources.sh`
-#     f. commit `git commit -am ${RELEASE}`
+#     c. replace `samples/istio/istio-demo.yaml`, `istio-demo-auth.yaml`, `helloworld.yaml` from base Istio
+#     d. update helloworld.yaml to include Istio sidecar: `istioctl kube-inject -f helloworld.yaml`
+#     e. update `samples/istio/istio-demo.yaml`, `samples/istio/istio-demo-auth.yaml` mixer images
+#     f. update version in `auth-proxy/apiproxy/policies/Send-Version.xml`
+#     g. run `bin/build_proxy_resources.sh`
+#     h. commit `git commit -am ${RELEASE}`
 #  4. create tag and push: `git tag ${RELEASE};git push origin --tags`
 #     (CircleCI will automatically build and tag docker image)
 #  5. verify the image
