@@ -12,8 +12,9 @@ spec:
   targets:
   - name: helloworld
   peers:
+#  - mtls:   # uncomment if you're using mTLS between services (eg. istio-demo-auth.yaml)
   origins:
   - jwt:
-      issuer: REPLACE ME
-      jwks_uri: REPLACE ME
+      issuer: https://theganyo1-eval-test.apigee.net/istio-auth/token
+      jwks_uri: https://theganyo1-eval-test.apigee.net/istio-auth/certs
   principalBinding: USE_ORIGIN

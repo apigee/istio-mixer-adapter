@@ -225,7 +225,19 @@ Update the `samples/apigee/authentication-policy.yaml` file to set correct URLs 
 The hostname (and ports) for these URLs should mirror what you used for `customer_base` config above
 (adjust as appropriate if you're using OPDK).
 
-Now, apply your Istio authentication policy:
+Important: The mTLS authentication settings for your mesh and your authentication policy must match.
+In other words, if you set up Istio to use mTLS (eg. you used istio-demo-auth.yaml), you must enable 
+mTLS in your authentication-policy.yaml and must uncomment the mTLS the `mtls` line in the
+authentication-policy.yaml file like so: 
+
+  peers:
+  - mtls:   # uncomment if you're using mTLS between services (eg. istio-demo-auth.yaml)
+
+Conversely, if you did not enable mTLS for your mesh, do NOT enable it in your authentication policy. 
+If the policies do not match, you will see errors similar to: 
+`upstream connect error or disconnect/reset before headers`.
+
+Save your changes and apply your Istio authentication policy:
 
     kubectl apply -f samples/apigee/authentication-policy.yaml
 
