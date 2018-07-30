@@ -86,7 +86,7 @@ GENDOCS_PATH=vendor/github.com/istio/tools/$GENDOCS
 if [ ! -e "$ROOT/bin/$GOGOSLICK-$GOGO_VERSION" ]; then
 echo "Building protoc-gen-gogoslick..."
 pushd $ROOT
-go build --pkgdir $GOGOSLICK_PATH -o $ROOT/bin/$GOGOSLICK-$GOGO_VERSION ./$GOGOPROTO_PATH/$GOGOSLICK
+go build --pkgdir "$GOGOSLICK_PATH" -o "$ROOT/bin/$GOGOSLICK-$GOGO_VERSION" "./$GOGOPROTO_PATH/$GOGOSLICK"
 popd
 echo "Done."
 fi
