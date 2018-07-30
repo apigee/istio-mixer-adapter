@@ -25,3 +25,14 @@
 [[constraint]]
   name = "github.com/dgrijalva/jwt-go"
   version = "~3.2.0"
+
+# The following are required to nail down deps for Istio
+
+[[override]]
+  name = "k8s.io/client-go"
+  branch = "release-7.0"	# For K8s 1.10.x
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+#  version = "1.0.0"
+  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
