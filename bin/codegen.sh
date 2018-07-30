@@ -83,7 +83,7 @@ GOGOSLICK_PATH=$ROOT/$GOGOPROTO_PATH/$GOGOSLICK
 GENDOCS=protoc-gen-docs
 GENDOCS_PATH=vendor/github.com/istio/tools/$GENDOCS
 
-if [ ! -e $ROOT/bin/$GOGOSLICK-$GOGO_VERSION ]; then
+if [ ! -e "$ROOT/bin/$GOGOSLICK-$GOGO_VERSION" ]; then
 echo "Building protoc-gen-gogoslick..."
 pushd $ROOT
 go build --pkgdir $GOGOSLICK_PATH -o $ROOT/bin/$GOGOSLICK-$GOGO_VERSION ./$GOGOPROTO_PATH/$GOGOSLICK
@@ -94,7 +94,7 @@ fi
 # istio-mixer-adapter edit
 ISTIO_ROOT="${GOPATH-$HOME/go}/src/istio.io/istio"
 #if [ ! -e $ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
-if [ ! -e $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
+if [ ! -e "$ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION" ]; then
 echo "Building protoc-gen-docs..."
 #pushd $ROOT/$GENDOCS_PATH
 #go build --pkgdir $GENDOCS_PATH -o $ROOT/bin/$GENDOCS-$GENDOCS_VERSION
@@ -107,7 +107,7 @@ fi
 PROTOC_MIN_VERSION=protoc-min-version
 MIN_VERSION_PATH=$ROOT/$GOGOPROTO_PATH/$PROTOC_MIN_VERSION
 
-if [ ! -e $ROOT/bin/$PROTOC_MIN_VERSION-$GOGO_VERSION ]; then
+if [ ! -e "$ROOT/bin/$PROTOC_MIN_VERSION-$GOGO_VERSION" ]; then
 echo "Building protoc-min-version..."
 pushd $ROOT
 go build --pkgdir $MIN_VERSION_PATH -o $ROOT/bin/$PROTOC_MIN_VERSION-$GOGO_VERSION ./$GOGOPROTO_PATH/$PROTOC_MIN_VERSION
