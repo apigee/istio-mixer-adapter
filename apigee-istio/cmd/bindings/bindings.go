@@ -88,7 +88,7 @@ func cmdBindingsAdd(b *bindings, printf, fatalf shared.FormatFn) *cobra.Command 
 				fatalf("%v", err)
 			}
 			if p == nil {
-				fatalf("invalid product name: %s", args[0])
+				fatalf("invalid product name: %s", productName)
 			}
 
 			b.bindService(p, serviceName, printf, fatalf)
@@ -113,7 +113,7 @@ func cmdBindingsRemove(b *bindings, printf, fatalf shared.FormatFn) *cobra.Comma
 				fatalf("%v", err)
 			}
 			if p == nil {
-				fatalf("invalid product name: %s", args[0])
+				fatalf("invalid product name: %s", productName)
 			}
 
 			b.unbindService(p, serviceName, printf, fatalf)
