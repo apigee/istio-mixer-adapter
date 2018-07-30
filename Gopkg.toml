@@ -34,5 +34,4 @@
 
 [[constraint]]
   name = "github.com/gogo/protobuf"
-#  version = "1.0.0"
-  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
+  version = "=1.0.0"
