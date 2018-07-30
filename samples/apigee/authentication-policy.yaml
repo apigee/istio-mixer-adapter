@@ -15,6 +15,6 @@ spec:
 #  - mtls:   # uncomment if you're using mTLS between services (eg. istio-demo-auth.yaml)
   origins:
   - jwt:
-      issuer: https://theganyo1-eval-test.apigee.net/istio-auth/token
-      jwks_uri: https://theganyo1-eval-test.apigee.net/istio-auth/certs
+      issuer: REPLACE ME
+      jwks_uri: REPLACE ME
   principalBinding: USE_ORIGIN
