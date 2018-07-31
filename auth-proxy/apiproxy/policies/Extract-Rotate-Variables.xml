@@ -13,12 +13,6 @@
         <Variable name="private_key" type="string">
             <JSONPath>$.private_key</JSONPath>
         </Variable>
-        <Variable name="key" type="string">
-            <JSONPath>$.key</JSONPath>
-        </Variable>
-        <Variable name="secret" type="string">
-            <JSONPath>$.secret</JSONPath>
-        </Variable>
     </JSONPayload>
     <Source clearPayload="true">request</Source>
 </ExtractVariables>
