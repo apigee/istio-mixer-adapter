@@ -168,8 +168,8 @@
 [[projects]]
   name = "github.com/imdario/mergo"
   packages = ["."]
-  revision = "9316a62528ac99aaecb4e47eadd6dc8aa6533d58"
-  version = "v0.3.5"
+  revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
+  version = "v0.3.6"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -376,7 +376,7 @@
     "internal/timeseries",
     "trace"
   ]
-  revision = "c4299a1a0d8524c11563db160fbf9bddbceadb21"
+  revision = "49c15d80dfbc983ea25246ee959d970efe09ec09"
 
 [[projects]]
   branch = "master"
@@ -447,7 +447,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "2a72893556e4d1f6c795a4c039314c9fa751eedb"
+  revision = "daca94659cb50e9f37c1b834680f2e46358f10b0"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -465,7 +465,9 @@
     "internal",
     "internal/backoff",
     "internal/channelz",
+    "internal/envconfig",
     "internal/grpcrand",
+    "internal/transport",
     "keepalive",
     "metadata",
     "naming",
@@ -475,11 +477,10 @@
     "resolver/passthrough",
     "stats",
     "status",
-    "tap",
-    "transport"
+    "tap"
   ]
-  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
-  version = "v1.13.0"
+  revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
+  version = "v1.14.0"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
@@ -494,7 +495,6 @@
   version = "v2.2.1"
 
 [[projects]]
-  branch = "release-1.0"
   name = "istio.io/api"
   packages = [
     "mixer/adapter/model/v1beta1",
@@ -502,9 +502,9 @@
     "policy/v1beta1"
   ]
   revision = "123b0a79a4dba5bd653dcac09cf731b8002e5341"
+  version = "1.0.0"
 
 [[projects]]
-  branch = "release-1.0"
   name = "istio.io/istio"
   packages = [
     "mixer/adapter/kubernetesenv/template",
@@ -561,7 +561,8 @@
     "pkg/tracing",
     "pkg/version"
   ]
-  revision = "3d56e2bcbeb8eaf2e6c3685901a6b3a18075b1a7"
+  revision = "3a136c90ec5e308f236e0d7ebb5c4c5e405217f4"
+  version = "1.0.0"
 
 [[projects]]
   name = "k8s.io/api"
@@ -711,6 +712,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "08d57e5cf369ba4d56b595d9e94a6fc634d11aee508ae6af2add8f0ddb6393d5"
+  inputs-digest = "6b294817a36716f7c300f8a5634540fcf6ec3bc523c484538259fd4140dfd346"
   solver-name = "gps-cdcl"
   solver-version = 1

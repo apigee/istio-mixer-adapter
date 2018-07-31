@@ -11,7 +11,7 @@
 
 [[constraint]]
   name = "istio.io/istio"
-  branch = "release-1.0"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
