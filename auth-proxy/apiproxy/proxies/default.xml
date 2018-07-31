@@ -202,14 +202,18 @@
             <Description/>
             <Request>
                 <Step>
+                    <Name>AuthenticationError</Name>
+                    <Condition>request.header.Authorization is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Authenticate-Call</Name>
+                </Step>
+                <Step>
                     <Name>Extract-Rotate-Variables</Name>
                 </Step>
                 <Step>
                     <Name>Raise-Fault-Unknown-Request</Name>
-                    <Condition>key is null or secret is null or certificate1 is null or certificate1_kid is null or private_key is null</Condition>
-                </Step>
-                <Step>
-                    <Name>Authenticate-Call</Name>
+                    <Condition>certificate1 is null or certificate1_kid is null or private_key is null</Condition>
                 </Step>
                 <Step>
                     <Name>Retrieve-Cert</Name>
