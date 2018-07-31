@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"ac2343276d2f72ba625874ed65325c25fbb83e48b39479cee950402f6da469aa","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"b9c35d3225e1f83ccf948de18fd0301452a4fdcad1f6bbe45673e58077b567e7","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -51,7 +51,7 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15007
+        - istio-pilot.istio-system:15005
         - --discoveryRefreshDelay
         - 1s
         - --zipkinAddress
@@ -63,7 +63,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - NONE
+        - MUTUAL_TLS
         env:
         - name: POD_NAME
           valueFrom:
@@ -83,7 +83,7 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-release/proxyv2:1.0.0-snapshot.2
+        image: gcr.io/istio-prod/proxyv2:release-1.0-20180719-09-15
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
@@ -115,7 +115,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: gcr.io/istio-release/proxy_init:1.0.0-snapshot.2
+        image: gcr.io/istio-prod/proxy_init:release-1.0-20180719-09-15
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -145,7 +145,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"ac2343276d2f72ba625874ed65325c25fbb83e48b39479cee950402f6da469aa","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"b9c35d3225e1f83ccf948de18fd0301452a4fdcad1f6bbe45673e58077b567e7","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -174,7 +174,7 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15007
+        - istio-pilot.istio-system:15005
         - --discoveryRefreshDelay
         - 1s
         - --zipkinAddress
@@ -186,7 +186,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - NONE
+        - MUTUAL_TLS
         env:
         - name: POD_NAME
           valueFrom:
@@ -206,7 +206,7 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-release/proxyv2:1.0.0-snapshot.2
+        image: gcr.io/istio-prod/proxyv2:release-1.0-20180719-09-15
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
@@ -238,7 +238,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: gcr.io/istio-release/proxy_init:1.0.0-snapshot.2
+        image: gcr.io/istio-prod/proxy_init:release-1.0-20180719-09-15
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
