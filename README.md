@@ -8,7 +8,7 @@ This is the source repository for Apigee's Istio Mixer Adapter. This allows user
 incorporate Apigee Authentication, Authorization, and Analytics policies to protect and
 report through the Apigee UI.
 
-To join the Apigee pre-release program for additional documentation and support, please contact:
+A Quick Start Tutorial continues below, but complete Apigee documentation on the concepts and usage of this adapter is also available on the [Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts) site. For more information and support, please contact:
 <anchor-prega-support@google.com>.
 
 ---
