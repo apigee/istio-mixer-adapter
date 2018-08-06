@@ -47,7 +47,7 @@ metadata:
   namespace: istio-system
 spec:
   api_key: request.api_key | request.headers["x-api-key"] | ""
-  api_proxy: api.service | destination.service | ""
+  api_proxy: api.service | destination.service.host | ""
   response_status_code: response.code | 0
   client_ip: source.ip | ip("0.0.0.0")
   request_verb: request.method | ""
@@ -79,6 +79,6 @@ spec:
       json_claims: request.auth.raw_claims | ""
   action:
     namespace: destination.namespace | "default"
-    service: api.service | destination.service | ""
+    service: api.service | destination.service.host | ""
     path: api.operation | request.path | ""
     method: request.method | ""
