@@ -25,7 +25,9 @@ import (
 )
 
 // The `analytics` template represents a single request reported to Apigee's analytics processing system.
-// For additional information or support please contact anchor-prega-support@google.com.
+// Complete Apigee documentation on the concepts and usage of this adapter is also available on the
+// [Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts) site.
+// For more information and product support, please [contact Apigee support](https://apigee.com/about/support/portal).
 //
 // Example config:
 //
