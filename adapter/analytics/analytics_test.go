@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -50,6 +51,7 @@ type fakeServer struct {
 	failAuth    func() int
 	failUpload  int
 	failedCalls int
+	lock        sync.RWMutex
 }
 
 func newFakeServer(t *testing.T) *fakeServer {
@@ -64,6 +66,8 @@ func newFakeServer(t *testing.T) *fakeServer {
 func (fs *fakeServer) handler(t *testing.T) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("/analytics/", func(w http.ResponseWriter, r *http.Request) {
+		fs.lock.Lock()
+		defer fs.lock.Unlock()
 		if c := fs.failAuth(); c != 0 {
 			fs.failedCalls++
 			w.WriteHeader(c)
@@ -77,6 +81,8 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		})
 	})
 	m.HandleFunc("/signed-url-1234", func(w http.ResponseWriter, r *http.Request) {
+		fs.lock.Lock()
+		defer fs.lock.Unlock()
 		if fs.failUpload != 0 {
 			fs.failedCalls++
 			w.WriteHeader(fs.failUpload)
@@ -110,9 +116,19 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 	return m
 }
 
-func (fs *fakeServer) Close()                               { fs.srv.Close() }
-func (fs *fakeServer) Records() map[string][]testRecordPush { return fs.records }
-func (fs *fakeServer) URL() string                          { return fs.srv.URL }
+func (fs *fakeServer) Close() { fs.srv.Close() }
+func (fs *fakeServer) Records() map[string][]testRecordPush {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+
+	// copy
+	targetMap := make(map[string][]testRecordPush)
+	for key, value := range fs.records {
+		targetMap[key] = value
+	}
+	return targetMap
+}
+func (fs *fakeServer) URL() string { return fs.srv.URL }
 
 func TestPushAnalytics(t *testing.T) {
 	t.Parallel()
@@ -221,9 +237,11 @@ func TestPushAnalytics(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Should have sent things out by now, check it out.
+	fs.lock.RLock()
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
 	}
+	fs.lock.RUnlock()
 
 	// Should have deleted everything.
 	for _, p := range []string{
@@ -342,9 +360,11 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Should have sent things out by now, check it out.
+	fs.lock.RLock()
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
 	}
+	fs.lock.RUnlock()
 
 	// Should have deleted everything.
 	for _, p := range []string{

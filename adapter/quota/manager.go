@@ -122,8 +122,15 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 	m.bucketsLock.RLock()
 	b, existingBucket := m.buckets[quotaID]
 	if !existingBucket {
-		b = newBucket(req, m, auth)
-		m.buckets[quotaID] = b
+		m.bucketsLock.RUnlock()
+		m.bucketsLock.Lock()
+		b, existingBucket = m.buckets[quotaID]
+		if !existingBucket {
+			b = newBucket(req, m, auth)
+			m.buckets[quotaID] = b
+		}
+		m.bucketsLock.Unlock()
+		m.bucketsLock.RLock()
 	}
 	m.bucketsLock.RUnlock()
 	if !existingBucket {
