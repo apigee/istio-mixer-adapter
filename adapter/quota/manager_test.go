@@ -177,14 +177,19 @@ func TestSync(t *testing.T) {
 	defer m.Close()
 
 	b := newBucket(requests[0], m, authContext)
+	b.lock.Lock()
 	b.created = now()
 	b.now = now
 	b.requests = requests
 	b.result = result
+	m.bucketsLock.Lock()
 	m.buckets = map[string]*bucket{quotaID: b}
+	m.bucketsLock.Unlock()
 	b.refreshAfter = time.Millisecond
+	b.lock.Unlock()
 
 	time.Sleep(15 * time.Millisecond) // allow idle sync
+	b.lock.RLock()
 	if len(b.requests) != 0 {
 		t.Errorf("pending requests got: %d, want: %d", len(b.requests), 0)
 	}
@@ -194,6 +199,7 @@ func TestSync(t *testing.T) {
 	if b.synced != m.now() {
 		t.Errorf("synced got: %#v, want: %#v", b.synced, m.now())
 	}
+	b.lock.RUnlock()
 
 	// do interactive sync
 	req := &Request{
@@ -203,6 +209,7 @@ func TestSync(t *testing.T) {
 	b.apply(m, req)
 	b.sync(m)
 
+	b.lock.Lock()
 	if len(b.requests) != 0 {
 		t.Errorf("pending requests got: %d, want: %d", len(b.requests), 0)
 	}
@@ -214,6 +221,7 @@ func TestSync(t *testing.T) {
 	}
 
 	b.deleteAfter = time.Millisecond
+	b.lock.Unlock()
 	time.Sleep(10 * time.Millisecond) // allow background delete
 	m.bucketsLock.RLock()
 	defer m.bucketsLock.RUnlock()
