@@ -254,7 +254,7 @@ We need a JWT token. So have `apigee-istio` get you a JWT token:
     
 Or, you can do it yourself through the API: 
 
-    curl https://{your organization}-{your environment}.apigee.net/istio-auth/token -d '{ "client_id":"{your key}", "client_secret":"your secret", "grant_type":"client_credentials" }' -H "Content-Type: application/json"
+    curl https://{your organization}-{your environment}.apigee.net/istio-auth/token -d '{ "client_id":"your key", "client_secret":"your secret", "grant_type":"client_credentials" }' -H "Content-Type: application/json"
 
 Now, try again with your newly minted JWT token:
 
