@@ -38,3 +38,4 @@ apigee-istio/apigee-istio
 
 # dist
 dist/
+grpc-server/apigee-adapter

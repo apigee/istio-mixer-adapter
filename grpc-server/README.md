@@ -1,16 +1,11 @@
-Build binary
+Build binary and docker image:
 
-    GOOS=linux go build -a -installsuffix cgo -o apigee-adapter .
-	
-Build docker image
-
-    docker build -t apigee-adapter -f Dockerfile .
+    bin/build_adapter_docker.sh
 	
 Deploy docker image into Kubernetes
 
-    kubectl apply -f apigee-adapter.yaml
+    kubectl apply -f samples/apigee/grpc/apigee-adapter.yaml
 
-
-FYI: This is how to get root certs file for Docker image if needed:
+FYI: If needed, root certs file is created via:
 
     curl -o ca-certificates.crt https://curl.haxx.se/ca/cacert.pem
