@@ -18,7 +18,6 @@
 package adapter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -37,24 +36,29 @@ import (
 )
 
 type (
-	// Server is basic server interface
+	// Server is the gRPC server instance
 	Server interface {
 		Addr() string
 		Close() error
 		Run(shutdown chan error)
 	}
 
-	// GRPCAdapter supports templates
+	handlerMap map[string]*ApigeeHandler // tenant name -> handler
+
+	// GRPCAdapter handles multi-tenancy
 	GRPCAdapter struct {
 		listener net.Listener
 		server   *grpc.Server
 
-		defaultConfig []byte
-		rawConfig     []byte
-		builder       adapter.HandlerBuilder
-		handler       adapter.Handler
-		env           adapter.Env
-		builderLock   sync.RWMutex
+		info         adapter.Info
+		handlers     handlerMap
+		handlersLock sync.RWMutex
+	}
+
+	// ApigeeHandler handles a single tenant (org/env)
+	ApigeeHandler struct {
+		env     adapter.Env
+		handler adapter.Handler
 	}
 )
 
@@ -62,19 +66,17 @@ type (
 var _ authorization.HandleAuthorizationServiceServer = &GRPCAdapter{}
 var _ analytics.HandleAnalyticsServiceServer = &GRPCAdapter{}
 
+// HandleAuthorization is a gRPC endpoint
 func (g *GRPCAdapter) HandleAuthorization(ctx context.Context,
 	r *authorization.HandleAuthorizationRequest) (*model.CheckResult, error) {
-
-	g.env.Logger().Infof("HandleAuthorization: %v", r)
 
 	h, err := g.getHandler(r.AdapterConfig.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	cr, err := h.(authorization.Handler).HandleAuthorization(ctx, instance(r.Instance))
+	cr, err := h.HandleAuthorization(ctx, r.Instance)
 	if err != nil {
-		g.env.Logger().Errorf("Could not process: %v", err)
 		return nil, err
 	}
 
@@ -85,158 +87,73 @@ func (g *GRPCAdapter) HandleAuthorization(ctx context.Context,
 	}, nil
 }
 
+// HandleAnalytics is a gRPC endpoint
 func (g *GRPCAdapter) HandleAnalytics(ctx context.Context,
 	r *analytics.HandleAnalyticsRequest) (*model.ReportResult, error) {
-
-	g.env.Logger().Infof("HandleAnalytics: %v", r)
 
 	h, err := g.getHandler(r.AdapterConfig.Value)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.(analytics.Handler).HandleAnalytics(ctx, analyticsInstances(r.Instances))
-	if err != nil {
-		g.env.Logger().Errorf("Could not process: %v", err)
-		return nil, err
-	}
-
-	return &model.ReportResult{}, nil
+	err = h.HandleAnalytics(ctx, r.Instances)
+	return &model.ReportResult{}, err
 }
 
-func instance(in *authorization.InstanceMsg) *authorization.Instance {
-	return instances([]*authorization.InstanceMsg{in})[0]
-}
+// maintains exactly one per org/env (the first one in)
+func (g *GRPCAdapter) getHandler(rawConfig []byte) (*ApigeeHandler, error) {
 
-func instances(in []*authorization.InstanceMsg) []*authorization.Instance {
-	out := make([]*authorization.Instance, 0, len(in))
-	for _, inst := range in {
-		out = append(out, &authorization.Instance{
-			Name:    inst.Name,
-			Subject: decodeSubject(inst.Subject),
-			Action:  decodeAction(inst.Action),
-		})
-	}
-	return out
-}
-
-func analyticsInstances(in []*analytics.InstanceMsg) []*analytics.Instance {
-	out := make([]*analytics.Instance, 0, len(in))
-	for _, inst := range in {
-		out = append(out, &analytics.Instance{
-			Name:                         inst.Name,
-			ApiProxy:                     inst.ApiProxy,
-			ResponseStatusCode:           inst.ResponseStatusCode,
-			ClientIp:                     inst.ClientIp.Value,
-			RequestVerb:                  inst.RequestVerb,
-			RequestPath:                  inst.RequestPath,
-			Useragent:                    inst.Useragent,
-			ClientReceivedStartTimestamp: decodeTimestamp(inst.ClientReceivedStartTimestamp),
-			ClientReceivedEndTimestamp:   decodeTimestamp(inst.ClientReceivedEndTimestamp),
-			ClientSentStartTimestamp:     decodeTimestamp(inst.ClientSentStartTimestamp),
-			ClientSentEndTimestamp:       decodeTimestamp(inst.ClientSentEndTimestamp),
-			TargetSentStartTimestamp:     decodeTimestamp(inst.TargetSentStartTimestamp),
-			TargetSentEndTimestamp:       decodeTimestamp(inst.TargetSentEndTimestamp),
-			TargetReceivedStartTimestamp: decodeTimestamp(inst.TargetReceivedStartTimestamp),
-			TargetReceivedEndTimestamp:   decodeTimestamp(inst.TargetReceivedEndTimestamp),
-			ApiClaims:                    inst.ApiClaims,
-			ApiKey:                       inst.ApiKey,
-		})
-	}
-	return out
-}
-
-func decodeSubject(in *authorization.SubjectMsg) *authorization.Subject {
-	return &authorization.Subject{
-		User:       in.User,
-		Groups:     in.Groups,
-		Properties: decodeValueMap(in.Properties),
-	}
-}
-
-func decodeAction(in *authorization.ActionMsg) *authorization.Action {
-	return &authorization.Action{
-		Namespace:  in.Namespace,
-		Service:    in.Service,
-		Method:     in.Method,
-		Path:       in.Path,
-		Properties: decodeValueMap(in.Properties),
-	}
-}
-
-func decodeValueMap(in map[string]*policy.Value) map[string]interface{} {
-	out := make(map[string]interface{}, len(in))
-	for k, v := range in {
-		out[k] = decodeValue(v.GetValue())
-	}
-	return out
-}
-
-func decodeTimestamp(t *policy.TimeStamp) time.Time {
-	return time.Unix(t.GetValue().Seconds, int64(t.GetValue().Nanos))
-}
-
-func decodeValue(in interface{}) interface{} {
-	switch t := in.(type) {
-	case *policy.Value_StringValue:
-		return t.StringValue
-	case *policy.Value_Int64Value:
-		return t.Int64Value
-	case *policy.Value_DoubleValue:
-		return t.DoubleValue
-	default:
-		return fmt.Sprintf("%v", in)
-	}
-}
-
-// todo: this only supports a single config, consider multiple
-func (g *GRPCAdapter) getHandler(rawConfig []byte) (adapter.Handler, error) {
-	g.builderLock.RLock()
-
-	// todo: this is a hack
-	if g.handler != nil {
-		return g.handler, nil
-	}
-
-	if 0 == bytes.Compare(rawConfig, g.rawConfig) {
-		h := g.handler
-		g.builderLock.RUnlock()
-		return h, nil
-	}
-	g.builderLock.RUnlock()
-
-	// todo: will this even work?
-	cfg := &config.Params{}
-	if err := cfg.Unmarshal(g.defaultConfig); err != nil {
-		return nil, err
-	}
+	cfg := *g.info.DefaultConfig.(*config.Params)
 	if err := cfg.Unmarshal(rawConfig); err != nil {
 		return nil, err
 	}
 
-	g.builderLock.Lock()
-	defer g.builderLock.Unlock()
+	g.handlersLock.RLock()
 
-	// recheck
-	if 0 == bytes.Compare(rawConfig, g.rawConfig) {
-		return g.handler, nil
+	tenant := fmt.Sprintf("%s~%s", cfg.OrgName, cfg.EnvName)
+
+	apigeeHandler, ok := g.handlers[tenant]
+	if ok {
+		g.handlersLock.RUnlock()
+		return apigeeHandler, nil
 	}
 
-	g.env.Logger().Infof("Loaded handler with: %v", cfg)
+	g.handlersLock.RUnlock()
+	g.handlersLock.Lock()
+	defer g.handlersLock.Unlock()
 
-	g.builder.SetAdapterConfig(cfg)
-	if ce := g.builder.Validate(); ce != nil {
-		return nil, ce
+	// check again
+	apigeeHandler, ok = g.handlers[tenant]
+	if ok {
+		return apigeeHandler, nil
 	}
 
-	h, err := g.builder.Build(context.Background(), g.env)
+	// create new handler
+	goroutinePool := pool.NewGoroutinePool(5, false) // todo: verify this value
+	env := rtHandler.NewEnv(0, tenant, goroutinePool)
+	apigeeHandler = &ApigeeHandler{
+		env: env,
+	}
+
+	ctx := context.Background()
+	builder := g.info.NewBuilder()
+
+	builder.SetAdapterConfig(&cfg)
+	if errs := builder.Validate(); errs != nil {
+		return nil, errs
+	}
+
+	h, err := builder.Build(ctx, env)
 	if err != nil {
-		g.env.Logger().Errorf("could not build: %v", err)
+		env.Logger().Errorf("could not build handler: %v", err)
 		return nil, err
 	}
-	g.handler = h
-	g.rawConfig = rawConfig
-	return h, err
+	apigeeHandler.handler = h
+
+	env.Logger().Infof("created apigee tenant handler")
+
+	g.handlers[tenant] = apigeeHandler
+	return apigeeHandler, nil
 }
 
 // Addr returns the listening address of the server
@@ -259,29 +176,130 @@ func (g *GRPCAdapter) Close() error {
 		_ = g.listener.Close()
 	}
 
+	g.handlersLock.Lock()
+	defer g.handlersLock.Unlock()
+	for _, h := range g.handlers {
+		h.handler.Close()
+	}
+
+	return nil
+}
+
+// HandleAuthorization is in the context of a single tenant
+func (h *ApigeeHandler) HandleAuthorization(ctx context.Context, im *authorization.InstanceMsg) (*model.CheckResult, error) {
+	h.env.Logger().Debugf("HandleAuthorization: %v", im)
+
+	decodeValue := func(in interface{}) interface{} {
+		switch t := in.(type) {
+		case *policy.Value_StringValue:
+			return t.StringValue
+		case *policy.Value_Int64Value:
+			return t.Int64Value
+		case *policy.Value_DoubleValue:
+			return t.DoubleValue
+		default:
+			return fmt.Sprintf("%v", in)
+		}
+	}
+
+	decodeValueMap := func(in map[string]*policy.Value) map[string]interface{} {
+		out := make(map[string]interface{}, len(in))
+		for k, v := range in {
+			out[k] = decodeValue(v.GetValue())
+		}
+		return out
+	}
+
+	subject := &authorization.Subject{
+		User:       im.Subject.User,
+		Groups:     im.Subject.Groups,
+		Properties: decodeValueMap(im.Subject.Properties),
+	}
+
+	action := &authorization.Action{
+		Namespace:  im.Action.Namespace,
+		Service:    im.Action.Service,
+		Method:     im.Action.Method,
+		Path:       im.Action.Path,
+		Properties: decodeValueMap(im.Action.Properties),
+	}
+
+	inst := &authorization.Instance{
+		Name:    im.Name,
+		Subject: subject,
+		Action:  action,
+	}
+
+	cr, err := h.handler.(authorization.Handler).HandleAuthorization(ctx, inst)
+	if err != nil {
+		h.env.Logger().Errorf("Could not process: %v", err)
+		return nil, err
+	}
+
+	return &model.CheckResult{
+		Status:        cr.Status,
+		ValidDuration: cr.ValidDuration,
+		ValidUseCount: cr.ValidUseCount,
+	}, nil
+}
+
+// HandleAnalytics is in the context of a single tenant
+func (h *ApigeeHandler) HandleAnalytics(ctx context.Context, im []*analytics.InstanceMsg) error {
+	h.env.Logger().Debugf("HandleAnalytics: %v", im)
+
+	decodeTimestamp := func(t *policy.TimeStamp) time.Time {
+		if t == nil {
+			return time.Time{}
+		}
+		return time.Unix(t.GetValue().Seconds, int64(t.GetValue().Nanos))
+	}
+
+	instances := make([]*analytics.Instance, 0, len(im))
+	for _, inst := range im {
+		instances = append(instances, &analytics.Instance{
+			Name:                         inst.Name,
+			ApiProxy:                     inst.ApiProxy,
+			ResponseStatusCode:           inst.ResponseStatusCode,
+			ClientIp:                     inst.ClientIp.Value,
+			RequestVerb:                  inst.RequestVerb,
+			RequestPath:                  inst.RequestPath,
+			RequestUri:                   inst.RequestUri,
+			Useragent:                    inst.Useragent,
+			ClientReceivedStartTimestamp: decodeTimestamp(inst.ClientReceivedStartTimestamp),
+			ClientReceivedEndTimestamp:   decodeTimestamp(inst.ClientReceivedEndTimestamp),
+			ClientSentStartTimestamp:     decodeTimestamp(inst.ClientSentStartTimestamp),
+			ClientSentEndTimestamp:       decodeTimestamp(inst.ClientSentEndTimestamp),
+			TargetSentStartTimestamp:     decodeTimestamp(inst.TargetSentStartTimestamp),
+			TargetSentEndTimestamp:       decodeTimestamp(inst.TargetSentEndTimestamp),
+			TargetReceivedStartTimestamp: decodeTimestamp(inst.TargetReceivedStartTimestamp),
+			TargetReceivedEndTimestamp:   decodeTimestamp(inst.TargetReceivedEndTimestamp),
+			ApiClaims:                    inst.ApiClaims,
+			ApiKey:                       inst.ApiKey,
+		})
+	}
+
+	err := h.handler.(analytics.Handler).HandleAnalytics(ctx, instances)
+	if err != nil {
+		h.env.Logger().Errorf("Could not process: %v", err)
+		return err
+	}
+
 	return nil
 }
 
 // NewGRPCAdapter creates a new no session server from given args.
 func NewGRPCAdapter(addr string) (*GRPCAdapter, error) {
-	goroutinePool := pool.NewGoroutinePool(5, false)
-	info := GetInfo()
-	defaultConfig, err := info.DefaultConfig.(*config.Params).Marshal()
-	if err != nil {
-		return nil, err
-	}
 	s := &GRPCAdapter{
-		defaultConfig: defaultConfig,
-		builder:       info.NewBuilder(),
-		env:           rtHandler.NewEnv(0, "apigee", goroutinePool),
-		rawConfig:     []byte{0xff, 0xff},
+		info:     GetInfo(),
+		handlers: handlerMap{},
 	}
+	var err error
 	if s.listener, err = net.Listen("tcp", addr); err != nil {
 		_ = s.Close()
 		return nil, fmt.Errorf("unable to listen on socket: %v", err)
 	}
+	fmt.Printf("listening on :%v\n", s.listener.Addr())
 
-	s.env.Logger().Infof("listening on :%v\n", s.listener.Addr())
 	s.server = grpc.NewServer()
 	authorization.RegisterHandleAuthorizationServiceServer(s.server, s)
 	analytics.RegisterHandleAnalyticsServiceServer(s.server, s)

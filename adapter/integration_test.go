@@ -408,11 +408,11 @@ func cloudMockHandler(t *testing.T) http.HandlerFunc {
 				return
 			}
 
-			jwt, err := generateJWT(privateKey)
+			jwtToken, err := generateJWT(privateKey)
 			if err != nil {
 				t.Fatal(err)
 			}
-			jwtResponse := auth.APIKeyResponse{Token: jwt}
+			jwtResponse := auth.APIKeyResponse{Token: jwtToken}
 
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(jwtResponse)

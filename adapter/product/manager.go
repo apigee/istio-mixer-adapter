@@ -390,6 +390,7 @@ func makeResourceRegex(resource string) (*regexp.Regexp, error) {
 	return regexp.Compile("^" + pattern + "$")
 }
 
+// ProductsMap is a map of API Product name to API Product
 type ProductsMap map[string]*APIProduct
 
 type productsMux struct {
