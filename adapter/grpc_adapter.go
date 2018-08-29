@@ -35,6 +35,8 @@ import (
 	"istio.io/istio/mixer/template/authorization"
 )
 
+const WORKER_POOL_SIZE = 10
+
 type (
 	// Server is the gRPC server instance
 	Server interface {
@@ -129,7 +131,8 @@ func (g *GRPCAdapter) getHandler(rawConfig []byte) (*ApigeeHandler, error) {
 	}
 
 	// create new handler
-	goroutinePool := pool.NewGoroutinePool(5, false) // todo: verify this value
+	goroutinePool := pool.NewGoroutinePool(WORKER_POOL_SIZE, false)
+	goroutinePool.AddWorkers(WORKER_POOL_SIZE)
 	env := rtHandler.NewEnv(0, tenant, goroutinePool)
 	apigeeHandler = &ApigeeHandler{
 		env: env,
