@@ -79,6 +79,9 @@
                     <Name>Extract-OAuth-Params</Name>
                 </Step>
                 <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
                     <Name>Raise-Fault-Unknown-Request</Name>
                     <Condition>client_id is null or client_secret is null or grant_type is null </Condition>
                 </Step>

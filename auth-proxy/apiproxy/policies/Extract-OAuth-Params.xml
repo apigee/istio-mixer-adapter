@@ -14,6 +14,9 @@
         <Variable name="client_id" type="string">
             <JSONPath>$.client_id</JSONPath>
         </Variable>
+        <Variable name="apikey" type="string">
+            <JSONPath>$.client_id</JSONPath>
+        </Variable>
         <Variable name="client_secret" type="string">
             <JSONPath>$.client_secret</JSONPath>
         </Variable>
