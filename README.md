@@ -104,6 +104,19 @@ You should soon be able to now see all the Istio components running in your Kube
 Be sure istio-pilot, istio-ingressgateway, istio-policy, istio-telemetry, and istio-citadel are running
 before continuing. More information on verifying the Istio installation is
 [here](https://istio.io/docs/setup/kubernetes/quick-start/#verifying-the-installation).
+
+## Upgrade Istio with Apigee mixer
+
+If you have already installed Istio, you can install the Mixer adapter by running the following commands:
+
+```
+kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.0
+
+kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.0
+```
+
+NOTE 1: change the tag from `1.0.0` to `latest` if you want the latest release.
+NOTE 2: change the container to `istio-mixer-debug` if you want the container with debug tools 
  
 ## Install a target service
 
@@ -270,5 +283,5 @@ Click the `Analyze` in the menu on the left and check out some nifty analytics i
 
 ---
 
-To join the Apigee pre-release program for additional documentation and support, please contact:
-<anchor-prega-support@google.com>.
+To join the Apigee pre-release program for additional documentation and support, please contact [apigee support](https://apigee.com/about/support/portal)
+
