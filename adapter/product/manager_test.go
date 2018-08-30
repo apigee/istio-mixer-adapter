@@ -162,7 +162,7 @@ func TestManagerPolling(t *testing.T) {
 		t.Errorf("number of products should not have incremented")
 	}
 
-	time.Sleep(opts.RefreshRate * 2)
+	time.Sleep(opts.RefreshRate * 4)
 	pp2 = len(pp.Products())
 	if pp1 == pp2 {
 		t.Errorf("number of products should have incremented")
