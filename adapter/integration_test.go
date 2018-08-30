@@ -78,7 +78,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				 "code": 7,
-				 "message": "apigee-handler.apigee.istio-system:invalid authentication"
+				 "message": "handler.apigee.istio-system:invalid authentication"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 0
@@ -129,7 +129,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				 "code": 7,
-				 "message": "apigee-handler.apigee.istio-system:not authorized"
+				 "message": "handler.apigee.istio-system:not authorized"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 0
@@ -180,7 +180,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				 "code": 7,
-				 "message": "apigee-handler.apigee.istio-system:invalid authentication"
+				 "message": "handler.apigee.istio-system:invalid authentication"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 0
@@ -256,7 +256,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				"code": 7,
-				"message": "apigee-handler.apigee.istio-system:missing authentication"
+				"message": "handler.apigee.istio-system:missing authentication"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 0
@@ -283,7 +283,7 @@ func TestAuthorization(t *testing.T) {
 			   "Check": {
 				"Status": {
 				"code": 8,
-				"message": "apigee-handler.apigee.istio-system:quota exceeded"
+				"message": "handler.apigee.istio-system:quota exceeded"
 				},
 				"ValidDuration": 0,
 				"ValidUseCount": 1
@@ -297,6 +297,13 @@ func TestAuthorization(t *testing.T) {
 		},
 	}
 
+	info := apigeeAdapter.GetInfo()
+
+	// delete analytics as the custom template is not supported by test framework
+	info.SupportedTemplates = []string{
+		authT.TemplateName,
+	}
+
 	ts := httptest.NewServer(cloudMockHandler(t))
 	defer ts.Close()
 
@@ -305,7 +312,9 @@ func TestAuthorization(t *testing.T) {
 		t.Logf("** Executing test case '%s' **", id)
 		integration.RunTest(
 			t,
-			testGetInfo,
+			func() adapter.Info {
+				return info
+			},
 			integration.Scenario{
 				ParallelCalls: []integration.Call{
 					{
@@ -321,9 +330,14 @@ func TestAuthorization(t *testing.T) {
 				Teardown: func(ctx interface{}) {
 				},
 
+				GetState: func(ctx interface{}) (interface{}, error) {
+					return nil, nil
+				},
+
 				Configs: []string{
 					serviceCfg,
 				},
+
 				Want: c.want,
 			},
 		)
@@ -394,11 +408,11 @@ func cloudMockHandler(t *testing.T) http.HandlerFunc {
 				return
 			}
 
-			jwt, err := generateJWT(privateKey)
+			jwtToken, err := generateJWT(privateKey)
 			if err != nil {
 				t.Fatal(err)
 			}
-			jwtResponse := auth.APIKeyResponse{Token: jwt}
+			jwtResponse := auth.APIKeyResponse{Token: jwtToken}
 
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(jwtResponse)
@@ -464,22 +478,12 @@ func generateJWT(privateKey *rsa.PrivateKey) (string, error) {
 	return t, e
 }
 
-// removed Analytics because the integration test framework can't handle it
-func testGetInfo() adapter.Info {
-	info := apigeeAdapter.GetInfo()
-	info.SupportedTemplates = []string{
-		authT.TemplateName,
-	}
-	return info
-}
-
 const (
 	adapterConfig = `
-
 apiVersion: config.istio.io/v1alpha2
 kind: apigee
 metadata:
-  name: apigee-handler
+  name: handler
   namespace: istio-system
 spec:
   apigee_base: __SERVER_BASE_URL__
@@ -489,9 +493,7 @@ spec:
   key: key
   secret: secret
   api_key_claim: api_key
-
 ---
-
 apiVersion: config.istio.io/v1alpha2
 kind: rule
 metadata:
@@ -499,12 +501,10 @@ metadata:
   namespace: istio-system
 spec:
   actions:
-  - handler: apigee-handler.apigee
+  - handler: handler.apigee
     instances:
     - apigee.authorization
-
 ---
-
 # instance configuration for template 'apigee.authorization'
 apiVersion: config.istio.io/v1alpha2
 kind: authorization
@@ -523,6 +523,5 @@ spec:
     service: api.service | destination.service | ""
     path: api.operation | request.path | ""
     method: request.method | ""
-
 `
 )

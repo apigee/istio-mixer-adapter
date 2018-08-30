@@ -48,12 +48,9 @@ func createManager(options Options, log adapter.Logger) *Manager {
 	return &Manager{
 		baseURL:         options.BaseURL,
 		log:             log,
-		products:        map[string]*APIProduct{},
 		quitPollingChan: make(chan bool, 1),
 		closedChan:      make(chan bool),
-		getProductsChan: make(chan bool),
 		returnChan:      make(chan map[string]*APIProduct),
-		updatedChan:     make(chan bool, 1),
 		isClosed:        &isClosedInt,
 		refreshRate:     options.RefreshRate,
 		client:          options.Client,
@@ -66,47 +63,50 @@ func createManager(options Options, log adapter.Logger) *Manager {
 type Manager struct {
 	baseURL          *url.URL
 	log              adapter.Logger
-	products         map[string]*APIProduct
 	isClosed         *int32
 	quitPollingChan  chan bool
 	closedChan       chan bool
-	getProductsChan  chan bool
 	returnChan       chan map[string]*APIProduct
-	updatedChan      chan bool
 	refreshRate      time.Duration
 	refreshTimerChan <-chan time.Time
 	client           *http.Client
 	key              string
 	secret           string
+	productsMux      productsMux
 }
 
 func (p *Manager) start(env adapter.Env) {
 	p.log.Infof("starting product manager")
-	p.retrieve()
-	//go p.pollingLoop()
+	p.productsMux = productsMux{
+		setChan:   make(chan ProductsMap),
+		getChan:   make(chan ProductsMap),
+		closeChan: make(chan struct{}),
+	}
 	env.ScheduleDaemon(func() {
-		p.pollingLoop()
+		p.productsMux.mux()
 	})
+	env.ScheduleDaemon(func() {
+		p.pollProducts()
+	})
+	p.retrieve()
+
 	p.log.Infof("started product manager")
 }
 
 // Products atomically gets a mapping of name => APIProduct.
-func (p *Manager) Products() map[string]*APIProduct {
+func (p *Manager) Products() ProductsMap {
 	if atomic.LoadInt32(p.isClosed) == int32(1) {
 		return nil
 	}
-	p.getProductsChan <- true
-	return <-p.returnChan
+	return p.productsMux.Get()
 }
 
-func (p *Manager) pollingLoop() {
+func (p *Manager) pollProducts() {
 	tick := time.Tick(p.refreshRate)
 	for {
 		select {
 		case <-p.closedChan:
 			return
-		case <-p.getProductsChan:
-			p.returnChan <- p.products
 		case <-tick:
 			p.retrieve()
 		}
@@ -122,6 +122,7 @@ func (p *Manager) Close() {
 	p.quitPollingChan <- true
 	p.closedChan <- true
 	close(p.closedChan)
+	p.productsMux.Close()
 	p.log.Infof("closed product manager")
 }
 
@@ -171,7 +172,7 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 			return err
 		}
 
-		pm := map[string]*APIProduct{}
+		pm := ProductsMap{}
 		for _, v := range res.APIProducts {
 			product := v
 			// only save products that actually map to something
@@ -215,15 +216,9 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
 				}
 			}
 		}
-		p.products = pm
+		p.productsMux.Set(pm)
 
 		p.log.Debugf("retrieved %d products, kept %d", len(res.APIProducts), len(pm))
-
-		// don't block, default means there is existing signal
-		select {
-		case p.updatedChan <- true:
-		default:
-		}
 
 		return nil
 	}
@@ -239,10 +234,6 @@ func (p *Manager) resolveResourceMatchers(product *APIProduct) {
 		}
 		product.resourceRegexps = append(product.resourceRegexps, reg)
 	}
-}
-
-func (p *Manager) getTokenReadyChannel() <-chan bool {
-	return p.updatedChan
 }
 
 func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
@@ -397,4 +388,46 @@ func makeResourceRegex(resource string) (*regexp.Regexp, error) {
 	}
 
 	return regexp.Compile("^" + pattern + "$")
+}
+
+// ProductsMap is a map of API Product name to API Product
+type ProductsMap map[string]*APIProduct
+
+type productsMux struct {
+	setChan   chan ProductsMap
+	getChan   chan ProductsMap
+	closeChan chan struct{}
+}
+
+func (h productsMux) Get() ProductsMap {
+	return <-h.getChan
+}
+func (h productsMux) Set(s ProductsMap) {
+	h.setChan <- s
+}
+func (h productsMux) Close() {
+	close(h.closeChan)
+}
+func (h productsMux) mux() {
+	var productsMap ProductsMap
+	for {
+		if productsMap == nil {
+			select {
+			case <-h.closeChan:
+				close(h.setChan)
+				close(h.getChan)
+				return
+			case productsMap = <-h.setChan:
+				continue
+			}
+		}
+		select {
+		case productsMap = <-h.setChan:
+		case h.getChan <- productsMap:
+		case <-h.closeChan:
+			close(h.setChan)
+			close(h.getChan)
+			return
+		}
+	}
 }
