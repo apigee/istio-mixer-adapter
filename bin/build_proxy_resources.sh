@@ -2,6 +2,7 @@
 
 #
 # If you change the proxies, you must run this and check in the generated proxies.go.
+# Remember to update the returned proxy version(s).
 #
 
 if [[ "${GOPATH}" == "" ]]; then
