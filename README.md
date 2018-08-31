@@ -166,6 +166,9 @@ If only you had credentials. Let's fix that.
 * Select your environment(s).
 * Set the Quota to `5` requests every `1` `minute`.
 * Add a Path with the `+Custom Resource` button. Set the path to `/`.
+* Add the service name `helloworld.default.svc.cluster.local` to `Istio Services`. 
+  Note that you could also use the `apigee-istio bindings` command to associate the product with 
+  an Istio service.
 * Save
 
 [Create a Developer](https://apigee.com/developers) - use any values you wish. Be creative!
@@ -180,20 +183,6 @@ If only you had credentials. Let's fix that.
 Still on the App page, you should now see a `Credentials` section. Click the `Show` button 
 under the `Consumer Key` heading. Copy that key!
 
-### Bind your Apigee API Product to your service
-
-Now that you have a policy, there's just one more thing your need to do: Bind it to your Istio service.
-
-    apigee-istio -o {your organization name} -e {your environment name} bindings add helloworld.default.svc.cluster.local  helloworld
-
-You should see something like this:
-
-    product helloworld is now bound to: helloworld.default.svc.cluster.local
-
-By the way, a handy way to see all the policies bound to your services is using the `bindings list` command:
-
-    apigee-istio -o {your organization name} -e {your environment name} bindings list
-
 ### Access helloworld with your key
 
 Now you should now be able to access the helloworld service in Istio by passing that key you got  
@@ -202,6 +191,11 @@ from your Apigee `App` above. Just send it as the value of the `x-api-key` heade
     curl http://${GATEWAY_URL}/hello -H "x-api-key: {your consumer key}"
 
 The call should now be successful. You're back in business and your authentication policy works!
+
+Note: There may be some latency in configuration. The API Product information refreshes from Apigee 
+every two minutes. In addition, configuration changes you make to Istio will take a few moments to 
+be propagated throughout the mesh. During this time, you could see inconsistent behavior as it takes
+effect.
 
 ### Hit your Quota
 
