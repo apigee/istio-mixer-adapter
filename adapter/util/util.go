@@ -21,7 +21,7 @@ import (
 
 // SprintfRedacts truncates secret strings to len(5)
 func SprintfRedacts(redacts []interface{}, format string, a ...interface{}) string {
-	s := fmt.Sprintf(format, a)
+	s := fmt.Sprintf(format, a...)
 	for _, r := range redacts {
 		if r, ok := r.(string); ok {
 			truncated := Truncate(r, 5)
