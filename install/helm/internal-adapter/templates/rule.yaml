@@ -1,0 +1,16 @@
+apiVersion: config.istio.io/v1alpha2
+kind: rule
+metadata:
+  name: {{ .Release.Name }}-rule
+  namespace: {{ $.Release.Namespace }}
+spec:
+  match: {{ $.Values.adapter.matchRule }}
+  actions:
+  - handler: {{ .Release.Name }}-handler.apigee.istio-system
+    instances:
+    {{- if .Values.adapter.auth.enabled }}
+    - apigee.authorization
+    {{- end }}
+    {{- if .Values.adapter.analytics.enabled }}
+    - apigee.analytics
+    {{- end }}

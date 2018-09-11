@@ -1,0 +1,21 @@
+# handler configuration for adapter 'apigee'
+apiVersion: config.istio.io/v1alpha2
+kind: apigee
+metadata:
+  name: {{ .Release.Name }}-handler
+  namespace: {{ $.Release.Namespace }}
+spec:
+  apigee_base: {{ $.Values.adapter.apigee.base }}
+  customer_base: {{ $.Values.adapter.apigee.customerBase }}
+  org_name: {{ $.Values.adapter.apigee.organization }}
+  env_name: {{ $.Values.adapter.apigee.environment }}
+  key: {{ $.Values.adapter.apigee.key }}
+  secret: {{ $.Values.adapter.apigee.secret }}
+  temp_dir: {{ $.Values.adapter.tempDir }}
+  client_timeout: {{ $.Values.adapter.apigee.timeout}}
+  products:
+    refresh_rate: {{ $.Values.adapter.auth.productRefreshRate }}
+  analytics:
+    legacy_endpoint: {{ $.Values.adapter.analytics.legacyEndpoint }}
+    file_limit: {{ $.Values.adapter.analytics.fileLimit }}
+  api_key_claim: {{ $.Values.adapter.auth.keyClaim}}

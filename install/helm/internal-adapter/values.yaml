@@ -1,0 +1,15 @@
+# Default settings for apigee
+adapter:
+  matchRule: context.reporter.kind == "inbound" && destination.namespace == "default"
+  tempDir: /tmp/apigee-istio
+  apigee:
+    base: https://istioservices.apigee.net/edgemicro
+    timeout: 60s
+  auth:
+    enabled: true
+    productRefreshRate: 2m
+    apiKeyClaim:
+  analytics:
+    enabled: true
+    legacyEndpoint: false
+    fileLimit: 1024
