@@ -23,7 +23,7 @@
 #     a. verify your changes for git: `git status`
 #     b. add and commit: `git commit -am "prep ${RELEASE}"`
 #     c. tag the commit: `git tag ${RELEASE}`
-#     c. push: `git push --set-upstream origin $RELEASE-prep --tags`
+#     c. push: `git push --set-upstream origin $RELEASE-prep ${RELEASE}`
 #  (CircleCI will automatically build and tag docker image)
 #  5. verify the image
 #     (gcr.io/apigee-api-management-istio/istio-mixer:$RELEASE)
