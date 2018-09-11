@@ -17,7 +17,8 @@
 #  4. Validate build
 #     a. update `Gopkg.toml`, ensure appropriate version for `istio.io/istio`
 #     b. update deps: `dep ensure --update`
-#     c. build: `bin/local_update.sh` (remove istio from GOPATH first)
+#     e. remove existing istio from $GOPATH: `rm -rf $GOPATH/src/istio.io/istio`
+#     f. build mixer: `bin/local_install.sh`
 #  5. Commit and push
 #     a. verify your changes for git: `git status`
 #     b. add and commit: `git commit -am "prep ${RELEASE}"`

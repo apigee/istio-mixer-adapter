@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"b9c35d3225e1f83ccf948de18fd0301452a4fdcad1f6bbe45673e58077b567e7","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"666176cf119f5520023f04b79663e0d1ebeaf2aece1864b5abf1547879b22129","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -51,7 +51,7 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15005
+        - istio-pilot.istio-system:15007
         - --discoveryRefreshDelay
         - 1s
         - --zipkinAddress
@@ -63,7 +63,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - MUTUAL_TLS
+        - NONE
         env:
         - name: POD_NAME
           valueFrom:
@@ -83,14 +83,13 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-prod/proxyv2:release-1.0-20180719-09-15
+        image: gcr.io/istio-release/proxyv2:1.0.2
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
           requests:
             cpu: 10m
         securityContext:
-          privileged: false
           readOnlyRootFilesystem: true
           runAsUser: 1337
         volumeMounts:
@@ -115,7 +114,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: gcr.io/istio-prod/proxy_init:release-1.0-20180719-09-15
+        image: gcr.io/istio-release/proxy_init:1.0.2
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -123,7 +122,6 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
-          privileged: true
       volumes:
       - emptyDir:
           medium: Memory
@@ -145,7 +143,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"b9c35d3225e1f83ccf948de18fd0301452a4fdcad1f6bbe45673e58077b567e7","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"666176cf119f5520023f04b79663e0d1ebeaf2aece1864b5abf1547879b22129","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -174,7 +172,7 @@ spec:
         - --parentShutdownDuration
         - 1m0s
         - --discoveryAddress
-        - istio-pilot.istio-system:15005
+        - istio-pilot.istio-system:15007
         - --discoveryRefreshDelay
         - 1s
         - --zipkinAddress
@@ -186,7 +184,7 @@ spec:
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
-        - MUTUAL_TLS
+        - NONE
         env:
         - name: POD_NAME
           valueFrom:
@@ -206,14 +204,13 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-prod/proxyv2:release-1.0-20180719-09-15
+        image: gcr.io/istio-release/proxyv2:1.0.2
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         resources:
           requests:
             cpu: 10m
         securityContext:
-          privileged: false
           readOnlyRootFilesystem: true
           runAsUser: 1337
         volumeMounts:
@@ -238,7 +235,7 @@ spec:
         - 5000,
         - -d
         - ""
-        image: gcr.io/istio-prod/proxy_init:release-1.0-20180719-09-15
+        image: gcr.io/istio-release/proxy_init:1.0.2
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -246,7 +243,6 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
-          privileged: true
       volumes:
       - emptyDir:
           medium: Memory
