@@ -3477,7 +3477,7 @@ spec:
       containers:
       - name: mixer
 #        image: "gcr.io/istio-release/mixer:1.0.2"
-        "gcr.io/apigee-api-management-istio/istio-mixer:1.0.2"
+        image: "gcr.io/apigee-api-management-istio/istio-mixer:1.0.2"
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 9093
@@ -3575,7 +3575,7 @@ spec:
       containers:
       - name: mixer
 #        image: "gcr.io/istio-release/mixer:1.0.2"
-        "gcr.io/apigee-api-management-istio/istio-mixer:1.0.2"
+        image: "gcr.io/apigee-api-management-istio/istio-mixer:1.0.2"
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 9093
