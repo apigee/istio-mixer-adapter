@@ -46,9 +46,9 @@ fi
 if [[ `command -v goreleaser` == "" ]]; then
   echo "goreleaser not installed, installing..."
   cd "${GOPATH}/bin/"
-  wget https://github.com/goreleaser/goreleaser/releases/download/v0.85.2/goreleaser_Linux_x86_64.tar.gz
+  wget https://github.com/goreleaser/goreleaser/releases/download/v0.87.0/goreleaser_Linux_x86_64.tar.gz
   tar xfz goreleaser_Linux_x86_64.tar.gz goreleaser
-  rm goreleaser_Darwin_x86_64.tar.gz
+  rm goreleaser_Linux_x86_64.tar.gz
 fi
 
 ADAPTER_DIR="${GOPATH}/src/github.com/apigee/istio-mixer-adapter"
@@ -62,7 +62,7 @@ fi
 DRYRUN_ARGS=""
 if [[ "${DRYRUN}" == "1" ]]; then
   echo "Dry run, will not label or push to Github"
-  DRYRUN_ARGS="--skip-publish --skip-validate"
+  DRYRUN_ARGS="--snapshot"
 fi
 
 
