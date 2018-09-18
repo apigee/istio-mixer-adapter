@@ -62,7 +62,7 @@ fi
 DRYRUN_ARGS=""
 if [[ "${DRYRUN}" == "1" ]]; then
   echo "Dry run, will not label or push to Github"
-  DRYRUN_ARGS="--skip-publish --skip-validate"
+  DRYRUN_ARGS="--snapshot --skip-publish --skip-validate"
 fi
 
 
