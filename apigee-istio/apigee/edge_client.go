@@ -154,6 +154,9 @@ type EdgeAuth struct {
 
 	// if set to true, no auth will be set
 	SkipAuth bool
+
+	// BearerToken token for OAuth or SAML
+	BearerToken string
 }
 
 func retrieveAuthFromNetrc(netrcPath, host string) (*EdgeAuth, error) {
@@ -203,10 +206,14 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 		c.auth, e = retrieveAuthFromNetrc("", baseURL.Host)
 	} else if o.Auth.SkipAuth {
 		// do nothing
-	} else if o.Auth.Password == "" {
+	} else if o.Auth.Password == "" && o.Auth.BearerToken == "" {
 		c.auth, e = retrieveAuthFromNetrc(o.Auth.NetrcPath, baseURL.Host)
 	} else {
-		c.auth = &EdgeAuth{Username: o.Auth.Username, Password: o.Auth.Password}
+		c.auth = &EdgeAuth{
+			Username:    o.Auth.Username,
+			Password:    o.Auth.Password,
+			BearerToken: o.Auth.BearerToken,
+		}
 	}
 
 	if e != nil {
@@ -323,7 +330,11 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	req.Header.Add("Accept", appJson)
 	req.Header.Add("User-Agent", c.UserAgent)
 	if c.auth != nil {
-		req.SetBasicAuth(c.auth.Username, c.auth.Password)
+		if c.auth.BearerToken != "" {
+			req.Header.Add("Authorization", "Bearer "+c.auth.BearerToken)
+		} else {
+			req.SetBasicAuth(c.auth.Username, c.auth.Password)
+		}
 	}
 	return req, nil
 }
