@@ -61,6 +61,8 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 				"", "Apigee username")
 			subC.PersistentFlags().StringVarP(&rootArgs.Password, "password", "p",
 				"", "Apigee password")
+			subC.PersistentFlags().StringVarP(&rootArgs.Token, "token", "t",
+				"", "Apigee OAuth or SAML token")
 
 			subC.MarkPersistentFlagRequired("org")
 			subC.MarkPersistentFlagRequired("env")

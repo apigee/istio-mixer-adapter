@@ -55,6 +55,7 @@ type RootArgs struct {
 	Env            string
 	Username       string
 	Password       string
+	Token          string
 	NetrcPath      string
 	IsOPDK         bool
 
@@ -90,10 +91,11 @@ func (r *RootArgs) Resolve(skipAuth bool) error {
 		Org:     r.Org,
 		Env:     r.Env,
 		Auth: &apigee.EdgeAuth{
-			NetrcPath: r.NetrcPath,
-			Username:  r.Username,
-			Password:  r.Password,
-			SkipAuth:  skipAuth,
+			NetrcPath:   r.NetrcPath,
+			Username:    r.Username,
+			Password:    r.Password,
+			BearerToken: r.Token,
+			SkipAuth:    skipAuth,
 		},
 		Debug: r.Verbose,
 	}
