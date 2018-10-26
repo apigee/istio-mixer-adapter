@@ -597,7 +597,7 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		q.Add("encrypt", "true")
 		req.URL.RawQuery = q.Encode()
 	}
-	req.SetBasicAuth(auth.Username, auth.Password)
+	auth.ApplyTo(req)
 	resp, err := p.Client.Do(req, nil)
 	defer resp.Body.Close()
 	if err != nil && resp == nil {
@@ -612,7 +612,7 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 	if err != nil {
 		fatalf("unable to create request", err)
 	}
-	req.SetBasicAuth(auth.Username, auth.Password)
+	auth.ApplyTo(req)
 	resp, err = p.Client.Do(req, nil)
 	defer resp.Body.Close()
 	if err != nil && resp == nil {
@@ -634,7 +634,7 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		if err != nil {
 			fatalf("unable to create request", err)
 		}
-		req.SetBasicAuth(auth.Username, auth.Password)
+		auth.ApplyTo(req)
 		resp, err := p.Client.Do(req, nil)
 		defer resp.Body.Close()
 		if err != nil && resp == nil {
@@ -659,7 +659,7 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		fatalf("unable to create request", err)
 	}
 	req.Header.Add("Content-Type", "application/json")
-	req.SetBasicAuth(auth.Username, auth.Password)
+	auth.ApplyTo(req)
 	resp, err := p.Client.Do(req, nil)
 	if err != nil && resp == nil {
 		fatalf("%s", err)

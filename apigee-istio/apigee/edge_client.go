@@ -159,6 +159,14 @@ type EdgeAuth struct {
 	BearerToken string
 }
 
+func (auth *EdgeAuth) ApplyTo(req *http.Request) {
+	if auth.BearerToken != "" {
+		req.Header.Add("Authorization", "Bearer "+auth.BearerToken)
+	} else {
+		req.SetBasicAuth(auth.Username, auth.Password)
+	}
+}
+
 func retrieveAuthFromNetrc(netrcPath, host string) (*EdgeAuth, error) {
 	if netrcPath == "" {
 		netrcPath = os.ExpandEnv("${HOME}/.netrc")
@@ -330,11 +338,7 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	req.Header.Add("Accept", appJson)
 	req.Header.Add("User-Agent", c.UserAgent)
 	if c.auth != nil {
-		if c.auth.BearerToken != "" {
-			req.Header.Add("Authorization", "Bearer "+c.auth.BearerToken)
-		} else {
-			req.SetBasicAuth(c.auth.Username, c.auth.Password)
-		}
+		c.auth.ApplyTo(req)
 	}
 	return req, nil
 }
