@@ -16,7 +16,7 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 ## Version note
 
-The current release is based on Istio 1.0.2. The included sample files and instructions below will 
+The current release is based on Istio 1.0.3. The included sample files and instructions below will 
 automatically install the correct Istio version for you onto Kubernetes. It is recommended that
 you install onto Kubernetes 1.9 or newer. See the [Istio](https://istio.io) web page for more information.  
 
@@ -110,12 +110,12 @@ before continuing. More information on verifying the Istio installation is
 If you have already installed Istio, you can install the Mixer adapter by running the following commands:
 
 ```
-kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.2
+kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.3
 
-kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.2
+kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.3
 ```
 
-NOTE 1: change the tag from `1.0.2` to `latest` if you want the latest release.
+NOTE 1: change the tag from `1.0.3` to `latest` if you want the latest release.
 NOTE 2: change the container to `istio-mixer-debug` if you want the container with debug tools 
  
 ## Install a target service
@@ -159,9 +159,8 @@ The service is now protected by Apigee. Great! But now you've locked yourself ou
 If only you had credentials. Let's fix that.
 
 Debugging tip: If you're certain you've applied everything correctly up to this point but 
-are still unable to see the `missing authentication` message in Istio 1.0.2, please check 
-[the Github wiki](https://github.com/apigee/istio-mixer-adapter/wiki/Debug-Authorization-check-ignored-in-Istio-1.0.2)
-for troubleshooting tips.  
+are still unable to see the `missing authentication` message, please check 
+[the Github wiki](https://github.com/apigee/istio-mixer-adapter/wiki) for troubleshooting tips.  
 
 ```
 ki delete po $(ki get po -l istio-mixer-type=policy -o 'jsonpath={.items[0].metadata.name}')
