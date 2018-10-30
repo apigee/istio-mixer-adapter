@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"666176cf119f5520023f04b79663e0d1ebeaf2aece1864b5abf1547879b22129","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"48f39c4792663fa70ea9c6eb9c29612031cbe36a3850b41faa407da434ec11d3","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -58,8 +58,6 @@ spec:
         - zipkin.istio-system:9411
         - --connectTimeout
         - 10s
-        - --statsdUdpAddress
-        - istio-statsd-prom-bridge.istio-system:9125
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
@@ -83,9 +81,17 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-release/proxyv2:1.0.2
+        - name: ISTIO_META_app
+          value: helloworld
+        - name: ISTIO_META_version
+          value: v1
+        image: docker.io/istio/proxyv2:1.0.3
         imagePullPolicy: IfNotPresent
         name: istio-proxy
+        ports:
+        - containerPort: 15090
+          name: http-envoy-prom
+          protocol: TCP
         resources:
           requests:
             cpu: 10m
@@ -111,10 +117,10 @@ spec:
         - -x
         - ""
         - -b
-        - 5000,
+        - "5000"
         - -d
         - ""
-        image: gcr.io/istio-release/proxy_init:1.0.2
+        image: docker.io/istio/proxy_init:1.0.3
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -122,6 +128,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+          privileged: true
       volumes:
       - emptyDir:
           medium: Memory
@@ -143,7 +150,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"666176cf119f5520023f04b79663e0d1ebeaf2aece1864b5abf1547879b22129","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"48f39c4792663fa70ea9c6eb9c29612031cbe36a3850b41faa407da434ec11d3","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -179,8 +186,6 @@ spec:
         - zipkin.istio-system:9411
         - --connectTimeout
         - 10s
-        - --statsdUdpAddress
-        - istio-statsd-prom-bridge.istio-system:9125
         - --proxyAdminPort
         - "15000"
         - --controlPlaneAuthPolicy
@@ -204,9 +209,17 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        image: gcr.io/istio-release/proxyv2:1.0.2
+        - name: ISTIO_META_app
+          value: helloworld
+        - name: ISTIO_META_version
+          value: v2
+        image: docker.io/istio/proxyv2:1.0.3
         imagePullPolicy: IfNotPresent
         name: istio-proxy
+        ports:
+        - containerPort: 15090
+          name: http-envoy-prom
+          protocol: TCP
         resources:
           requests:
             cpu: 10m
@@ -232,10 +245,10 @@ spec:
         - -x
         - ""
         - -b
-        - 5000,
+        - "5000"
         - -d
         - ""
-        image: gcr.io/istio-release/proxy_init:1.0.2
+        image: docker.io/istio/proxy_init:1.0.3
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -243,6 +256,7 @@ spec:
           capabilities:
             add:
             - NET_ADMIN
+          privileged: true
       volumes:
       - emptyDir:
           medium: Memory
