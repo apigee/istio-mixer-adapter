@@ -18,23 +18,18 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"path"
-	"sync"
 
-	"github.com/google/uuid"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
 type writer struct {
-	gz   *gzip.Writer
-	f    *os.File
-	lock sync.Mutex
+	gz *gzip.Writer
+	f  *os.File
 }
 
 func (w *writer) write(records []Record) error {
-	w.lock.Lock()
-	defer w.lock.Unlock()
 	if err := json.NewEncoder(w.gz).Encode(records); err != nil {
 		return fmt.Errorf("json encode: %s", err)
 	}
@@ -45,8 +40,6 @@ func (w *writer) write(records []Record) error {
 }
 
 func (w *writer) close() error {
-	w.lock.Lock()
-	defer w.lock.Unlock()
 	if err := w.gz.Close(); err != nil {
 		return fmt.Errorf("gz.Close: %s", err)
 	}
@@ -65,6 +58,7 @@ type bucket struct {
 	w        *writer
 	incoming chan []Record
 	closer   chan string
+	stopper  chan interface{}
 }
 
 func (b *bucket) runLoop() {
@@ -72,17 +66,7 @@ func (b *bucket) runLoop() {
 		select {
 		case records := <-b.incoming:
 			if b.w == nil {
-				u, err := uuid.NewRandom()
-				if err != nil {
-					b.log.Errorf("AX Records Lost. uuid.Random(): %s", err)
-					return
-				}
-
-				// Use the timestamp as the prefix to sort by creation time
-				fn := fmt.Sprintf("%d_%s.json.gz", b.manager.now().Unix(), u.String())
-
-				// create new bucket file
-				f, err := os.Create(path.Join(b.dir, fn))
+				f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-", b.manager.now().Unix()))
 				if err != nil {
 					b.log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
 					return
@@ -92,11 +76,13 @@ func (b *bucket) runLoop() {
 					gz: gzip.NewWriter(f),
 				}
 
-				b.log.Debugf("new bucket file created: %s", f.Name())
+				b.log.Debugf("new bucket created: %s", f.Name())
 			}
-			if err := b.w.write(records); err != nil {
+			w := b.w
+			if err := w.write(records); err != nil {
 				b.log.Errorf("writing records: %s", err)
 			}
+			b.log.Debugf("%d records written to %s", len(records), b.w.f.Name())
 		case filename := <-b.closer:
 			if b.w != nil {
 				if filename == "" || b.w.f.Name() == filename {
@@ -105,16 +91,23 @@ func (b *bucket) runLoop() {
 				}
 				b.w = nil
 			}
+		case <-b.stopper:
 			return
 		}
 	}
+	b.log.Errorf("RUN LOOP OUT")
 }
 
 func (b *bucket) write(records []Record) {
 	b.incoming <- records
 }
 
-// will close if passed filename is current file, pass "" to force close
+// will close if passed filename is current file or ""
 func (b *bucket) close(filename string) {
 	b.closer <- filename
+}
+
+// close loop
+func (b *bucket) stop() {
+	b.stopper <- ""
 }

@@ -51,7 +51,6 @@ const (
 type manager struct {
 	env                adapter.Env
 	close              chan bool
-	closed             chan bool
 	client             *http.Client
 	now                func() time.Time
 	log                adapter.Logger
@@ -89,15 +88,21 @@ func (m *manager) Close() {
 	}
 	m.log.Infof("closing analytics manager")
 	m.close <- true
+	m.bucketsLock.RLock()
+	for _, b := range m.buckets {
+		b.close("")
+	}
+	m.bucketsLock.RUnlock()
 	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
 	}
-	<-m.closed
+	//for _, b := range m.buckets {
+	//	b.stop()
+	//}
 	m.log.Infof("closed analytics manager")
 }
 
-// uploadLoop runs a timer that periodically pushes everything in the buffer
-// directory to the server.
+// uploadLoop periodically uploads everything in the tempDir
 func (m *manager) uploadLoop() {
 	t := time.NewTicker(m.collectionInterval)
 	for {
@@ -107,9 +112,7 @@ func (m *manager) uploadLoop() {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
 		case <-m.close:
-			m.log.Debugf("analytics close signal received, shutting down")
-			t.Stop()
-			m.closed <- true
+			m.log.Debugf("analytics upload loop closed")
 			return
 		}
 	}
