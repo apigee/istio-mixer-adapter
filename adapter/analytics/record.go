@@ -14,6 +14,14 @@
 
 package analytics
 
+import (
+	"errors"
+	"time"
+
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/hashicorp/go-multierror"
+)
+
 // A Record is a single event that is tracked via Apigee analytics.
 type Record struct {
 	ClientReceivedStartTimestamp int64  `json:"client_received_start_timestamp"`
@@ -41,4 +49,54 @@ type Record struct {
 	Organization                 string `json:"organization"`
 	Environment                  string `json:"environment"`
 	GatewaySource                string `json:"gateway_source"`
+}
+
+func (r Record) ensureFields(ctx *auth.Context) Record {
+	r.RecordType = axRecordType
+
+	// populate from auth context
+	r.DeveloperEmail = ctx.DeveloperEmail
+	r.DeveloperApp = ctx.Application
+	r.AccessToken = ctx.AccessToken
+	r.ClientID = ctx.ClientID
+	r.Organization = ctx.Organization()
+	r.Environment = ctx.Environment()
+
+	// todo: select best APIProduct based on path, otherwise arbitrary
+	if len(ctx.APIProducts) > 0 {
+		r.APIProduct = ctx.APIProducts[0]
+	}
+	return r
+}
+
+// validate confirms that a record has correct values in it.
+func (r Record) validate(now time.Time) error {
+	var err error
+
+	// Validate that certain fields are set.
+	if r.Organization == "" {
+		err = multierror.Append(err, errors.New("missing Organization"))
+	}
+	if r.Environment == "" {
+		err = multierror.Append(err, errors.New("missing Environment"))
+	}
+	if r.ClientReceivedStartTimestamp == 0 {
+		err = multierror.Append(err, errors.New("missing ClientReceivedStartTimestamp"))
+	}
+	if r.ClientReceivedEndTimestamp == 0 {
+		err = multierror.Append(err, errors.New("missing ClientReceivedEndTimestamp"))
+	}
+	if r.ClientReceivedStartTimestamp > r.ClientReceivedEndTimestamp {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp > ClientReceivedEndTimestamp"))
+	}
+
+	// Validate that timestamps make sense.
+	ts := time.Unix(r.ClientReceivedStartTimestamp/1000, 0)
+	if ts.After(now) {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be in the future"))
+	}
+	if ts.Before(now.Add(-90 * 24 * time.Hour)) {
+		err = multierror.Append(err, errors.New("ClientReceivedStartTimestamp cannot be more than 90 days old"))
+	}
+	return err
 }
