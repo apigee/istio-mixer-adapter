@@ -81,15 +81,18 @@ func (oa *legacyAnalytics) SendRecords(auth *auth.Context, records []Record) err
 	}
 }
 
-func buildRequest(auth *auth.Context, records []Record) (*legacyRequest, error) {
-	if auth == nil || len(records) == 0 {
+func buildRequest(auth *auth.Context, incoming []Record) (*legacyRequest, error) {
+	if auth == nil || len(incoming) == 0 {
 		return nil, nil
 	}
 	if auth.Organization() == "" || auth.Environment() == "" {
 		return nil, fmt.Errorf("organization and environment are required in auth: %v", auth)
 	}
 
-	EnsureFields(auth, records)
+	records := make([]Record, 0, len(incoming))
+	for _, record := range incoming {
+		records = append(records, record.ensureFields(auth))
+	}
 
 	return &legacyRequest{
 		Organization: auth.Organization(),

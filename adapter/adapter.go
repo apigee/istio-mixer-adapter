@@ -179,7 +179,8 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		return nil, err
 	}
 
-	tempDir := b.adapterConfig.TempDir
+	tempDir := path.Join(b.adapterConfig.TempDir,
+		"analytics", b.adapterConfig.OrgName, b.adapterConfig.EnvName)
 	if err := os.MkdirAll(tempDir, tempDirMode); err != nil {
 		return nil, err
 	}
@@ -220,7 +221,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
 		LegacyEndpoint: b.adapterConfig.Analytics.LegacyEndpoint,
-		BufferPath:     path.Join(tempDir, "analytics"),
+		BufferPath:     tempDir,
 		BufferSize:     int(b.adapterConfig.Analytics.FileLimit),
 		BaseURL:        *apigeeBase,
 		Key:            b.adapterConfig.Key,

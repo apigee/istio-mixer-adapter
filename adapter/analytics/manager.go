@@ -1,7 +1,23 @@
+// Copyright 2018 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package analytics
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -47,16 +63,45 @@ func newManager(opts Options) (*manager, error) {
 
 	return &manager{
 		close:              make(chan bool),
-		closed:             make(chan bool),
 		client:             opts.Client,
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
 		tempDir:            td,
 		stagingDir:         sd,
 		bufferSize:         opts.BufferSize,
-		buckets:            map[string]bucket{},
+		buckets:            map[string]*bucket{},
 		baseURL:            opts.BaseURL,
 		key:                opts.Key,
 		secret:             opts.Secret,
 	}, nil
+}
+
+// Options allows us to specify options for how this analytics manager will run.
+type Options struct {
+	// LegacyEndpoint is true if using older direct-submit protocol
+	LegacyEndpoint bool
+	// BufferPath is the directory where the adapter will buffer analytics records.
+	BufferPath string
+	// BufferSize is the maximum number of files stored in the staging directory.
+	// Once this is reached, the oldest files will start being removed.
+	BufferSize int
+	// Base Apigee URL
+	BaseURL url.URL
+	// Key for submit auth
+	Key string
+	// Secret for submit auth
+	Secret string
+	// Client is a configured HTTPClient
+	Client *http.Client
+}
+
+func (o *Options) validate() error {
+	if o.BufferPath == "" ||
+		o.BufferSize <= 0 ||
+		o.Key == "" ||
+		o.Client == nil ||
+		o.Secret == "" {
+		return fmt.Errorf("all analytics options are required")
+	}
+	return nil
 }
