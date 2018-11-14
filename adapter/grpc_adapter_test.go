@@ -15,10 +15,13 @@
 package adapter_test
 
 import (
+	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -68,12 +71,24 @@ func TestGRPCAdapter_HandleAnalytics(t *testing.T) {
 				t.Fatalf("bad gzip: %v", err)
 			}
 			var recs []analytics.Record
-			if err := json.NewDecoder(gz).Decode(&recs); err != nil {
-				t.Fatalf("bad JSON: %v", err)
-			}
-
-			if len(recs) != 1 {
-				t.Errorf("Should have received 1 rec, got %v", recs)
+			bio := bufio.NewReader(gz)
+			for {
+				line, isPrefix, err := bio.ReadLine()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("ReadLine: %v", err)
+				}
+				if isPrefix {
+					t.Fatalf("isPrefix: %v", err)
+				}
+				r := bytes.NewReader(line)
+				var rec analytics.Record
+				if err := json.NewDecoder(r).Decode(&rec); err != nil {
+					t.Fatalf("bad JSON: %v", err)
+				}
+				recs = append(recs, rec)
 			}
 
 			rec := recs[0]

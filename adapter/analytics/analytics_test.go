@@ -15,9 +15,12 @@
 package analytics
 
 import (
+	"bufio"
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -93,16 +96,34 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		defer gz.Close()
 		defer r.Body.Close()
 
-		var rec []Record
-		if err := json.NewDecoder(gz).Decode(&rec); err != nil {
-			if !fs.ignoreBadRecs {
-				t.Fatalf("Error decoding JSON sent to signed URL: %s", err)
+		var recs []Record
+		bio := bufio.NewReader(gz)
+		for {
+			line, isPrefix, err := bio.ReadLine()
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				t.Fatalf("ReadLine: %v", err)
 			}
+			if isPrefix {
+				t.Fatalf("isPrefix: %v", err)
+			}
+			r := bytes.NewReader(line)
+			var rec Record
+			if err := json.NewDecoder(r).Decode(&rec); err != nil {
+				if !fs.ignoreBadRecs {
+					t.Fatalf("Error decoding JSON sent to signed URL: %s", err)
+					continue
+				}
+			}
+			recs = append(recs, rec)
 		}
+
 		tenant := r.FormValue("tenant")
 		fp := r.FormValue("relative_file_path")
 		fs.records[tenant] = append(fs.records[tenant], testRecordPush{
-			records: rec,
+			records: recs,
 			dir:     path.Dir(fp),
 		})
 
@@ -308,7 +329,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	defer fs.Close()
 
 	t1 := "hi~test"
-	t2 := "hi~test"
+	t2 := "hi~test~2"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
 	d, err := ioutil.TempDir("", "")
@@ -336,80 +357,67 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	m.collectionInterval = 100 * time.Millisecond
 
 	sendRecords := map[string][]testRecordPush{
-		t1: {
-			{
-				records: []Record{
-					{
-						Organization:                 "hi",
-						Environment:                  "test",
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						APIProxy:                     "proxy",
-					},
-					{
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						APIProduct:                   "product",
-					},
+		t1: {{
+			records: []Record{
+				{
+					Organization:                 "hi",
+					Environment:                  "test",
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					APIProxy:                     "proxy",
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
-			},
-		},
-		t2: {
-			{
-				records: []Record{
-					{
-						Organization:                 "hi",
-						Environment:                  "test",
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						RequestURI:                   "request URI",
-					},
+				{
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					APIProduct:                   "product",
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
 			},
-		},
+			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+		}},
+		t2: {{
+			records: []Record{
+				{
+					Organization:                 "hi",
+					Environment:                  "test",
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					RequestURI:                   "request URI",
+				},
+			},
+			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+		}},
 	}
 
 	wantRecords := map[string][]testRecordPush{
-		t1: {
-			{
-				records: []Record{
-					{
-						RecordType:                   "APIAnalytics",
-						Organization:                 "hi",
-						Environment:                  "test",
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						APIProxy:                     "proxy",
-					},
-					{
-						RecordType:                   "APIAnalytics",
-						Organization:                 "hi",
-						Environment:                  "test",
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						APIProduct:                   "product",
-					},
+		t1: {{
+			records: []Record{
+				{
+					RecordType:                   "APIAnalytics",
+					Organization:                 "hi",
+					Environment:                  "test",
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					APIProxy:                     "proxy",
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
-			},
-		},
-		t2: {
-			{
-				records: []Record{
-					{
-						RecordType:                   "APIAnalytics",
-						Organization:                 "hi",
-						Environment:                  "test",
-						ClientReceivedStartTimestamp: ts * 1000,
-						ClientReceivedEndTimestamp:   ts * 1000,
-						RequestURI:                   "request URI",
-					},
+				{
+					RecordType:                   "APIAnalytics",
+					Organization:                 "hi",
+					Environment:                  "test",
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					APIProduct:                   "product",
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				{
+					RecordType:                   "APIAnalytics",
+					Organization:                 "hi",
+					Environment:                  "test",
+					ClientReceivedStartTimestamp: ts * 1000,
+					ClientReceivedEndTimestamp:   ts * 1000,
+					RequestURI:                   "request URI",
+				},
 			},
-		},
+			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+		}},
 	}
 
 	env := adaptertest.NewEnv(t)
@@ -425,7 +433,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
-	// Send one more with same org.
+	// Send one more with same org
 	if err := m.SendRecords(ctx, sendRecords[t2][0].records); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}

@@ -276,6 +276,6 @@ func (m *manager) recoverFile(old string, new *os.File) error {
 		return fmt.Errorf("close gzw file %s: %s", old, err)
 	}
 
-	m.log.Infof("bad gzip %s recovered to: %s", new)
+	m.log.Infof("bad gzip %s recovered to: %s", old, new)
 	return nil
 }

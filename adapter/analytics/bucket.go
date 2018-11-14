@@ -30,8 +30,11 @@ type writer struct {
 }
 
 func (w *writer) write(records []Record) error {
-	if err := json.NewEncoder(w.gz).Encode(records); err != nil {
-		return fmt.Errorf("json encode: %s", err)
+	enc := json.NewEncoder(w.gz)
+	for _, r := range records {
+		if err := enc.Encode(r); err != nil {
+			return fmt.Errorf("json encode: %s", err)
+		}
 	}
 	if err := w.gz.Flush(); err != nil {
 		return fmt.Errorf("gz.Flush: %s", err)
@@ -95,7 +98,6 @@ func (b *bucket) runLoop() {
 			return
 		}
 	}
-	b.log.Errorf("RUN LOOP OUT")
 }
 
 func (b *bucket) write(records []Record) {

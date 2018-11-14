@@ -15,10 +15,13 @@
 package adapter
 
 import (
+	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -190,12 +193,34 @@ func TestHandleAnalytics(t *testing.T) {
 				t.Fatalf("bad gzip: %v", err)
 			}
 			var recs []analytics.Record
-			if err := json.NewDecoder(gz).Decode(&recs); err != nil {
-				t.Fatalf("bad JSON: %v", err)
+			bio := bufio.NewReader(gz)
+			for {
+				line, isPrefix, err := bio.ReadLine()
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					t.Fatalf("ReadLine: %v", err)
+				}
+				if isPrefix {
+					t.Fatalf("isPrefix: %v", err)
+				}
+				r := bytes.NewReader(line)
+				var rec analytics.Record
+				if err := json.NewDecoder(r).Decode(&rec); err != nil {
+					t.Fatalf("bad JSON: %v", err)
+				}
+				recs = append(recs, rec)
 			}
 
-			if len(recs) != 1 {
-				t.Errorf("Should have received 1 rec, got %v", recs)
+			if len(recs) != 2 {
+				t.Errorf("Should have received 2 rec, got %v", recs)
+			}
+
+			for i, p := range []string{"proxy1", "proxy2"} {
+				if recs[i].APIProxy != p {
+					t.Errorf("APIProxy expected %s, got %s", p, recs[i].APIProxy)
+				}
 			}
 
 			rec := recs[0]
@@ -247,19 +272,30 @@ func TestHandleAnalytics(t *testing.T) {
 		analyticsMan: analyticsMan,
 	}
 
-	inst := []*analyticsT.Instance{
+	instances := [][]*analyticsT.Instance{{
 		{
-			Name: "name",
+			Name:                         "name",
+			ApiProxy:                     "proxy1",
 			ClientReceivedStartTimestamp: time.Now(),
 			ClientReceivedEndTimestamp:   time.Now(),
 			RequestUri:                   pathWithQueryString,
 			RequestPath:                  pathWithQueryString,
 		},
-	}
+		{
+			Name:                         "name",
+			ApiProxy:                     "proxy2",
+			ClientReceivedStartTimestamp: time.Now(),
+			ClientReceivedEndTimestamp:   time.Now(),
+			RequestUri:                   pathWithQueryString,
+			RequestPath:                  pathWithQueryString,
+		},
+	}}
 
-	err = h.HandleAnalytics(ctx, inst)
-	if err != nil {
-		t.Errorf("HandleAnalytics(ctx, nil) resulted in an unexpected error: %v", err)
+	for _, inst := range instances {
+		err = h.HandleAnalytics(ctx, inst)
+		if err != nil {
+			t.Errorf("HandleAnalytics(ctx, nil) resulted in an unexpected error: %v", err)
+		}
 	}
 
 	if err := h.Close(); err != nil {
