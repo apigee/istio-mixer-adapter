@@ -80,7 +80,8 @@ func (m *manager) upload(tenant string) error {
 			continue
 		}
 
-		signedURL, err := m.signedURL(tenant, fi.Name())
+		nameWithSuffix := fi.Name() + ".gz" // suffix needed by Apigee processor
+		signedURL, err := m.signedURL(tenant, nameWithSuffix)
 		if err != nil {
 			errs = multierror.Append(errs, fmt.Errorf("signedURL: %s", err))
 			if m.shortCircuitErr(err) {
