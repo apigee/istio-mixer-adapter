@@ -142,7 +142,8 @@ func TestGRPCAdapter_HandleAnalytics(t *testing.T) {
 		Secret:       "secret",
 		TempDir:      d,
 		Analytics: &config.ParamsAnalyticsOptions{
-			FileLimit: 10,
+			FileLimit:       10,
+			SendChannelSize: 0,
 		},
 		Products: &config.ParamsProductOptions{},
 	}
@@ -222,7 +223,8 @@ func TestGRPCAdapter_HandleAuthorization(t *testing.T) {
 		Secret:       "secret",
 		TempDir:      d,
 		Analytics: &config.ParamsAnalyticsOptions{
-			FileLimit: 10,
+			FileLimit:       10,
+			SendChannelSize: 0,
 		},
 		Products: &config.ParamsProductOptions{},
 	}
