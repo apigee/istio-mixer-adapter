@@ -77,12 +77,12 @@ func TestStagingSizeCap(t *testing.T) {
 
 		baseURL, _ := url.Parse(fs.URL())
 		m, err := newManager(Options{
-			BufferPath: d,
-			BufferSize: 4,
-			BaseURL:    *baseURL,
-			Key:        "key",
-			Secret:     "secret",
-			Client:     http.DefaultClient,
+			BufferPath:       d,
+			StagingFileLimit: 4,
+			BaseURL:          *baseURL,
+			Key:              "key",
+			Secret:           "secret",
+			Client:           http.DefaultClient,
 		})
 		if err != nil {
 			t.Fatalf("newManager: %s", err)
@@ -153,12 +153,12 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 	defer os.RemoveAll(d)
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -250,12 +250,12 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 	defer os.RemoveAll(d)
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)

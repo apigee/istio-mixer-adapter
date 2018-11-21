@@ -45,6 +45,8 @@ const (
 	// become unstable if all the Istio adapters are spamming it faster than
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
+
+	closeChannelSize = 5
 )
 
 // A manager is a way for Istio to interact with Apigee's analytics platform.
@@ -57,12 +59,14 @@ type manager struct {
 	collectionInterval time.Duration
 	tempDir            string // open gzip files being written to
 	stagingDir         string // gzip files staged for upload
-	bufferSize         int
+	stagingFileLimit   int
 	bucketsLock        sync.RWMutex
 	buckets            map[string]*bucket // dir ("org~env") -> bucket
 	baseURL            url.URL
 	key                string
 	secret             string
+	sendChannelSize    int
+	closeWait          sync.WaitGroup
 }
 
 // Start starts the manager.
@@ -86,19 +90,17 @@ func (m *manager) Close() {
 	if m == nil {
 		return
 	}
-	m.log.Infof("closing analytics manager")
-	m.close <- true
+	m.log.Infof("closing analytics manager: %s", m.tempDir)
 	m.bucketsLock.RLock()
+	m.closeWait.Add(len(m.buckets))
 	for _, b := range m.buckets {
-		b.close("")
+		b.stop()
 	}
 	m.bucketsLock.RUnlock()
+	m.closeWait.Wait()
 	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
 	}
-	//for _, b := range m.buckets {
-	//	b.stop()
-	//}
 	m.log.Infof("closed analytics manager")
 }
 
@@ -179,8 +181,8 @@ func (m *manager) getBucket(ctx *auth.Context) (*bucket, error) {
 		log:      m.log,
 		dir:      dir,
 		tenant:   tenant,
-		incoming: make(chan []Record, 5),
-		closer:   make(chan string),
+		incoming: make(chan []Record, m.sendChannelSize),
+		closer:   make(chan closeReq, closeChannelSize),
 	}
 	m.env.ScheduleDaemon(b.runLoop)
 

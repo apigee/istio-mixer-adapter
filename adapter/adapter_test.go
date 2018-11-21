@@ -252,12 +252,12 @@ func TestHandleAnalytics(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("analytics.NewManager: %s", err)

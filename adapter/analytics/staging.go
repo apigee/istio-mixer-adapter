@@ -92,12 +92,12 @@ func (m *manager) ensureStagingSpace(n int) error {
 
 	paths, errs := m.getFilesInStaging()
 
-	if len(paths) <= m.bufferSize-n { // enough space, do nothing
+	if len(paths) <= m.stagingFileLimit-n { // enough space, do nothing
 		return errs
 	}
 
 	// Amount of space to create: how much we need - how much we have available.
-	need := n - (m.bufferSize - len(paths))
+	need := n - (m.stagingFileLimit - len(paths))
 
 	// Loop through deleting files in order of creation time until we have cleared
 	// up enough space or until there is nothing left we can delete.
@@ -174,7 +174,7 @@ func (m *manager) crashRecovery() error {
 			stagingFile := path.Join(p, fi.Name())
 			if err := m.ensureValidGzip(tempFile); err != nil {
 				errs = multierror.Append(errs, err)
-				if err != GZIPRepaired {
+				if err != ErrGZIPRepaired {
 					continue
 				}
 			}
@@ -187,14 +187,15 @@ func (m *manager) crashRecovery() error {
 	return errs
 }
 
-var GZIPError = errors.New("GZIP Error")
-var GZIPRepaired = errors.New("GZIP Repaired")
+// ErrGZIPRepaired is used to indicate a gzip was repaired
+var ErrGZIPRepaired = errors.New("GZIP Repaired")
+var errGZip = errors.New("GZIP Error")
 
-// returns nil if was a good gzip, GZIPRepaired if a bad gzip was repaired, other errors for unrecoverable
+// returns nil if was a good gzip, ErrGZIPRepaired if a bad gzip was repaired, other errors for unrecoverable
 // may replace file, do not have it open
 func (m *manager) ensureValidGzip(fileName string) error {
 	err := m.validateGZip(fileName)
-	if err != GZIPError {
+	if err != errGZip {
 		return err
 	}
 
@@ -209,7 +210,7 @@ func (m *manager) ensureValidGzip(fileName string) error {
 		return err
 	}
 
-	return GZIPRepaired
+	return ErrGZIPRepaired
 }
 
 // if gzip error, returns gzipError
@@ -233,7 +234,7 @@ func (m *manager) validateGZip(fileName string) error {
 			if err == io.EOF {
 				break
 			}
-			return GZIPError
+			return errGZip
 		}
 	}
 	return nil

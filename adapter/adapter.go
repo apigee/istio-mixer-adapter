@@ -44,11 +44,12 @@ import (
 )
 
 const (
-	jsonClaimsKey    = "json_claims"
-	apiKeyAttribute  = "api_key"
-	gatewaySource    = "istio"
-	tempDirMode      = os.FileMode(0700)
-	certPollInterval = 0 // jwt validation not currently needed
+	jsonClaimsKey            = "json_claims"
+	apiKeyAttribute          = "api_key"
+	gatewaySource            = "istio"
+	tempDirMode              = os.FileMode(0700)
+	certPollInterval         = 0 // jwt validation not currently needed
+	analyticsSendChannelSize = 5
 )
 
 type (
@@ -220,13 +221,14 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	}
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		LegacyEndpoint: b.adapterConfig.Analytics.LegacyEndpoint,
-		BufferPath:     tempDir,
-		BufferSize:     int(b.adapterConfig.Analytics.FileLimit),
-		BaseURL:        *apigeeBase,
-		Key:            b.adapterConfig.Key,
-		Secret:         b.adapterConfig.Secret,
-		Client:         httpClient,
+		LegacyEndpoint:   b.adapterConfig.Analytics.LegacyEndpoint,
+		BufferPath:       tempDir,
+		StagingFileLimit: int(b.adapterConfig.Analytics.FileLimit),
+		BaseURL:          *apigeeBase,
+		Key:              b.adapterConfig.Key,
+		Secret:           b.adapterConfig.Secret,
+		Client:           httpClient,
+		SendChannelSize:  analyticsSendChannelSize,
 	})
 	if err != nil {
 		return nil, err
@@ -306,7 +308,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	h.Log().Debugf("HandleAnalytics: %d instances", len(instances))
 
 	var authContext *auth.Context
-	var records []analytics.Record
+	var records = make([]analytics.Record, 0, len(instances))
 
 	for _, inst := range instances {
 		record := analytics.Record{

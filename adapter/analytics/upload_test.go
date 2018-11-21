@@ -49,18 +49,17 @@ func TestAuthFailure(t *testing.T) {
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 50 * time.Millisecond
 
 	records := []Record{
 		{
@@ -97,7 +96,6 @@ func TestAuthFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	time.Sleep(time.Millisecond) // give time for file creation
 	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "code 401") {
 			t.Errorf("unexpected err on upload(): %s", err)
@@ -145,18 +143,18 @@ func TestUploadFailure(t *testing.T) {
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
+		SendChannelSize:  0,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 50 * time.Millisecond
 
 	records := []Record{
 		{
@@ -193,7 +191,6 @@ func TestUploadFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	time.Sleep(time.Millisecond) // give time for file creation
 	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "500 Internal Server Error") {
 			t.Errorf("unexpected err on upload(): %s", err)
@@ -238,12 +235,12 @@ func TestShortCircuit(t *testing.T) {
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -286,7 +283,6 @@ func TestShortCircuit(t *testing.T) {
 		return http.StatusTeapot
 	}
 
-	time.Sleep(time.Millisecond) // give time for file creation
 	err = m.uploadAll()
 	if err == nil {
 		t.Errorf("got nil error, want one")
@@ -330,12 +326,12 @@ func TestNoUploadBadFiles(t *testing.T) {
 	defer os.RemoveAll(d)
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: d,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       d,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
