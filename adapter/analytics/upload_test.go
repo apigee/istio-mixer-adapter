@@ -196,7 +196,9 @@ func TestUploadFailure(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error on getBucket(): %s", err)
 	}
-	b.close("")
+	m.closeWait.Add(1)
+	b.stop()
+	m.closeWait.Wait()
 
 	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "500 Internal Server Error") {
