@@ -191,6 +191,13 @@ func TestUploadFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
+	// force write
+	b, err := m.getBucket(ctx)
+	if err != nil {
+		t.Errorf("Error on getBucket(): %s", err)
+	}
+	b.close("")
+
 	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "500 Internal Server Error") {
 			t.Errorf("unexpected err on upload(): %s", err)
