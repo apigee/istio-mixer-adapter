@@ -124,6 +124,9 @@ message Params {
         // The number of analytics files that can be buffered before oldest files are dropped.
         // Optional. Default: 1024.
         int64 file_limit = 2;
+        // The size of the channel used to buffer record sends in memory.
+        // Optional. Default: 10.
+        int64 send_channel_size = 3;
     }
     // Options specific to to analytics handling.
     analytics_options analytics = 16;

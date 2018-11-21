@@ -44,12 +44,11 @@ import (
 )
 
 const (
-	jsonClaimsKey            = "json_claims"
-	apiKeyAttribute          = "api_key"
-	gatewaySource            = "istio"
-	tempDirMode              = os.FileMode(0700)
-	certPollInterval         = 0 // jwt validation not currently needed
-	analyticsSendChannelSize = 5
+	jsonClaimsKey    = "json_claims"
+	apiKeyAttribute  = "api_key"
+	gatewaySource    = "istio"
+	tempDirMode      = os.FileMode(0700)
+	certPollInterval = 0 // jwt validation not currently needed
 )
 
 type (
@@ -130,8 +129,9 @@ func GetInfo() adapter.Info {
 				RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 			},
 			Analytics: &config.ParamsAnalyticsOptions{
-				LegacyEndpoint: false,
-				FileLimit:      1024,
+				LegacyEndpoint:  false,
+				FileLimit:       1024,
+				SendChannelSize: 10,
 			},
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
@@ -228,7 +228,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		Key:              b.adapterConfig.Key,
 		Secret:           b.adapterConfig.Secret,
 		Client:           httpClient,
-		SendChannelSize:  analyticsSendChannelSize,
+		SendChannelSize:  int(b.adapterConfig.Analytics.SendChannelSize),
 	})
 	if err != nil {
 		return nil, err
