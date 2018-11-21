@@ -27,13 +27,13 @@ func TestLegacySelect(t *testing.T) {
 	env := adaptertest.NewEnv(t)
 
 	opts := Options{
-		LegacyEndpoint: true,
-		BufferPath:     "",
-		BufferSize:     10,
-		BaseURL:        url.URL{},
-		Key:            "key",
-		Secret:         "secret",
-		Client:         http.DefaultClient,
+		LegacyEndpoint:   true,
+		BufferPath:       "",
+		StagingFileLimit: 10,
+		BaseURL:          url.URL{},
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	}
 
 	m, err := NewManager(env, opts)
@@ -52,12 +52,12 @@ func TestStandardSelect(t *testing.T) {
 	env := adaptertest.NewEnv(t)
 
 	opts := Options{
-		BufferPath: "/tmp/apigee-ax/buffer/",
-		BufferSize: 10,
-		BaseURL:    url.URL{},
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       "/tmp/apigee-ax/buffer/",
+		StagingFileLimit: 10,
+		BaseURL:          url.URL{},
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	}
 
 	m, err := NewManager(env, opts)
@@ -76,12 +76,12 @@ func TestStandardBadOptions(t *testing.T) {
 	env := adaptertest.NewEnv(t)
 
 	opts := Options{
-		BufferPath: "/tmp/apigee-ax/buffer/",
-		BufferSize: 0,
-		BaseURL:    url.URL{},
-		Key:        "",
-		Secret:     "",
-		Client:     http.DefaultClient,
+		BufferPath:       "/tmp/apigee-ax/buffer/",
+		StagingFileLimit: 0,
+		BaseURL:          url.URL{},
+		Key:              "",
+		Secret:           "",
+		Client:           http.DefaultClient,
 	}
 
 	want := "all analytics options are required"

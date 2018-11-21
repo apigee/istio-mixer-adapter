@@ -68,11 +68,12 @@ func newManager(opts Options) (*manager, error) {
 		collectionInterval: defaultCollectionInterval,
 		tempDir:            td,
 		stagingDir:         sd,
-		bufferSize:         opts.BufferSize,
+		stagingFileLimit:   opts.StagingFileLimit,
 		buckets:            map[string]*bucket{},
 		baseURL:            opts.BaseURL,
 		key:                opts.Key,
 		secret:             opts.Secret,
+		sendChannelSize:    opts.SendChannelSize,
 	}, nil
 }
 
@@ -82,9 +83,9 @@ type Options struct {
 	LegacyEndpoint bool
 	// BufferPath is the directory where the adapter will buffer analytics records.
 	BufferPath string
-	// BufferSize is the maximum number of files stored in the staging directory.
+	// StagingFileLimit is the maximum number of files stored in the staging directory.
 	// Once this is reached, the oldest files will start being removed.
-	BufferSize int
+	StagingFileLimit int
 	// Base Apigee URL
 	BaseURL url.URL
 	// Key for submit auth
@@ -93,11 +94,13 @@ type Options struct {
 	Secret string
 	// Client is a configured HTTPClient
 	Client *http.Client
+	// SendChannelSize is the size of the records channel
+	SendChannelSize int
 }
 
 func (o *Options) validate() error {
 	if o.BufferPath == "" ||
-		o.BufferSize <= 0 ||
+		o.StagingFileLimit <= 0 ||
 		o.Key == "" ||
 		o.Client == nil ||
 		o.Secret == "" {

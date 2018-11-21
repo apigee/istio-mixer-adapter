@@ -172,12 +172,12 @@ func TestPushAnalytics(t *testing.T) {
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: bufferPath,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       bufferPath,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -264,7 +264,6 @@ func TestPushAnalytics(t *testing.T) {
 
 	env := adaptertest.NewEnv(t)
 	m.Start(env)
-	defer m.Close()
 
 	tc := authtest.NewContext(fs.URL(), env)
 	tc.SetOrganization("hi")
@@ -294,7 +293,7 @@ func TestPushAnalytics(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	m.Close()
 
 	// Should have sent things out by now, check it out.
 	fs.lock.RLock()
@@ -343,12 +342,12 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath: bufferPath,
-		BufferSize: 10,
-		BaseURL:    *baseURL,
-		Key:        "key",
-		Secret:     "secret",
-		Client:     http.DefaultClient,
+		BufferPath:       bufferPath,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -422,7 +421,6 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 
 	env := adaptertest.NewEnv(t)
 	m.Start(env)
-	defer m.Close()
 
 	tc := authtest.NewContext(fs.URL(), env)
 	tc.SetOrganization("hi")
@@ -443,7 +441,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	m.Close()
 
 	// Should have sent things out by now, check it out.
 	fs.lock.RLock()

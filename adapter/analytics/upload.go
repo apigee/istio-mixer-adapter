@@ -71,7 +71,7 @@ func (m *manager) upload(tenant string) error {
 		// bad files shouldn't happen here, but bad things happen on the server if they do
 		// so pedantically ensure absolutely, positively no bad gzip files end up on the server
 		err = m.ensureValidGzip(fn)
-		if err != nil && err != GZIPRepaired {
+		if err != nil && err != ErrGZIPRepaired {
 			errs = multierror.Append(errs,
 				fmt.Errorf("unrecoverable gzip in staging (%s), removing: %s", fn, err))
 			if err := os.Remove(fn); err != nil {

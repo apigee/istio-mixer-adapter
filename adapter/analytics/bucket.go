@@ -60,8 +60,7 @@ type bucket struct {
 	tenant   string // org~env
 	w        *writer
 	incoming chan []Record
-	closer   chan string
-	stopper  chan interface{}
+	closer   chan closeReq
 }
 
 func (b *bucket) runLoop() {
@@ -84,32 +83,45 @@ func (b *bucket) runLoop() {
 			w := b.w
 			if err := w.write(records); err != nil {
 				b.log.Errorf("writing records: %s", err)
+			} else {
+				b.log.Debugf("%d records written to %s", len(records), b.w.f.Name())
 			}
-			b.log.Debugf("%d records written to %s", len(records), b.w.f.Name())
-		case filename := <-b.closer:
+		case req := <-b.closer:
 			if b.w != nil {
-				if filename == "" || b.w.f.Name() == filename {
+				if req.filename == "" || b.w.f.Name() == req.filename {
 					b.w.close()
 					b.log.Debugf("bucket file closed: %s", b.w.f.Name())
 				}
 				b.w = nil
 			}
-		case <-b.stopper:
-			return
+			if req.stop {
+				b.log.Debugf("bucket loop closed")
+				b.manager.closeWait.Done()
+				return
+			}
 		}
 	}
+}
+
+type closeReq struct {
+	filename string
+	stop     bool
 }
 
 func (b *bucket) write(records []Record) {
 	b.incoming <- records
 }
 
-// will close if passed filename is current file or ""
+// will close bucket if passed filename is current file or ""
 func (b *bucket) close(filename string) {
-	b.closer <- filename
+	b.closer <- closeReq{
+		filename: filename,
+	}
 }
 
-// close loop
+// exit bucket loop
 func (b *bucket) stop() {
-	b.stopper <- ""
+	b.closer <- closeReq{
+		stop: true,
+	}
 }
