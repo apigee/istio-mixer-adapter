@@ -160,6 +160,7 @@ func TestPushAnalytics(t *testing.T) {
 	t1 := "hi~test"
 	t2 := "otherorg~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	uploadDir := "date=2018-03-16/time=10:30:00"
 
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -202,7 +203,7 @@ func TestPushAnalytics(t *testing.T) {
 						APIProduct:                   "product",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 		t2: {
@@ -216,7 +217,7 @@ func TestPushAnalytics(t *testing.T) {
 						RequestURI:                   "request URI",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 	}
@@ -242,7 +243,7 @@ func TestPushAnalytics(t *testing.T) {
 						APIProduct:                   "product",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 		t2: {
@@ -257,7 +258,7 @@ func TestPushAnalytics(t *testing.T) {
 						RequestURI:                   "request URI",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 	}
@@ -330,6 +331,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	t1 := "hi~test"
 	t2 := "hi~test~2"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	uploadDir := "date=2018-03-16/time=10:30:00"
 
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -371,7 +373,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					APIProduct:                   "product",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 		t2: {{
 			records: []Record{
@@ -383,7 +385,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					RequestURI:                   "request URI",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 	}
 
@@ -415,7 +417,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					RequestURI:                   "request URI",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 	}
 
