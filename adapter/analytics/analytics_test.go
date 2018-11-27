@@ -184,6 +184,7 @@ func TestPushAnalytics(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {
@@ -202,7 +203,7 @@ func TestPushAnalytics(t *testing.T) {
 						APIProduct:                   "product",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 		t2: {
@@ -216,7 +217,7 @@ func TestPushAnalytics(t *testing.T) {
 						RequestURI:                   "request URI",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 	}
@@ -242,7 +243,7 @@ func TestPushAnalytics(t *testing.T) {
 						APIProduct:                   "product",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 		t2: {
@@ -257,7 +258,7 @@ func TestPushAnalytics(t *testing.T) {
 						RequestURI:                   "request URI",
 					},
 				},
-				dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+				dir: uploadDir,
 			},
 		},
 	}
@@ -354,6 +355,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {{
@@ -371,7 +373,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					APIProduct:                   "product",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 		t2: {{
 			records: []Record{
@@ -383,7 +385,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					RequestURI:                   "request URI",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 	}
 
@@ -415,7 +417,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 					RequestURI:                   "request URI",
 				},
 			},
-			dir: fmt.Sprintf("date=2018-03-16/time=%d-%d", ts, ts),
+			dir: uploadDir,
 		}},
 	}
 

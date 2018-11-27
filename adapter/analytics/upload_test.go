@@ -96,6 +96,16 @@ func TestAuthFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
+	// mimic m.Close() w/o upload
+	m.bucketsLock.Lock()
+	m.closeWait.Add(len(m.buckets))
+	for _, b := range m.buckets {
+		b.stop()
+	}
+	m.buckets = nil
+	m.bucketsLock.Unlock()
+	m.closeWait.Wait()
+
 	if err := m.uploadAll(); err != nil {
 		if !strings.Contains(err.Error(), "code 401") {
 			t.Errorf("unexpected err on upload(): %s", err)
@@ -191,13 +201,14 @@ func TestUploadFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	// force write
-	b, err := m.getBucket(ctx)
-	if err != nil {
-		t.Errorf("Error on getBucket(): %s", err)
+	// mimic m.Close() w/o upload
+	m.bucketsLock.Lock()
+	m.closeWait.Add(len(m.buckets))
+	for _, b := range m.buckets {
+		b.stop()
 	}
-	m.closeWait.Add(1)
-	b.stop()
+	m.buckets = nil
+	m.bucketsLock.Unlock()
 	m.closeWait.Wait()
 
 	if err := m.uploadAll(); err != nil {
@@ -292,6 +303,16 @@ func TestShortCircuit(t *testing.T) {
 		return http.StatusTeapot
 	}
 
+	// mimic m.Close() w/o upload
+	m.bucketsLock.Lock()
+	m.closeWait.Add(len(m.buckets))
+	for _, b := range m.buckets {
+		b.stop()
+	}
+	m.buckets = nil
+	m.bucketsLock.Unlock()
+	m.closeWait.Wait()
+
 	err = m.uploadAll()
 	if err == nil {
 		t.Errorf("got nil error, want one")
@@ -379,6 +400,16 @@ func TestNoUploadBadFiles(t *testing.T) {
 	f, _ = os.Create(brokeFile)
 	f.WriteString("this is not a json record")
 	f.Close()
+
+	// mimic m.Close() w/o upload
+	m.bucketsLock.Lock()
+	m.closeWait.Add(len(m.buckets))
+	for _, b := range m.buckets {
+		b.stop()
+	}
+	m.buckets = nil
+	m.bucketsLock.Unlock()
+	m.closeWait.Wait()
 
 	err = m.uploadAll()
 	if err == nil {
