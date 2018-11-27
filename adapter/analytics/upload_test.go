@@ -191,13 +191,14 @@ func TestUploadFailure(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	// force write
-	b, err := m.getBucket(ctx)
-	if err != nil {
-		t.Errorf("Error on getBucket(): %s", err)
+	// mimic m.Close() w/o upload
+	m.bucketsLock.Lock()
+	m.closeWait.Add(len(m.buckets))
+	for _, b := range m.buckets {
+		b.stop()
 	}
-	m.closeWait.Add(1)
-	b.stop()
+	m.buckets = nil
+	m.bucketsLock.Unlock()
 	m.closeWait.Wait()
 
 	if err := m.uploadAll(); err != nil {

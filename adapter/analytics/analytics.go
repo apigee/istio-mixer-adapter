@@ -31,7 +31,7 @@ import (
 const (
 	analyticsPath = "/analytics/organization/%s/environment/%s"
 	axRecordType  = "APIAnalytics"
-	pathFmt       = "date=%s/time=%d-%d/"
+	pathFmt       = "date=%s/time=%s/"
 	bufferMode    = os.FileMode(0700)
 	tempDir       = "temp"
 	stagingDir    = "staging"
@@ -46,7 +46,7 @@ const (
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
 
-	closeChannelSize = 5
+	closeChannelSize = 0
 )
 
 // A manager is a way for Istio to interact with Apigee's analytics platform.
@@ -91,12 +91,13 @@ func (m *manager) Close() {
 		return
 	}
 	m.log.Infof("closing analytics manager: %s", m.tempDir)
-	m.bucketsLock.RLock()
+	m.bucketsLock.Lock()
 	m.closeWait.Add(len(m.buckets))
 	for _, b := range m.buckets {
 		b.stop()
 	}
-	m.bucketsLock.RUnlock()
+	m.buckets = nil
+	m.bucketsLock.Unlock()
 	m.closeWait.Wait()
 	if err := m.uploadAll(); err != nil {
 		m.log.Errorf("Error pushing analytics: %s", err)
