@@ -160,7 +160,6 @@ func TestPushAnalytics(t *testing.T) {
 	t1 := "hi~test"
 	t2 := "otherorg~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-	uploadDir := "date=2018-03-16/time=10:30:00"
 
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -185,6 +184,7 @@ func TestPushAnalytics(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {
@@ -331,7 +331,6 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	t1 := "hi~test"
 	t2 := "hi~test~2"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-	uploadDir := "date=2018-03-16/time=10:30:00"
 
 	d, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -356,6 +355,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {{
