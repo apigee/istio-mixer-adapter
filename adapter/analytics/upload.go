@@ -179,6 +179,6 @@ func (m *manager) signedURL(subdir, filename string) (string, error) {
 func (m *manager) uploadDir() string {
 	now := m.now()
 	d := now.Format("2006-01-02")
-	t := now.Format("15:04:00")
+	t := now.Format("15-04-00")
 	return fmt.Sprintf(pathFmt, d, t)
 }

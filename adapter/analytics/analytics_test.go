@@ -184,7 +184,7 @@ func TestPushAnalytics(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
-	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {
@@ -355,7 +355,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
 	m.collectionInterval = 100 * time.Millisecond
-	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15:04:00"))
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {{
