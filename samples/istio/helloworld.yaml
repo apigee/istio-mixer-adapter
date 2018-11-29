@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"48f39c4792663fa70ea9c6eb9c29612031cbe36a3850b41faa407da434ec11d3","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"ebf16d3ea0236e4b5cb4d3fc0f01da62e2e6265d005e58f8f6bd43a4fb672fdd","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -81,11 +81,10 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        - name: ISTIO_META_app
-          value: helloworld
-        - name: ISTIO_META_version
-          value: v1
-        image: docker.io/istio/proxyv2:1.0.3
+        - name: ISTIO_METAJSON_LABELS
+          value: |
+            {"app":"helloworld","version":"v1"}
+        image: docker.io/istio/proxyv2:1.0.4
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         ports:
@@ -120,7 +119,7 @@ spec:
         - "5000"
         - -d
         - ""
-        image: docker.io/istio/proxy_init:1.0.3
+        image: docker.io/istio/proxy_init:1.0.4
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
@@ -150,7 +149,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/status: '{"version":"48f39c4792663fa70ea9c6eb9c29612031cbe36a3850b41faa407da434ec11d3","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
+        sidecar.istio.io/status: '{"version":"ebf16d3ea0236e4b5cb4d3fc0f01da62e2e6265d005e58f8f6bd43a4fb672fdd","initContainers":["istio-init"],"containers":["istio-proxy"],"volumes":["istio-envoy","istio-certs"],"imagePullSecrets":null}'
       creationTimestamp: null
       labels:
         app: helloworld
@@ -209,11 +208,10 @@ spec:
               fieldPath: metadata.name
         - name: ISTIO_META_INTERCEPTION_MODE
           value: REDIRECT
-        - name: ISTIO_META_app
-          value: helloworld
-        - name: ISTIO_META_version
-          value: v2
-        image: docker.io/istio/proxyv2:1.0.3
+        - name: ISTIO_METAJSON_LABELS
+          value: |
+            {"app":"helloworld","version":"v2"}
+        image: docker.io/istio/proxyv2:1.0.4
         imagePullPolicy: IfNotPresent
         name: istio-proxy
         ports:
@@ -248,7 +246,7 @@ spec:
         - "5000"
         - -d
         - ""
-        image: docker.io/istio/proxy_init:1.0.3
+        image: docker.io/istio/proxy_init:1.0.4
         imagePullPolicy: IfNotPresent
         name: istio-init
         resources: {}
