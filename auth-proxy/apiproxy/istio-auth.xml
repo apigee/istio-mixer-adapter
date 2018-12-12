@@ -2,13 +2,13 @@
 <APIProxy revision="2" name="istio-auth">
     <Basepaths>/istio-auth</Basepaths>
     <ConfigurationVersion majorVersion="4" minorVersion="0"/>
-    <CreatedAt>1528322629490</CreatedAt>
+    <CreatedAt>1529864810874</CreatedAt>
     <CreatedBy>srinandans@google.com</CreatedBy>
     <Description>istio-auth</Description>
     <DisplayName>istio-auth</DisplayName>
-    <LastModifiedAt>1528959390573</LastModifiedAt>
+    <LastModifiedAt>1544596340972</LastModifiedAt>
     <LastModifiedBy>defaultUser</LastModifiedBy>
-    <ManifestVersion>SHA-512:800be8d931da84d051289543ac8ac64d79b80a29e8559bc62352c93f4a837400034f1186cc23db4d0c0de116796fdb3c30c0d11266b96f83e51e0c9d62a7e705</ManifestVersion>
+    <ManifestVersion>SHA-512:35f8d4ae9a0f1a3ae63cda4936914fb71ede499a50e6f0e7746e11cafd32e4991d804524468928ebd15f1af698f52239bc26ebedaa78f7be4b8271ee0fa97ece</ManifestVersion>
     <Policies>
         <Policy>Access-App-Info-2</Policy>
         <Policy>Access-App-Info</Policy>

@@ -79,11 +79,11 @@
                     <Name>Extract-OAuth-Params</Name>
                 </Step>
                 <Step>
-                    <Name>Verify-API-Key</Name>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>client_id is null OR client_secret is null OR grant_type is null</Condition>
                 </Step>
                 <Step>
-                    <Name>Raise-Fault-Unknown-Request</Name>
-                    <Condition>client_id is null or client_secret is null or grant_type is null </Condition>
+                    <Name>Verify-API-Key</Name>
                 </Step>
                 <Step>
                     <Name>Create-OAuth-Request</Name>
@@ -96,6 +96,10 @@
                 </Step>
                 <Step>
                     <Name>AccessTokenRequest</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>oauthV2.AccessTokenRequest.failed is true</Condition>
                 </Step>
                 <Step>
                     <Name>Set-JWT-Variables</Name>
