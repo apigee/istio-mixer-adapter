@@ -12,44 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
- var apiProducts = JSON.parse(context.getVariable('apiProducts'));
- 
- //{"ApiProducts":{"ApiProduct":{"Name":"helloworld","Status":"approved"}}}
- var apiProductsList = [];
- try {
-     
-     if (!Array.isArray(apiProducts)) {
-       if (Array.isArray(apiProducts.ApiProducts.ApiProduct)) { // hack for broken XML2JSON
-         apiProducts.ApiProducts.ApiProduct.forEach(function(apiProduct){
-           apiProductsList.push(apiProduct.Name);
-         });
-       } else {
-         apiProductsList.push(apiProducts.ApiProducts.ApiProduct.Name);
-       }
-     } else {
-         //get only the product name; status is not used/sent
-         apiProducts.forEach(function(apiProduct){
-            apiProductsList.push(apiProduct.Name); 
-         });
-         
-     }
- }catch(err){
-   if (apiProducts && apiProducts.Name) {
-     apiProductsList.push(apiProducts.Name);
-   }
- }
+var apiCredential = JSON.parse(context.getVariable('apiCredential'));
+var apiKey = context.getVariable('apikey');
+//{"Credentials":{"Credential":[{"Attributes":{},"ConsumerKey":"xxx","ConsumerSecret":"xx","ExpiresAt":"-1","IssuedAt":"1530046158362","ApiProducts":{"ApiProduct":{"Name":"details product","Status":"approved"}},"Scopes":{},"Status":"approved"}]}}
+var credentials = apiCredential.Credentials.Credential;
 
- var scope = context.getVariable("oauthv2accesstoken.AccessTokenRequest.scope");
- if (scope) {
-     var scopearr = scope.split(" ");
-     context.setVariable("scope",scopearr.join());
- }
+var apiProductsList = [];
+try {
+    credentials.forEach(function(credential) {
+        if (credential.ConsumerKey == apiKey) {
+            credential.ApiProducts.ApiProduct.forEach(function(apiProduct){
+                apiProductsList.push(apiProduct.Name);
+            });
+        }
+    });
+} catch (err) {
+    print(err);
+}
 
- context.setVariable("apiProductList", apiProductsList.join());
- context.setVariable("nbf", new Date().toUTCString());
- context.setVariable("iss", context.getVariable("proxyProto") + "://" + context.getVariable("proxyHost") + context.getVariable("proxy.basepath")+context.getVariable("proxy.pathsuffix"));
- context.setVariable("jti", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-                return v.toString(16);
-            }));
- 
+var scope = context.getVariable("oauthv2accesstoken.AccessTokenRequest.scope");
+if (scope) {
+    var scopearr = scope.split(" ");
+    context.setVariable("scope", scopearr.join());
+}
+
+context.setVariable("apiProductList", apiProductsList.join());
+context.setVariable("nbf", new Date().toUTCString());
+context.setVariable("iss", context.getVariable("proxyProto") + "://" + context.getVariable("proxyHost") + context.getVariable("proxy.basepath") + context.getVariable("proxy.pathsuffix"));
+context.setVariable("jti", 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0,
+        v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+}));

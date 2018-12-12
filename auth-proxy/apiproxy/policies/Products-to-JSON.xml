@@ -3,7 +3,12 @@
     <DisplayName>Products to JSON</DisplayName>
     <FaultRules/>
     <Properties/>
-    <Format>yahoo</Format>
-    <OutputVariable>apiProducts</OutputVariable>
-    <Source>AccessEntity.ChildNodes.Access-App-Info.App.Credentials.Credential.ApiProducts</Source>
+    <OutputVariable>apiCredential</OutputVariable>
+    <Source>AccessEntity.ChildNodes.Access-App-Info.App.Credentials</Source>
+    <Options>
+        <TreatAsArray>
+            <Path>Credentials/Credential</Path>
+            <Path>Credentials/Credential/ApiProducts/ApiProduct</Path>
+        </TreatAsArray>
+    </Options>
 </XMLToJSON>
