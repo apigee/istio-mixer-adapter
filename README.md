@@ -16,7 +16,7 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 ## Version note
 
-The current release is based on Istio 1.0.4. The included sample files and instructions below will 
+The current release is based on Istio 1.0.5. The included sample files and instructions below will 
 automatically install the correct Istio version for you onto Kubernetes. It is recommended that
 you install onto Kubernetes 1.9 or newer. See the [Istio](https://istio.io) web page for more information.  
 
@@ -74,6 +74,7 @@ Once it completes, check your `samples/apigee/handler.yaml` file. It should look
 
 Notes:
 
+* If you upgrading from a prior release, run the `apigee-istio provision` command with the `--forceProxyInstall` option to ensure that the latest Apigee proxy is installed for your organization.
 * `apigee-istio` will automatically pick up the username and password from a 
 [.netrc](https://ec.haxx.se/usingcurl-netrc.html) file in your home directory if you have an entry for 
 `machine api.enterprise.apigee.com`.
@@ -110,12 +111,12 @@ before continuing. More information on verifying the Istio installation is
 If you have already installed Istio, you can install the Mixer adapter by running the following commands:
 
 ```
-kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.4
+kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
 
-kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.4
+kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
 ```
 
-NOTE 1: change the tag from `1.0.4` to `latest` if you want the latest development build
+NOTE 1: change the tag from `1.0.5` to `latest` if you want the latest development build
 NOTE 2: change the container to `istio-mixer-debug` if you want the container with debug tools 
  
 ## Install a target service
