@@ -8,11 +8,9 @@
 3. make release updates
     1. update README.md to appropriate versions and instructions
     2. update DEFAULT_ISTIO_VERSION in `bin/local_install.sh` to match Istio release
-    3. replace `samples/istio/istio-demo.yaml`, `istio-demo-auth.yaml`, `helloworld.yaml` from base Istio
-    4. update helloworld.yaml to include Istio sidecar: `istioctl kube-inject -f helloworld.yaml`
-    5. update `samples/istio/istio-demo.yaml`, `samples/istio/istio-demo-auth.yaml` mixer images to match $RELEASE
-    6. update version in `auth-proxy/apiproxy/policies/Send-Version.xml` to match $RELEASE
-    7. run `bin/build_proxy_resources.sh`
+    3. update `install/mixer/helm.yaml` to match $RELEASE
+    4. update version in `auth-proxy/apiproxy/policies/Send-Version.xml` to match $RELEASE
+    5. run `bin/build_proxy_resources.sh`
 
 4. Validate build
     1. update `Gopkg.toml`, ensure appropriate version for `istio.io/istio`

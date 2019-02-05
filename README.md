@@ -81,50 +81,38 @@ Notes:
 * For Apigee Private Cloud (OPDK), you'll need to also specify your `--managementBase` in the command.
 In this case, the .netrc entry should match this host. 
 
-## Install Istio with Apigee mixer
+## Install Istio with Apigee mixer using Helm
 
-Be sure both your Kubernetes cluster and `kubectl` CLI are ready to use. Two sample Istio install files have 
-been provided for you in the release as a convenience.
+Follow the official Istio [Helm Install](https://istio.io/docs/setup/kubernetes/helm-install/) instructions, but add
+a `--values` parameter to the `helm template` or `helm install` command referencing this adapter's `install/mixer/helm.yaml` 
+file.
 
-To install Istio without mutual TLS enabled between services, you can simply run:
+Helm Template example (Option 1):
 
-     kubectl apply -f samples/istio/istio-demo.yaml
-     
-Or to install Istio with mutual TLS enabled, use:
+    ADAPTER=~/istio-mixer-adapter
+    helm template install/kubernetes/helm/istio --name istio --namespace istio-system --values $ADAPTER/install/mixer/helm.yaml > istio.yaml
 
-    kubectl apply -f samples/istio/istio-demo-auth.yaml
-    
-Note: The key difference between these files and the ones provided with Istio is simply that the pointer 
-to the `docker.io/istio/mixer` docker image in the original files have been replaced with a custom build 
-that includes the Apigee adapter.
- 
-You should soon be able to now see all the Istio components running in your Kubernetes cluster:
+Helm Install example (Option 2):
 
-    kubectl get pods -n istio-system
-    
-Be sure istio-pilot, istio-ingressgateway, istio-policy, istio-telemetry, and istio-citadel are running
-before continuing. More information on verifying the Istio installation is
-[here](https://istio.io/docs/setup/kubernetes/quick-start/#verifying-the-installation).
+    ADAPTER=~/istio-mixer-adapter
+    helm install install/kubernetes/helm/istio --name istio --namespace istio-system --values $ADAPTER/install/mixer/helm.yaml 
 
 ## Upgrade Istio with Apigee mixer
 
-If you have already installed Istio, you can install the Mixer adapter by running the following commands:
+If you have already installed Istio, you can upgrade Mixer to include the Apigee adapter by running the following commands:
 
-```
-kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
+    kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
+    kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
 
-kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
-```
-
-NOTE 1: change the tag from `1.0.5` to `latest` if you want the latest development build
-NOTE 2: change the container to `istio-mixer-debug` if you want the container with debug tools 
+NOTE: Change the container name to `istio-mixer-debug` if you need a Mixer container with debug tools. 
  
 ## Install a target service
 
 Next, we'll install a simple [Hello World](https://github.com/istio/istio/tree/master/samples/helloworld)
-service into the Istio mesh.
+service into the Istio mesh. From your Istio directory: 
 
-    kubectl apply -f samples/istio/helloworld.yaml
+    kubectl label namespace default istio-injection=enabled    
+    kubectl apply -f samples/helloworld/helloworld.yaml
     
 You should be able to verify two instances are running:
 
