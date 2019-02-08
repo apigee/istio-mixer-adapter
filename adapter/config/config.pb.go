@@ -6,9 +6,11 @@
 
 	The Apigee Mixer adapter provides Apigee's distributed authentication and quota policy checks
 	as well as the ingestion of Istio telemetry for analysis and reporting.
-	Complete Apigee documentation on the concepts and usage of this adapter is also available on the
-	[Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts) site.
-	For more information and product support, please [contact Apigee support](https://apigee.com/about/support/portal).
+
+	Important: The adapter is provided in an enhanced Mixer image. The default Mixer image must be replaced and the
+	proper CRDs must be applied in order to use these features. Complete Apigee documentation on the concepts and usage
+	of this adapter is available on the [Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts)
+	site. For more information and product support, please [contact Apigee support](https://apigee.com/about/support/portal).
 
 	This adapter supports the [authorization template](https://istio.io/docs/reference/config/policy-and-telemetry/templates/authorization/)
 	and Apigee's [analytics template](https://istio.io/docs/reference/config/policy-and-telemetry/templates/analytics/).
