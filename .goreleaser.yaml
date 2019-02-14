@@ -19,7 +19,7 @@ archive:
     - LICENSE
     - README.md
     - samples/apigee/*.yaml
-    - samples/istio/*.yaml
+    - install/**/*
 git:
   short_hash: true
 release:
