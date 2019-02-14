@@ -16,7 +16,7 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 ## Version note
 
-The current release is based on Istio 1.0.5. The included sample files and instructions below will 
+The current release is based on Istio 1.0.6. The included sample files and instructions below will 
 automatically install the correct Istio version for you onto Kubernetes. It is recommended that
 you install onto Kubernetes 1.9 or newer. See the [Istio](https://istio.io) web page for more information.  
 
@@ -101,8 +101,8 @@ Helm Install example (Option 2):
 
 If you have already installed Istio, you can upgrade Mixer to include the Apigee adapter by running the following commands:
 
-    kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
-    kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.5
+    kubectl -n istio-system set image deployment/istio-telemetry mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.6
+    kubectl -n istio-system set image deployment/istio-policy mixer=gcr.io/apigee-api-management-istio/istio-mixer:1.0.6
 
 NOTE: Change the container name to `istio-mixer-debug` if you need a Mixer container with debug tools. 
  
