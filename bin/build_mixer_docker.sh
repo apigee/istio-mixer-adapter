@@ -96,7 +96,8 @@ fi
 
 docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
 echo "Pushing ${TARGET_DOCKER_IMAGE}..."
-gcloud docker -- push "${TARGET_DOCKER_IMAGE}" || exit 1
+gcloud auth configure-docker
+docker push "${TARGET_DOCKER_IMAGE}" || exit 1
 
 if [[ "${DEBUG}" == "1" ]]; then
   make docker.mixer_debug || exit 1
@@ -110,7 +111,7 @@ if [[ "${DEBUG}" == "1" ]]; then
 
     docker tag "${IMAGE_ID}" "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
     echo "Pushing ${TARGET_DOCKER_DEBUG_IMAGE}..."
-    gcloud docker -- push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
+    docker push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
 fi
 
 if [[ "${MAKE_PUBLIC}" == "1" ]]; then
