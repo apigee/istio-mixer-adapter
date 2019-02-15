@@ -96,7 +96,7 @@ fi
 
 docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
 echo "Pushing ${TARGET_DOCKER_IMAGE}..."
-gcloud auth configure-docker
+gcloud auth configure-docker --quiet
 docker push "${TARGET_DOCKER_IMAGE}" || exit 1
 
 if [[ "${DEBUG}" == "1" ]]; then
