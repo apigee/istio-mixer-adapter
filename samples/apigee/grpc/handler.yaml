@@ -13,7 +13,7 @@ metadata:
 spec:
   adapter: apigee
   connection:
-    address: "apigee-adapter:5000"
+    address: apigee-adapter:5000
   params:
     apigee_base: https://istioservices.apigee.net/edgemicro
     customer_base: REPLACE ME
