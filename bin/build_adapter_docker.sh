@@ -99,22 +99,24 @@ fi
 
 docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
 echo "Pushing ${TARGET_DOCKER_IMAGE}..."
-gcloud auth configure-docker
+gcloud auth configure-docker --quiet
 docker push "${TARGET_DOCKER_IMAGE}" || exit 1
 
 if [[ "${DEBUG}" == "1" ]]; then
-  make docker.mixer_debug || exit 1
+  docker build -t apigee-adapter-debug -f Dockerfile_debug .
 
-    IMAGE_ID=$(docker images istio/mixer_debug --format "{{.ID}}" | head -n1)
+  IMAGE_ID=$(docker images apigee-adapter-debug --format "{{.ID}}" | head -n1)
 
-    if [[ "${IMAGE_ID}" == "" ]]; then
-      echo "No image found for istio/mixer_debug. Does it exist?"
-      exit 1
-    fi
+  if [[ "${IMAGE_ID}" == "" ]]; then
+    echo "No image found for apigee-adapter. Does it exist?"
+    exit 1
+  fi
 
-    docker tag "${IMAGE_ID}" "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
-    echo "Pushing ${TARGET_DOCKER_DEBUG_IMAGE}..."
-    docker push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
+  docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
+  echo "Pushing ${TARGET_DOCKER_IMAGE}..."
+  gcloud auth configure-docker
+  docker push "${TARGET_DOCKER_IMAGE}" || exit 1
+
 fi
 
 if [[ "${MAKE_PUBLIC}" == "1" ]]; then
