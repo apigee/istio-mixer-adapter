@@ -112,10 +112,10 @@ if [[ "${DEBUG}" == "1" ]]; then
     exit 1
   fi
 
-  docker tag "${IMAGE_ID}" "${TARGET_DOCKER_IMAGE}" || exit 1
-  echo "Pushing ${TARGET_DOCKER_IMAGE}..."
+  docker tag "${IMAGE_ID}" "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
+  echo "Pushing ${TARGET_DOCKER_DEBUG_IMAGE}..."
   gcloud auth configure-docker
-  docker push "${TARGET_DOCKER_IMAGE}" || exit 1
+  docker push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
 
 fi
 
