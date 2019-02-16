@@ -108,15 +108,13 @@ if [[ "${DEBUG}" == "1" ]]; then
   IMAGE_ID=$(docker images apigee-adapter-debug --format "{{.ID}}" | head -n1)
 
   if [[ "${IMAGE_ID}" == "" ]]; then
-    echo "No image found for apigee-adapter. Does it exist?"
+    echo "No image found for apigee-adapter-debug. Does it exist?"
     exit 1
   fi
 
   docker tag "${IMAGE_ID}" "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
   echo "Pushing ${TARGET_DOCKER_DEBUG_IMAGE}..."
-  gcloud auth configure-docker
   docker push "${TARGET_DOCKER_DEBUG_IMAGE}" || exit 1
-
 fi
 
 if [[ "${MAKE_PUBLIC}" == "1" ]]; then
