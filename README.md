@@ -12,7 +12,7 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 ---
 
-# Installation and usage
+# Installation and usage 
 
 ## Version note
 
