@@ -31,7 +31,7 @@ bin/protoc-*
 *.swp
 *.swo
 
-# Generated proto files
+# Generated proto files ...
 template/analytics/template_handler_service.*
 template/analytics/*.pb.go
 apigee-istio/apigee-istio
