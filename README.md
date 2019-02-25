@@ -37,9 +37,6 @@ Download the appropriate release package for your operating system and extract i
     samples/apigee/handler.yaml
     samples/apigee/httpapispec.yaml
     samples/apigee/rule.yaml
-    samples/istio/helloworld.yaml
-    samples/istio/istio-demo.yaml
-    samples/istio/istio-demo-auth.yaml
     apigee-istio
 
 `apigee-istio` (or apigee-istio.exe on Windows) is the Command Line Interface (CLI) for this project. 
