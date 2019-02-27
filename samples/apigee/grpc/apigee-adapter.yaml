@@ -13,8 +13,8 @@ spec:
     spec:
       containers:
       - name: apigee-adapter
-#        image: "gcr.io/apigee-api-management-istio/apigee-adapter:latest"
-        image: "gcr.io/apigee-api-management-istio/apigee-adapter-debug:latest"
+        image: "gcr.io/apigee-api-management-istio/apigee-adapter:latest"
+#        image: "gcr.io/apigee-api-management-istio/apigee-adapter-debug:latest"
         imagePullPolicy: IfNotPresent #Always
         ports:
         - containerPort: 5000
