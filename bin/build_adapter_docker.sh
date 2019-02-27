@@ -86,7 +86,7 @@ SERVER_DIR="${ADAPTER_DIR}/grpc-server"
 TARGET_DIR="${ADAPTER_DIR}/dist"
 
 cd "${SERVER_DIR}"
-GOOS=linux go build -a -installsuffix cgo -o apigee-adapter .
+GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o apigee-adapter .
 
 docker build -t apigee-adapter -f Dockerfile .
 
