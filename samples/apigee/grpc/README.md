@@ -6,24 +6,18 @@ The gRPC adapter support is preliminary as it is not yet supported by an Istio r
 
 1. Install Istio from a master or 1.1.x build
 
-2. Deploy adapter into Kubernetes
-
-        kubectl apply -f samples/apigee/grpc/apigee-adapter.yaml
-
-3. Generate (or edit) the handler file
+2. Generate (or edit) the handler file
 
         apigee-istio -u {your username} -p {your password} -o {your organization name} -e {your environment name} provision --grpc > samples/apigee/grpc/handler.yaml
 
-4. Connect Istio to adapter
+3. Deploy adapter and connect Istio
 
-        kubectl apply -f samples/apigee/grpc
+        kubectl apply -f samples/apigee/grpc/handler.yaml
 
 
 Notes:
 
-* Using the `--grpc` flag requires an new build of apigee-istio. Alternatively, just edit the sample file. 
-* The `authentication-policy.yaml` and `httpapispec.yaml` files in `samples/apigee` may also still 
-be used as normal.
+* The `authentication-policy.yaml` and `httpapispec.yaml` files in `samples/apigee` may be used as before.
 
 
 ## Usage
