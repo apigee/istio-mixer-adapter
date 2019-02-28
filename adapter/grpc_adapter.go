@@ -27,6 +27,8 @@ import (
 	"github.com/apigee/istio-mixer-adapter/adapter/config"
 	"github.com/apigee/istio-mixer-adapter/template/analytics"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	hproto "google.golang.org/grpc/health/grpc_health_v1"
 	model "istio.io/api/mixer/adapter/model/v1beta1"
 	policy "istio.io/api/policy/v1beta1"
 	"istio.io/istio/mixer/pkg/adapter"
@@ -51,6 +53,7 @@ type (
 	GRPCAdapter struct {
 		listener net.Listener
 		server   *grpc.Server
+		health   *health.Server
 
 		info         adapter.Info
 		handlers     handlerMap
@@ -306,5 +309,11 @@ func NewGRPCAdapter(addr string) (*GRPCAdapter, error) {
 	s.server = grpc.NewServer()
 	authorization.RegisterHandleAuthorizationServiceServer(s.server, s)
 	analytics.RegisterHandleAnalyticsServiceServer(s.server, s)
+
+	// health checks
+	s.health = health.NewServer()
+	s.health.SetServingStatus("", hproto.HealthCheckResponse_SERVING)
+	hproto.RegisterHealthServer(s.server, s.health)
+
 	return s, nil
 }

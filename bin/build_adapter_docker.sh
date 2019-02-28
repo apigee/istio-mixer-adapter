@@ -15,6 +15,9 @@
 # - DEBUG - set DEBUG=1 to also build and push a debug image.
 # - TARGET_DOCKER_DEBUG_IMAGE - the name of the docker debug image to build.
 
+# https://github.com/grpc-ecosystem/grpc-health-probe/releases
+GRPC_HEALTH_PROBE_VERSION=v0.2.1
+
 echo "Checking environment settings..."
 
 if [[ $GCLOUD_SERVICE_KEY == "" ]]; then
@@ -87,6 +90,10 @@ TARGET_DIR="${ADAPTER_DIR}/dist"
 
 cd "${SERVER_DIR}"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o apigee-adapter .
+
+// get grpc_health_probe
+wget -O grpc_health_probe "https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64"
+chmod +x grpc_health_probe
 
 docker build -t apigee-adapter -f Dockerfile .
 

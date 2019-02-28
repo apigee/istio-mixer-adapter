@@ -4,7 +4,7 @@ metadata:
   name: apigee-adapter
   namespace: istio-system
 spec:
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
@@ -13,21 +13,20 @@ spec:
     spec:
       containers:
       - name: apigee-adapter
-        image: "gcr.io/apigee-api-management-istio/apigee-adapter:latest"
+#        image: "gcr.io/apigee-api-management-istio/apigee-adapter:latest"
 #        image: "gcr.io/apigee-api-management-istio/apigee-adapter-debug:latest"
+        image: "apigee-adapter"
         imagePullPolicy: IfNotPresent #Always
         ports:
         - containerPort: 5000
-#        readinessProbe:
-#          tcpSocket:
-#            port: 5000
-#          initialDelaySeconds: 5
-#          periodSeconds: 5
-#        livenessProbe:
-#          tcpSocket:
-#            port: 5000
-#          initialDelaySeconds: 5
-#          periodSeconds: 5
+        readinessProbe:
+          exec:
+            command: ["/grpc_health_probe", "-addr=:5000"]
+          initialDelaySeconds: 5
+        livenessProbe:
+          exec:
+            command: ["/grpc_health_probe", "-addr=:5000"]
+          initialDelaySeconds: 10
 ---
 apiVersion: v1
 kind: Service
