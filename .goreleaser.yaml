@@ -18,7 +18,7 @@ archive:
   files:
     - LICENSE
     - README.md
-    - samples/apigee/*.yaml
+    - samples/**/*
     - install/**/*
 git:
   short_hash: true
