@@ -12,7 +12,7 @@ spec:
   targets:
   - name: helloworld
   peers:
-#  - mtls:   # uncomment if you're using mTLS between services (eg. istio-demo-auth.yaml)
+#  - mtls:   # uncomment if you're using mTLS between services in your mesh
   origins:
   - jwt:
       issuer: REPLACE ME
