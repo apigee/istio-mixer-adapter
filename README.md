@@ -106,8 +106,7 @@ option) if you have an entry for `machine api.enterprise.apigee.com` (or the hos
 
 ### Istio 1.1.x
 
-As noted above, Istio 1.1.x adapters are run in a separate process and Mixer connects to the adapter via gRPC to the
-address specified in the `connection.address` property in the apigee adapter CRD.
+To create an Istio 1.1.x handler file, run the following:
 
     apigee-istio --grpc -u {username} -p {password} -o {organization} -e {environment} provision > samples/apigee/grpc/handler.yaml
 
@@ -131,9 +130,16 @@ Once it completes, check your `samples/apigee/grpc/handler.yaml` file. It should
         key: 06a40b65005d03ea24c0d53de69ab795590b0c332526e97fed549471bdea00b9
         secret: 93550179f344150c6474956994e0943b3e93a3c90c64035f378dc05c98389633   
 
+As noted above, Istio 1.1.x adapters are run in a separate process from Mixer and Mixer will connect to the adapter 
+via gRPC to the address specified in the `connection.address` property in the Apigee adapter handler config. This 
+address must be reachable by the Mixer processes in the Istio mesh. If you deploy the adapter to a location other than
+the default, just change the `connection.address` value as appropriate.
+
 [next step](#install-a-target-service)
 
 ### Istio 1.0.x
+
+To create an Istio 1.0.x handler file, run the following:
 
     apigee-istio -u {username} -p {password} -o {organization} -e {environment} provision > samples/apigee/handler.yaml
 
