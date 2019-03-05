@@ -248,10 +248,11 @@
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
+    "prometheus/internal",
     "prometheus/promhttp"
   ]
-  revision = "967789050ba94deca04a5e84cce8ad472ce313c1"
-  version = "v0.9.0-pre1"
+  revision = "505eaef017263e299324067d40ca2c48f6a2cf50"
+  version = "v0.9.2"
 
 [[projects]]
   branch = "master"
@@ -324,6 +325,19 @@
   packages = ["metrics"]
   revision = "ed3a127ec5fef7ae9ea95b01b542c47fbd999ce5"
   version = "v1.5.0"
+
+[[projects]]
+  name = "go.opencensus.io"
+  packages = [
+    "exemplar",
+    "internal/tagencoding",
+    "stats",
+    "stats/internal",
+    "stats/view",
+    "tag"
+  ]
+  revision = "f305e5c4e2cf345eba88de13d10de1126fa45a61"
+  version = "v0.19.1"
 
 [[projects]]
   name = "go.uber.org/atomic"
@@ -450,17 +464,24 @@
     "balancer",
     "balancer/base",
     "balancer/roundrobin",
+    "binarylog/grpc_binarylog_v1",
     "codes",
     "connectivity",
     "credentials",
+    "credentials/internal",
     "encoding",
     "encoding/proto",
     "grpclog",
+    "health",
+    "health/grpc_health_v1",
     "internal",
     "internal/backoff",
+    "internal/binarylog",
     "internal/channelz",
     "internal/envconfig",
     "internal/grpcrand",
+    "internal/grpcsync",
+    "internal/syscall",
     "internal/transport",
     "keepalive",
     "metadata",
@@ -473,8 +494,8 @@
     "status",
     "tap"
   ]
-  revision = "32fb0ac620c32ba40a4626ddf94d90d12cce3455"
-  version = "v1.14.0"
+  revision = "2fdaae294f38ed9a121193c51ec99fecd3b13eb7"
+  version = "v1.19.0"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
@@ -520,6 +541,7 @@
     "mixer/pkg/lang/checker",
     "mixer/pkg/lang/compiled",
     "mixer/pkg/lang/compiler",
+    "mixer/pkg/loadshedding",
     "mixer/pkg/pool",
     "mixer/pkg/protobuf/descriptor",
     "mixer/pkg/protobuf/yaml",
@@ -555,8 +577,8 @@
     "pkg/tracing",
     "pkg/version"
   ]
-  revision = "3a136c90ec5e308f236e0d7ebb5c4c5e405217f4"
-  version = "1.0.0"
+  revision = "98598f88f6ee9c1e6b3f03b652d8e0e3cd114fa2"
+  version = "1.0.6"
 
 [[projects]]
   name = "k8s.io/api"
@@ -706,6 +728,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "58849f8e49d863e3210ca73b1b46371aa10cb8bea8739e564f9484f87924e595"
+  inputs-digest = "005da3744e1a7a0dae98f92b2c0080d2f5b3c5e4e84326111c43bf5c2ccaba85"
   solver-name = "gps-cdcl"
   solver-version = 1
