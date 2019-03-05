@@ -10,8 +10,6 @@ import (
 	"istio.io/istio/pkg/log"
 )
 
-// todo: add health checks
-
 var address string
 
 func main() {
