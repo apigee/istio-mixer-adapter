@@ -31,6 +31,12 @@ import (
 
 func TestQuota(t *testing.T) {
 
+	type testcase struct {
+		test            string
+		deduplicationID string
+		want            Result
+	}
+
 	var m *Manager
 	m.Close() // just to verify it doesn't die here
 
@@ -68,11 +74,7 @@ func TestQuota(t *testing.T) {
 	}
 	defer m.Close()
 
-	cases := []struct {
-		test            string
-		deduplicationID string
-		want            Result
-	}{
+	cases := []testcase{
 		{
 			test:            "first",
 			deduplicationID: "X",
@@ -105,7 +107,7 @@ func TestQuota(t *testing.T) {
 		args.DeduplicationID = c.deduplicationID
 		result, err := m.Apply(authContext, p, args)
 		if err != nil {
-			t.Errorf("should not get error: %v", err)
+			t.Fatalf("should not get error: %v", err)
 		}
 		if result.Used != c.want.Used {
 			t.Errorf("used got: %v, want: %v", result.Used, c.want.Used)
@@ -114,6 +116,34 @@ func TestQuota(t *testing.T) {
 			t.Errorf("exceeded got: %v, want: %v", result.Exceeded, c.want.Exceeded)
 		}
 	}
+
+	// test incompatible bucket
+	t.Log("** Executing incompatible test case")
+	p2 := &product.APIProduct{
+		QuotaLimitInt:    1,
+		QuotaIntervalInt: 2,
+		QuotaTimeUnit:    "second",
+	}
+	c := testcase{
+		test:            "second",
+		deduplicationID: "Y",
+		want: Result{
+			Used:     1,
+			Exceeded: 0,
+		},
+	}
+
+	result, err := m.Apply(authContext, p2, args)
+	if err != nil {
+		t.Fatalf("should not get error: %v", err)
+	}
+	if result.Used != c.want.Used {
+		t.Errorf("used got: %v, want: %v", result.Used, 0)
+	}
+	if result.Exceeded != c.want.Exceeded {
+		t.Errorf("exceeded got: %v, want: %v", result.Exceeded, c.want.Exceeded)
+	}
+
 }
 
 // not fully determinate, uses delays and background threads
