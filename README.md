@@ -29,8 +29,8 @@ and [have at it](https://istio.io/docs/setup/).
 _Important_  
 A key feature of the Apigee adapter that we'll be exploring below is to automatically enforce Apigee policy in Istio 
 using Istio's Mixer. However, as of Istio 1.1, policy is not enabled by default. For Apigee policy features to take 
-effect, policy control *must be explicitly enabled* in Istio config and the Mixer policy image must be running. See the 
-Istio setup instructions for more details.
+effect, policy control *must be explicitly enabled* in Istio config and the Mixer policy image must be running. See  
+[Enabling Policy Enforcement](https://istio.io/docs/tasks/policy-enforcement/enabling-policy/) for more details.
 
 [next step](#download-a-mixer-adapter-release)
 
