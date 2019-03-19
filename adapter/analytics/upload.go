@@ -59,9 +59,14 @@ func (m *manager) upload(tenant string) error {
 		return fmt.Errorf("ls %s: %s", p, err)
 	}
 	var errs error
+	var lastFn string
 	successes := 0
 	for _, fi := range files {
 		fn := path.Join(p, fi.Name())
+		if fn == lastFn {
+			continue
+		}
+		lastFn = fn
 		f, err := os.Open(fn)
 		if err != nil {
 			errs = multierror.Append(errs, err)
