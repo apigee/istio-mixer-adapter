@@ -285,7 +285,7 @@ func TestPushAnalytics(t *testing.T) {
 	tc.SetOrganization("otherorg")
 	tc.SetEnvironment("test")
 	ctx = &auth.Context{Context: tc}
-	if err := m.SendRecords(ctx, wantRecords[t2][0].records); err != nil {
+	if err := m.SendRecords(ctx, sendRecords[t2][0].records); err != nil {
 		t.Errorf("Error on SendRecords(): %s", err)
 	}
 
