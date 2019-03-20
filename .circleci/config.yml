@@ -16,6 +16,9 @@ jobs:
         # will have removed the vendor link.
       - run: dep ensure
       - run:
+          command: go generate ./...
+          name: generate protos
+      - run:
           command: go test -coverprofile=coverage.txt ./...
           name: Run tests
       - run:
@@ -70,6 +73,9 @@ jobs:
     steps:
       - checkout
       - run: dep ensure
+      - run:
+          command: go generate ./...
+          name: generate protos
       - run:
           name: Run tests
           command: go test -coverprofile=coverage.txt ./...
