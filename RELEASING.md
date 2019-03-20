@@ -9,6 +9,7 @@
     1. update README.md to appropriate versions and instructions
     2. update version in `auth-proxy/apiproxy/policies/Send-Version.xml` to match $RELEASE
     3. run `bin/build_proxy_resources.sh`
+    4. update image version in `samples/apigee/grpc/apigee-adapter.yaml` to match $RELEASE
 
 4. for Istio 1.0.x releases
     1. update DEFAULT_ISTIO_VERSION in `bin/local_install.sh`
@@ -26,7 +27,8 @@
     (CircleCI will automatically build and tag docker image)
 
 6. verify the image
-    (gcr.io/apigee-api-management-istio/istio-mixer:$RELEASE)
+    a. for Istio 1.0.x releases, verify mixer: gcr.io/apigee-api-management-istio/istio-mixer:$RELEASE
+    b. for newer releases, verify adapter: gcr.io/apigee-api-management-istio/apigee-adapter:$RELEASE
 
 7. `bin/build_release.sh`
     (creates a draft release on Github)
