@@ -1,6 +1,11 @@
 # Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
 # for detailed Gopkg.toml documentation.
 
+required = [
+  "github.com/istio/tools/protoc-gen-docs",
+  "golang.org/x/tools/imports",
+]
+
 # Below is for apigee-istio
 
 [[constraint]]
@@ -11,7 +16,7 @@
 
 [[constraint]]
   name = "istio.io/istio"
-  version = "1.0.6"
+  version = "1.1.0"
 
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"

@@ -92,7 +92,10 @@ echo "Done."
 fi
 
 # istio-mixer-adapter edit
-ISTIO_ROOT="${GOPATH-$HOME/go}/src/istio.io/istio"
+#ISTIO_ROOT="${GOPATH-$HOME/go}/src/istio.io/istio"
+ISTIO_ROOT="${GOPATH-$HOME/go}/src/github.com/apigee/istio-mixer-adapter"
+MIXGEN=$ISTIO_ROOT/vendor/istio.io/istio/mixer/tools/mixgen/main.go
+
 #if [ ! -e $ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
 if [ ! -e $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
 echo "Building protoc-gen-docs..."
@@ -203,7 +206,7 @@ if [ "$opttemplate" = true ]; then
     die "template generation failure: $err";
   fi
 
-  go run $GOPATH/src/istio.io/istio/mixer/tools/mixgen/main.go api -t $templateDS --go_out $templateHG --proto_out $templateHSP $TMPL_GEN_MAP
+  go run $MIXGEN api -t $templateDS --go_out $templateHG --proto_out $templateHSP $TMPL_GEN_MAP
 
   err=`$protoc $IMPORTS $TMPL_PLUGIN $templateHSP`
   if [ ! -z "$err" ]; then
@@ -218,7 +221,7 @@ if [ "$opttemplate" = true ]; then
   fi
 
   templateYaml=${template/.proto/.yaml}
-  go run $GOPATH/src/istio.io/istio/mixer/tools/mixgen/main.go template -d $templateSDS -o $templateYaml -n $(basename $(dirname "${template}"))
+  go run $MIXGEN template -d $templateSDS -o $templateYaml -n $(basename $(dirname "${template}"))
 
   rm $templatePG
 
@@ -242,7 +245,7 @@ if [ "$optadapter" = true ]; then
   die "config generation failure: $err";
   fi
 
-  go run $GOPATH/src/istio.io/istio/mixer/tools/mixgen/main.go adapter -c $adapteCfdDS -o $(dirname "${file}") ${extraflags}
+  go run $MIXGEN adapter -c $adapteCfdDS -o $(dirname "${file}") ${extraflags}
 
   exit 0
 fi
@@ -259,5 +262,5 @@ fi
 
 err=`$protoc $IMPORTS $PLUGIN --include_imports --include_source_info --descriptor_set_out=${file}_descriptor $file`
 if [ ! -z "$err" ]; then
-die "config generation failure: $err";
+  die "config generation failure: $err";
 fi
