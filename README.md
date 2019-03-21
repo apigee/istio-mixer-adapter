@@ -269,7 +269,7 @@ every two minutes. In addition, configuration changes you make to Istio will tak
 be propagated throughout the mesh. During this time, you could see inconsistent behavior as it takes
 effect.
 
-## Hit your Quota
+## Hit your quota
 
 Remember that API Product Quota you set limiting requests from Developer to 5 requests per minute? Let's max it out.
 
