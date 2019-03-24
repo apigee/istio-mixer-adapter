@@ -120,7 +120,7 @@ Once it completes, check your `samples/apigee/grpc/handler.yaml` file. It should
 
     # Istio handler configuration for Apigee gRPC adapter for Mixer
     apiVersion: config.istio.io/v1alpha2
-    kind: apigee
+    kind: handler
     metadata:
       name: apigee-handler
       namespace: istio-system
