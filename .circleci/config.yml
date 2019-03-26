@@ -9,11 +9,6 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run:
-          command: INSTALL_PROTOC=1 ./bin/local_install.sh
-          name: Run local install script
-        # test needs dep ensure to be run again, since the Mixer plugin install
-        # will have removed the vendor link.
       - run: dep ensure
       - run:
           command: ./bin/install_protoc.sh
