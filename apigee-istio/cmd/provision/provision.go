@@ -476,8 +476,9 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn,
 		Spec: spec,
 	}
 	if p.grpcHandler {
+		handler.Kind = "handler"
 		handler.Spec = grpcSpecification{
-			Adapter: "handler",
+			Adapter: "apigee",
 			Connection: connection{
 				Address: "apigee-adapter:5000",
 			},
