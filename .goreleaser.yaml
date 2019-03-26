@@ -20,8 +20,6 @@ archive:
     - README.md
     - samples/**/*
     - install/**/*
-git:
-  short_hash: true
 release:
   draft: true
   prerelease: true
