@@ -38,9 +38,9 @@ effect, policy control *must be explicitly enabled* in Istio config and the Mixe
 
 If installing onto Istio 1.0, your mesh will need run a custom Mixer (policy and telemetry) image that contains the Apigee 
 adapter. There is a release of the Apigee Adapter Mixer corresponding to each release of Istio 1.0 and you should use 
-the matching version label. For example, for Istio 1.0.6 you would use the following image:
+the matching version label. For example, for Istio 1.0.7 you would use the following image:
 
-    MIXER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:1.0.6
+    MIXER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:1.0.7
 
 There are many ways to set the appropriate image for your mesh that depend upon your specific installation of Istio, but 
 a couple of common examples are below: 
@@ -49,7 +49,7 @@ a couple of common examples are below:
 
 If you're using Kubernetes, the simplest method to get started with Istio 1.0 is to simply install it, then replace the Mixer 
 image with the correct one containing the Apigee adapter. There is a release of the Apigee Adapter Mixer corresponding to
-each release of Istio 1.0 and you should use the matching version label. For example, for Istio 1.0.6, you could run
+each release of Istio 1.0 and you should use the matching version label. For example, for Istio 1.0.7, you could run
 the following commands against the Kubernetes in your Istio mesh:
 
     kubectl -n istio-system set image deployment/istio-telemetry mixer=${MIXER_IMAGE}
