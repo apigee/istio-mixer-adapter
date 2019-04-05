@@ -16,7 +16,7 @@ required = [
 
 [[constraint]]
   name = "istio.io/istio"
-  version = "1.0.7"
+  version = "1.0.0"
 
 [[constraint]]
   name = "github.com/hashicorp/go-multierror"
