@@ -91,18 +91,18 @@ popd
 echo "Done."
 fi
 
-# istio-mixer-adapter edit
-ISTIO_ROOT="${GOPATH-$HOME/go}/src/istio.io/istio"
-#if [ ! -e $ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
-if [ ! -e $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
-echo "Building protoc-gen-docs..."
-#pushd $ROOT/$GENDOCS_PATH
-#go build --pkgdir $GENDOCS_PATH -o $ROOT/bin/$GENDOCS-$GENDOCS_VERSION
-pushd $ISTIO_ROOT/$GENDOCS_PATH
-go build --pkgdir $GENDOCS_PATH -o $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION
-popd
-echo "Done."
-fi
+## istio-mixer-adapter edit
+#ISTIO_ROOT="${GOPATH-$HOME/go}/src/istio.io/istio"
+##if [ ! -e $ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
+#if [ ! -e $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION ]; then
+#echo "Building protoc-gen-docs..."
+##pushd $ROOT/$GENDOCS_PATH
+##go build --pkgdir $GENDOCS_PATH -o $ROOT/bin/$GENDOCS-$GENDOCS_VERSION
+#pushd $ISTIO_ROOT/$GENDOCS_PATH
+#go build --pkgdir $GENDOCS_PATH -o $ISTIO_ROOT/bin/$GENDOCS-$GENDOCS_VERSION
+#popd
+#echo "Done."
+#fi
 
 PROTOC_MIN_VERSION=protoc-min-version
 MIN_VERSION_PATH=$ROOT/$GOGOPROTO_PATH/$PROTOC_MIN_VERSION
