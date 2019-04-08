@@ -35,7 +35,7 @@ template=$ROOT
 optproto=false
 optadapter=false
 opttemplate=false
-gendoc=true
+gendoc=false
 # extra flags are arguments that are passed to the underlying tool verbatim
 # Its value depend on the context of the main generation flag.
 # * for parent flag `-a`, the `-x` flag can provide additional options required by tool mixer/tool/mixgen adapter --help
