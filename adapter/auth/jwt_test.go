@@ -15,6 +15,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
@@ -98,7 +99,7 @@ func TestJWTCaching(t *testing.T) {
 	}
 
 	// Refresh, should fail
-	err = jwtMan.refresh()
+	err = jwtMan.refresh(context.Background())
 	if err == nil {
 		t.Errorf("Expected refresh to fail")
 	}

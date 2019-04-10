@@ -15,13 +15,14 @@
 package auth
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 	"path"
 	"sync"
 	"time"
 
-	"github.com/apigee/istio-mixer-adapter/adapter/context"
+	adapterContext "github.com/apigee/istio-mixer-adapter/adapter/context"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"github.com/lestrrat/go-jwx/jwk"
 	"github.com/lestrrat/go-jwx/jws"
 	"github.com/lestrrat/go-jwx/jwt"
@@ -36,7 +37,6 @@ const (
 
 func newJWTManager(pollInterval time.Duration) *jwtManager {
 	return &jwtManager{
-		closedChan:   make(chan bool),
 		jwkSets:      sync.Map{},
 		pollInterval: pollInterval,
 	}
@@ -44,40 +44,30 @@ func newJWTManager(pollInterval time.Duration) *jwtManager {
 
 // An jwtManager handles all of the various JWT authentication functionality.
 type jwtManager struct {
-	closedChan   chan bool
-	jwkSets      sync.Map
-	pollInterval time.Duration
-}
-
-func (a *jwtManager) pollingLoop() {
-	tick := time.Tick(a.pollInterval)
-	for {
-		select {
-		case <-a.closedChan:
-			return
-		case <-tick:
-			if err := a.refresh(); err != nil {
-				log.Printf("Error refreshing auth manager: %s", err)
-			}
-		}
-	}
+	jwkSets       sync.Map
+	pollInterval  time.Duration
+	cancelPolling context.CancelFunc
 }
 
 func (a *jwtManager) start(env adapter.Env) {
 	if a.pollInterval > 0 {
 		env.Logger().Debugf("starting cert polling")
-		if err := a.refresh(); err != nil {
-			log.Printf("Error refreshing auth manager: %s", err)
+		looper := util.Looper{
+			Env:     env,
+			Backoff: util.NewExponentialBackoff(200*time.Millisecond, a.pollInterval, 2, true),
 		}
-		env.ScheduleDaemon(func() {
-			a.pollingLoop()
+		ctx, cancel := context.WithCancel(context.Background())
+		a.cancelPolling = cancel
+		looper.Start(ctx, a.refresh, a.pollInterval, func(err error) error {
+			env.Logger().Errorf("Error refreshing cert set: %s", err)
+			return nil
 		})
 	}
 }
 
 func (a *jwtManager) stop() {
-	if a != nil && a.pollInterval > 0 {
-		a.closedChan <- true
+	if a != nil && a.cancelPolling != nil {
+		a.cancelPolling()
 	}
 }
 
@@ -90,18 +80,18 @@ func (a *jwtManager) ensureSet(url string) error {
 	return nil
 }
 
-func (a *jwtManager) refresh() error {
+func (a *jwtManager) refresh(ctx context.Context) error {
 	var errRet error
 	a.jwkSets.Range(func(urlI interface{}, setI interface{}) bool {
 		if err := a.ensureSet(urlI.(string)); err != nil {
 			errRet = err
 		}
-		return true
+		return ctx.Err() == nil // if not canceled, keep going
 	})
 	return errRet
 }
 
-func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
+func (a *jwtManager) jwkSet(ctx adapterContext.Context) (*jwk.Set, error) {
 	jwksURL := *ctx.CustomerBase()
 	jwksURL.Path = path.Join(jwksURL.Path, certsPath)
 	url := jwksURL.String()
@@ -114,7 +104,7 @@ func (a *jwtManager) jwkSet(ctx context.Context) (*jwk.Set, error) {
 	return set.(*jwk.Set), nil
 }
 
-func (a *jwtManager) parseJWT(ctx context.Context, raw string, verify bool) (map[string]interface{}, error) {
+func (a *jwtManager) parseJWT(ctx adapterContext.Context, raw string, verify bool) (map[string]interface{}, error) {
 
 	if verify {
 		set, err := a.jwkSet(ctx)
