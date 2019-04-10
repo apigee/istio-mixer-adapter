@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package product
+package util
 
 import (
 	"math"
@@ -24,22 +24,24 @@ const defaultInitial = 200 * time.Millisecond
 const defaultMax = 10 * time.Second
 const defaultFactor float64 = 2
 
-// Backoff contains parameters for RPC backoff strategy.
-type Backoff struct {
-	attempt         int
-	initial, max    time.Duration
-	jitter          bool
-	backoffStrategy func() time.Duration
+// Backoff defines functions for RPC Backoff strategy.
+type Backoff interface {
+	Duration() time.Duration
+	Attempt() int
+	Reset()
 }
 
 // ExponentialBackoff is a backoff strategy that backs off exponentially.
 type ExponentialBackoff struct {
-	Backoff
-	factor float64
+	attempt         int
+	initial, max    time.Duration
+	jitter          bool
+	backoffStrategy func() time.Duration
+	factor          float64
 }
 
 // NewExponentialBackoff constructs a new ExponentialBackoff struct.
-func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bool) *ExponentialBackoff {
+func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bool) Backoff {
 	backoff := &ExponentialBackoff{}
 
 	if initial <= 0 {
@@ -65,7 +67,7 @@ func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bo
 
 // Duration calculates how long should be waited before attempting again. Note
 // that this method is stateful - each call counts as an "attempt".
-func (b *Backoff) Duration() time.Duration {
+func (b *ExponentialBackoff) Duration() time.Duration {
 	d := b.backoffStrategy()
 	b.attempt++
 	return d
@@ -73,8 +75,8 @@ func (b *Backoff) Duration() time.Duration {
 
 func (b *ExponentialBackoff) exponentialBackoffStrategy() time.Duration {
 
-	initial := float64(b.Backoff.initial)
-	attempt := float64(b.Backoff.attempt)
+	initial := float64(b.initial)
+	attempt := float64(b.attempt)
 	duration := initial * math.Pow(b.factor, attempt)
 
 	if b.jitter {
@@ -94,11 +96,11 @@ func (b *ExponentialBackoff) exponentialBackoffStrategy() time.Duration {
 }
 
 // Reset clears any state that the backoff strategy has.
-func (b *Backoff) Reset() {
+func (b *ExponentialBackoff) Reset() {
 	b.attempt = 0
 }
 
 // Attempt returns how many attempts have been made.
-func (b *Backoff) Attempt() int {
+func (b *ExponentialBackoff) Attempt() int {
 	return b.attempt
 }

@@ -15,6 +15,7 @@
 package product
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -28,6 +29,7 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -46,16 +48,15 @@ func createManager(options Options, log adapter.Logger) *Manager {
 	isClosedInt := int32(0)
 
 	return &Manager{
-		baseURL:         options.BaseURL,
-		log:             log,
-		quitPollingChan: make(chan bool, 1),
-		closedChan:      make(chan bool),
-		returnChan:      make(chan map[string]*APIProduct),
-		isClosed:        &isClosedInt,
-		refreshRate:     options.RefreshRate,
-		client:          options.Client,
-		key:             options.Key,
-		secret:          options.Secret,
+		baseURL:     options.BaseURL,
+		log:         log,
+		closedChan:  make(chan bool),
+		returnChan:  make(chan map[string]*APIProduct),
+		isClosed:    &isClosedInt,
+		refreshRate: options.RefreshRate,
+		client:      options.Client,
+		key:         options.Key,
+		secret:      options.Secret,
 	}
 }
 
@@ -64,7 +65,6 @@ type Manager struct {
 	baseURL          *url.URL
 	log              adapter.Logger
 	isClosed         *int32
-	quitPollingChan  chan bool
 	closedChan       chan bool
 	returnChan       chan map[string]*APIProduct
 	refreshRate      time.Duration
@@ -73,6 +73,7 @@ type Manager struct {
 	key              string
 	secret           string
 	productsMux      productsMux
+	cancelPolling    context.CancelFunc
 }
 
 func (p *Manager) start(env adapter.Env) {
@@ -85,10 +86,19 @@ func (p *Manager) start(env adapter.Env) {
 	env.ScheduleDaemon(func() {
 		p.productsMux.mux()
 	})
-	env.ScheduleDaemon(func() {
-		p.pollProducts()
+
+	poller := util.Looper{
+		Env:     env,
+		Backoff: util.NewExponentialBackoff(200*time.Millisecond, p.refreshRate, 2, true),
+	}
+	apiURL := *p.baseURL
+	apiURL.Path = path.Join(apiURL.Path, productsURL)
+	ctx, cancel := context.WithCancel(context.Background())
+	p.cancelPolling = cancel
+	poller.Start(ctx, p.pollingClosure(apiURL), p.refreshRate, func(err error) error {
+		p.log.Errorf("Error retrieving products: %v", err)
+		return nil
 	})
-	p.retrieve()
 
 	p.log.Infof("started product manager")
 }
@@ -101,47 +111,25 @@ func (p *Manager) Products() ProductsMap {
 	return p.productsMux.Get()
 }
 
-func (p *Manager) pollProducts() {
-	tick := time.Tick(p.refreshRate)
-	for {
-		select {
-		case <-p.closedChan:
-			return
-		case <-tick:
-			p.retrieve()
-		}
-	}
-}
-
 // Close shuts down the manager.
 func (p *Manager) Close() {
 	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
 		return
 	}
 	p.log.Infof("closing product manager")
-	p.quitPollingChan <- true
-	p.closedChan <- true
-	close(p.closedChan)
+	p.cancelPolling()
 	p.productsMux.Close()
 	p.log.Infof("closed product manager")
 }
 
-// don't call externally. will block until success.
-func (p *Manager) retrieve() {
-	apiURL := *p.baseURL
-	apiURL.Path = path.Join(apiURL.Path, productsURL)
+func (p *Manager) pollingClosure(apiURL url.URL) func(ctx context.Context) error {
+	return func(ctx context.Context) error {
 
-	p.pollWithBackoff(p.quitPollingChan, p.pollingClosure(apiURL), func(err error) {
-		p.log.Errorf("Error retrieving products: %v", err)
-	})
-}
-
-func (p *Manager) pollingClosure(apiURL url.URL) func(chan bool) error {
-	return func(_ chan bool) error {
 		req, err := http.NewRequest(http.MethodGet, apiURL.String(), nil)
 		if err != nil {
 			return err
 		}
+		req = req.WithContext(ctx) // make cancelable from poller
 
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
@@ -235,33 +223,6 @@ func (p *Manager) resolveResourceMatchers(product *APIProduct) {
 		product.resourceRegexps = append(product.resourceRegexps, reg)
 	}
 }
-
-func (p *Manager) pollWithBackoff(quit chan bool, toExecute func(chan bool) error, handleError func(error)) {
-
-	backoff := NewExponentialBackoff(200*time.Millisecond, p.refreshRate, 2, true)
-	retry := time.After(0 * time.Millisecond) // start first attempt immediately
-
-	for {
-		select {
-		case <-quit:
-			return
-		case <-retry:
-			err := toExecute(quit)
-			if err == nil {
-				return
-			}
-
-			if _, ok := err.(quitSignalError); ok {
-				return
-			}
-			handleError(err)
-
-			retry = time.After(backoff.Duration())
-		}
-	}
-}
-
-type quitSignalError error
 
 // Resolve determines the valid products for a given API.
 func (p *Manager) Resolve(ac *auth.Context, api, path string) []*APIProduct {
