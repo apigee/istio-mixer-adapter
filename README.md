@@ -114,7 +114,7 @@ option) if you have an entry for `machine api.enterprise.apigee.com` (or the hos
 
 To create an Istio 1.1 handler file, run the following:
 
-    apigee-istio --grpc -u {username} -p {password} -o {organization} -e {environment} provision > samples/apigee/grpc/handler.yaml
+    apigee-istio provision --grpc -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/grpc/handler.yaml
 
 Once it completes, check your `samples/apigee/grpc/handler.yaml` file. It should look similar to this:
 
@@ -147,7 +147,7 @@ the default, just change the `connection.address` value as appropriate.
 
 To create an Istio 1.0 handler file, run the following:
 
-    apigee-istio -u {username} -p {password} -o {organization} -e {environment} provision > samples/apigee/handler.yaml
+    apigee-istio provision -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/handler.yaml
 
 Once it completes, check your `samples/apigee/handler.yaml` file. It should look similar to this:
 
