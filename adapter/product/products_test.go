@@ -15,7 +15,6 @@
 package product
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,29 +23,13 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
-	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
-func TestStartStop(t *testing.T) {
-
-	apiProducts := []APIProduct{
-		{
-			Attributes: []Attribute{
-				{Name: ServicesAttr, Value: "service1.istio"},
-			},
-			Name:      "Name 1",
-			Resources: []string{"/"},
-			Scopes:    []string{"scope1"},
-		},
-	}
+func TestValidate(t *testing.T) {
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var result = APIResponse{
-			APIProducts: apiProducts,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(result)
+		w.WriteHeader(http.StatusGone)
 	}))
 	defer ts.Close()
 
@@ -61,19 +44,35 @@ func TestStartStop(t *testing.T) {
 		RefreshRate: time.Hour,
 		Client:      http.DefaultClient,
 	}
-	p := createManager(opts, env)
-	p.start(env)
+	p, err := NewManager(env, opts)
+	if err == nil {
+		t.Fatal("should be invalid options")
+	}
+
+	opts = Options{
+		BaseURL:     serverURL,
+		RefreshRate: time.Second,
+		Client:      http.DefaultClient,
+		Key:         "x",
+		Secret:      "x",
+	}
+	p, err = NewManager(env, opts)
+	if err == nil {
+		t.Fatal("should be invalid options")
+	}
+
+	opts = Options{
+		BaseURL:     serverURL,
+		RefreshRate: time.Hour,
+		Client:      http.DefaultClient,
+		Key:         "x",
+		Secret:      "x",
+	}
+	p, err = NewManager(env, opts)
+	if err != nil {
+		t.Fatalf("invalid error: %v", err)
+	}
 	defer p.Close()
-	context := authtest.NewContext("", env)
-	ac := &auth.Context{
-		Context:     context,
-		APIProducts: []string{apiProducts[0].Name},
-		Scopes:      apiProducts[0].Scopes,
-	}
-	products := p.Resolve(ac, apiProducts[0].Attributes[0].Value, "/")
-	if len(products) != 1 {
-		t.Errorf("want: 1, got: %d", len(products))
-	}
 }
 
 func TestResolve(t *testing.T) {
