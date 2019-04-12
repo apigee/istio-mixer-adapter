@@ -74,8 +74,8 @@
     "google/api",
     "google/rpc"
   ]
-  revision = "8558fb44d2f1fc223118afc694129d2c2d2924d1"
-  version = "v1.1.0"
+  revision = "d31c731455cb061f42baff3bda55bad0118b126b"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/gogo/protobuf"
@@ -603,14 +603,14 @@
 [[projects]]
   name = "gopkg.in/russross/blackfriday.v2"
   packages = ["."]
-  revision = "d3b5b032dc8e8927d31a5071b56e14c89f045135"
-  version = "v2.0.1"
+  revision = "cadec560ec52d93835bf2f15bd794700d3a2473b"
+  version = "v2.0.0"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
-  version = "v2.2.2"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [[projects]]
   branch = "release-1.1"
@@ -935,6 +935,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "36da1aa894961577a3163c8b3127e9991c856e7c7385ddd2bd09ab4790d41282"
+  inputs-digest = "ff06875764b6b471b09fa96c57e96ea9378511f88c957dc30095918bf756a69f"
   solver-name = "gps-cdcl"
   solver-version = 1
