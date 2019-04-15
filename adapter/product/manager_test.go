@@ -60,7 +60,7 @@ func TestManager(t *testing.T) {
 			QuotaLimit:     "",
 			QuotaInterval:  "",
 			QuotaTimeUnit:  "",
-			Resources:      []string{"/"},
+			Resources:      []string{"/**"},
 			Scopes:         []string{"scope1"},
 		},
 		{
@@ -111,6 +111,14 @@ func TestManager(t *testing.T) {
 		got := pp.Products()[want.Name]
 		if want.Attributes[0].Value != got.Targets[0] {
 			t.Errorf("targets not created: %v", got)
+		}
+
+		services := got.GetBoundServices()
+		if len(services) != len(want.Attributes) {
+			t.Errorf("num services want: %d, got: %d", len(services), len(want.Attributes))
+		}
+		if services[0] != want.Attributes[0].Value {
+			t.Errorf("get service: %s want: %s", services[0], want.Attributes[0].Value)
 		}
 	}
 
@@ -166,5 +174,11 @@ func TestManagerPolling(t *testing.T) {
 	pp2 = len(pp.Products())
 	if pp1 == pp2 {
 		t.Errorf("number of products should have incremented")
+	}
+}
+
+func TestBadResource(t *testing.T) {
+	if _, e := makeResourceRegex("/**/bad"); e == nil {
+		t.Errorf("expected error for resource: %s", "/**/bad")
 	}
 }

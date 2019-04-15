@@ -165,6 +165,10 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(ctx context.Context) error
 			product := v
 			// only save products that actually map to something
 			for _, attr := range product.Attributes {
+				if ctx.Err() != nil {
+					p.log.Debugf("product polling canceled, exiting")
+					return nil
+				}
 				if attr.Name == ServicesAttr {
 					targets := strings.Split(attr.Value, ",")
 					for _, t := range targets {
@@ -358,13 +362,16 @@ type productsMux struct {
 	setChan   chan ProductsMap
 	getChan   chan ProductsMap
 	closeChan chan struct{}
+	closed    bool
 }
 
 func (h productsMux) Get() ProductsMap {
 	return <-h.getChan
 }
 func (h productsMux) Set(s ProductsMap) {
-	h.setChan <- s
+	if !h.closed {
+		h.setChan <- s
+	}
 }
 func (h productsMux) Close() {
 	close(h.closeChan)
@@ -375,6 +382,7 @@ func (h productsMux) mux() {
 		if productsMap == nil {
 			select {
 			case <-h.closeChan:
+				h.closed = true
 				close(h.setChan)
 				close(h.getChan)
 				return
@@ -386,6 +394,7 @@ func (h productsMux) mux() {
 		case productsMap = <-h.setChan:
 		case h.getChan <- productsMap:
 		case <-h.closeChan:
+			h.closed = true
 			close(h.setChan)
 			close(h.getChan)
 			return

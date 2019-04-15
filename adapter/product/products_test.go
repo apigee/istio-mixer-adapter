@@ -229,9 +229,3 @@ func TestValidScopes(t *testing.T) {
 		t.Errorf("expected %s is valid", p.Scopes)
 	}
 }
-
-func TestBadResource(t *testing.T) {
-	if _, e := makeResourceRegex("/**/bad"); e == nil {
-		t.Errorf("expected error for resource: %s", "/**/bad")
-	}
-}
