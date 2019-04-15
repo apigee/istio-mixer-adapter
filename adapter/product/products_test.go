@@ -166,7 +166,12 @@ func TestResolve(t *testing.T) {
 	}
 }
 
-// https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior
+// Path matching is similar to wildcard semantics described in the Apigee product documentation here:
+// https://docs.apigee.com/developer-services/content/create-api-products#resourcebehavior.
+// However, as there is no base path, it is simplified as follows:
+// 1. A single slash (/) by itself matches any path.
+// 2. * is valid anywhere and matches within a segment (between slashes).
+// 3. ** is valid at the end and matches anything to the end of line.
 func TestValidPath(t *testing.T) {
 
 	resources := []string{"/", "/v1/*", "/v1/**", "/v1/weatherapikey/*/2/**"}
