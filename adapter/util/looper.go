@@ -60,7 +60,7 @@ func (a *Looper) Start(ctx context.Context, work func(ctx context.Context) error
 					nextRunIn = a.Backoff.Duration()
 				}
 				run = time.After(nextRunIn)
-				log.Debugf("Looper work will in %s", period)
+				log.Debugf("Looper work scheduled to run in %s", nextRunIn)
 			}
 		}
 	})
