@@ -30,6 +30,9 @@ import (
 
 // stageUpload moves anything in the temp dir to the staging dir
 func (m *manager) stageUpload() error {
+	m.stageLock.Lock()
+	defer m.stageLock.Unlock()
+
 	subDirs, err := ioutil.ReadDir(m.tempDir)
 	if err != nil {
 		return fmt.Errorf("ReadDir(%s): %s", m.tempDir, err)

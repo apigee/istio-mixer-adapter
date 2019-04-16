@@ -67,6 +67,7 @@ type manager struct {
 	secret             string
 	sendChannelSize    int
 	closeWait          sync.WaitGroup
+	stageLock          sync.Mutex
 }
 
 // Start starts the manager.
