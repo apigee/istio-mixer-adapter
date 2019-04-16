@@ -95,7 +95,7 @@ func (b *bucket) runLoop() {
 				b.w = nil
 			}
 			if req.stop {
-				b.log.Debugf("bucket loop closed")
+				b.log.Debugf("bucket loop closed: %s", b.w.f.Name())
 				b.manager.closeWait.Done()
 				return
 			}
@@ -109,7 +109,9 @@ type closeReq struct {
 }
 
 func (b *bucket) write(records []Record) {
-	b.incoming <- records
+	if len(records) > 0 {
+		b.incoming <- records
+	}
 }
 
 // will close bucket if passed filename is current file or ""
