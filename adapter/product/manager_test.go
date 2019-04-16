@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/net/context"
 	"istio.io/istio/mixer/pkg/adapter/test"
 )
 
@@ -180,5 +181,32 @@ func TestManagerPolling(t *testing.T) {
 func TestBadResource(t *testing.T) {
 	if _, e := makeResourceRegex("/**/bad"); e == nil {
 		t.Errorf("expected error for resource: %s", "/**/bad")
+	}
+}
+
+func TestUnreachable(t *testing.T) {
+
+	env := test.NewEnv(t)
+	serverURL, err := url.Parse("http://localhost:9999")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	httpClient := &http.Client{
+		Timeout: time.Millisecond,
+	}
+
+	opts := Options{
+		BaseURL:     serverURL,
+		RefreshRate: 5 * time.Millisecond,
+		Client:      httpClient,
+	}
+	pp := createManager(opts, env)
+
+	ctx := context.Background()
+
+	err = pp.pollingClosure(*serverURL)(ctx)
+	if err == nil {
+		t.Fatal("should have received error")
 	}
 }
