@@ -73,7 +73,7 @@ type manager struct {
 func (m *manager) Start(env adapter.Env) {
 	m.env = env
 	m.log = env.Logger()
-	m.log.Infof("starting analytics manager")
+	m.log.Infof("starting analytics manager: %s", m.tempDir)
 
 	if err := m.crashRecovery(); err != nil {
 		m.log.Errorf("Error(s) recovering crashed data: %s", err)
@@ -82,7 +82,7 @@ func (m *manager) Start(env adapter.Env) {
 	env.ScheduleDaemon(func() {
 		m.uploadLoop()
 	})
-	m.log.Infof("started analytics manager")
+	m.log.Infof("started analytics manager: %s", m.tempDir)
 }
 
 // Close shuts down the manager.
@@ -115,7 +115,7 @@ func (m *manager) uploadLoop() {
 				m.log.Errorf("Error pushing analytics: %s", err)
 			}
 		case <-m.close:
-			m.log.Debugf("analytics upload loop closed")
+			m.log.Debugf("analytics upload loop closed: %s", m.tempDir)
 			return
 		}
 	}

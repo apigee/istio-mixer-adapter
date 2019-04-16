@@ -95,7 +95,7 @@ func (b *bucket) runLoop() {
 				b.w = nil
 			}
 			if req.stop {
-				b.log.Debugf("bucket loop closed: %s", b.w.f.Name())
+				b.log.Debugf("bucket loop closed")
 				b.manager.closeWait.Done()
 				return
 			}
