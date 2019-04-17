@@ -25,6 +25,9 @@ spec:
 #          exec:
 #            command: ["/grpc_health_probe", "-addr=:5000"]
 #          initialDelaySeconds: 10
+        args:
+          - --address=:5000
+          - --log_output_level=adapters:debug
 ---
 apiVersion: v1
 kind: Service
