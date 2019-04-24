@@ -33,6 +33,7 @@ const (
 	defaultRefreshAfter   = 1 * time.Minute
 	defaultDeleteAfter    = 10 * time.Minute
 	syncQueueSize         = 100
+	resultCacheBufferSize = 30
 )
 
 // A Manager tracks multiple Apigee quotas
@@ -48,6 +49,8 @@ type Manager struct {
 	buckets        map[string]*bucket // Map from ID -> bucket
 	syncQueue      chan *bucket
 	numSyncWorkers int
+	dupCache       ResultCache
+	syncingBuckets map[*bucket]struct{}
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
@@ -72,6 +75,8 @@ func newManager(baseURL *url.URL, client *http.Client) *Manager {
 		syncQueue:      make(chan *bucket, syncQueueSize),
 		baseURL:        baseURL,
 		numSyncWorkers: defaultNumSyncWorkers,
+		dupCache:       ResultCache{size: resultCacheBufferSize},
+		syncingBuckets: map[*bucket]struct{}{},
 	}
 }
 
@@ -108,36 +113,54 @@ func (m *Manager) Close() {
 
 // Apply a quota request to the local quota bucket and schedule for sync
 func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.QuotaArgs) (*Result, error) {
+
+	if result := m.dupCache.Get(args.DeduplicationID); result != nil {
+		return result, nil
+	}
+
 	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
 
 	req := &Request{
-		Identifier:      quotaID,
-		Weight:          args.QuotaAmount,
-		Interval:        p.QuotaIntervalInt,
-		Allow:           p.QuotaLimitInt,
-		TimeUnit:        p.QuotaTimeUnit,
-		DeduplicationID: args.DeduplicationID,
+		Identifier: quotaID,
+		Weight:     args.QuotaAmount,
+		Interval:   p.QuotaIntervalInt,
+		Allow:      p.QuotaLimitInt,
+		TimeUnit:   p.QuotaTimeUnit,
 	}
 
+	// a new bucket is created if missing or if product is no longer compatible
+	var result *Result
+	var err error
+	forceSync := false
 	m.bucketsLock.RLock()
-	b, existingBucket := m.buckets[quotaID]
-	if !existingBucket || !b.isCompatible(req) {
-		m.bucketsLock.RUnlock()
+	b, ok := m.buckets[quotaID]
+	m.bucketsLock.RUnlock()
+	if !ok || !b.compatible(req) {
 		m.bucketsLock.Lock()
-		b, existingBucket = m.buckets[quotaID]
-		if !existingBucket || !b.isCompatible(req) {
-			b = newBucket(req, m, auth)
+		b, ok = m.buckets[quotaID]
+		if !ok || !b.compatible(req) {
+			forceSync = true
+			b = newBucket(*req, m, auth)
+			m.syncingBuckets[b] = struct{}{}
+			defer delete(m.syncingBuckets, b)
 			m.buckets[quotaID] = b
+			m.log.Debugf("new quota bucket: %s", quotaID)
 		}
 		m.bucketsLock.Unlock()
-		m.bucketsLock.RLock()
-	}
-	m.bucketsLock.RUnlock()
-	if !existingBucket {
-		b.sync(m) // force sync for new bucket
 	}
 
-	return b.apply(m, req)
+	if forceSync {
+		err = b.sync() // force sync for new bucket
+		result = b.result
+	} else {
+		result, err = b.apply(req)
+	}
+
+	if result != nil && err == nil && args.DeduplicationID != "" {
+		m.dupCache.Add(args.DeduplicationID, result)
+	}
+
+	return result, err
 }
 
 // loop to sync active buckets and deletes old buckets
@@ -177,9 +200,13 @@ func (m *Manager) syncLoop() {
 // worker routine for syncing a bucket with the server
 func (m *Manager) syncBucketWorker() {
 	for {
-		bucket, more := <-m.syncQueue
-		if more {
-			bucket.sync(m)
+		bucket, ok := <-m.syncQueue
+		if ok {
+			if _, ok := m.syncingBuckets[bucket]; !ok {
+				m.syncingBuckets[bucket] = struct{}{}
+				bucket.sync()
+				delete(m.syncingBuckets, bucket)
+			}
 		} else {
 			m.log.Debugf("closing quota sync worker")
 			m.closed <- true

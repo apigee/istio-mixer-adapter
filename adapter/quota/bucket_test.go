@@ -15,8 +15,6 @@
 package quota
 
 import (
-	"net/http"
-	"net/url"
 	"reflect"
 	"sync"
 	"testing"
@@ -25,15 +23,18 @@ import (
 
 func TestBucket(t *testing.T) {
 	now := func() time.Time { return time.Unix(1521221450, 0) }
+	m := &Manager{now: now}
 
 	cases := map[string]struct {
-		priorRequests []*Request
-		priorResult   *Result
-		request       *Request
-		want          *Result
+		priorRequest *Request
+		priorResult  *Result
+		request      *Request
+		want         *Result
 	}{
 		"First request": {
-			nil,
+			&Request{
+				Allow: 3,
+			},
 			nil,
 			&Request{
 				Allow:  3,
@@ -48,8 +49,9 @@ func TestBucket(t *testing.T) {
 			},
 		},
 		"Valid request": {
-			[]*Request{
-				{Weight: 1},
+			&Request{
+				Allow:  4,
+				Weight: 1,
 			},
 			&Result{Used: 2},
 			&Request{
@@ -65,9 +67,9 @@ func TestBucket(t *testing.T) {
 			},
 		},
 		"Newly exceeded": {
-			[]*Request{
-				{Weight: 1},
-				{Weight: 2},
+			&Request{
+				Allow:  7,
+				Weight: 3,
 			},
 			&Result{Used: 3},
 			&Request{
@@ -83,7 +85,9 @@ func TestBucket(t *testing.T) {
 			},
 		},
 		"Previously exceeded": {
-			[]*Request{},
+			&Request{
+				Allow: 3,
+			},
 			&Result{
 				Used:     3,
 				Exceeded: 1,
@@ -102,23 +106,19 @@ func TestBucket(t *testing.T) {
 		},
 	}
 
-	m := newManager(&url.URL{}, http.DefaultClient)
-
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
 
 		b := &bucket{
-			prototype:   c.request,
-			quotaURL:    "",
-			requests:    c.priorRequests,
+			manager:     m,
+			request:     c.priorRequest,
 			result:      c.priorResult,
 			created:     now(),
 			lock:        sync.RWMutex{},
-			now:         now,
 			deleteAfter: defaultDeleteAfter,
 		}
 
-		res, err := b.apply(m, c.request)
+		res, err := b.apply(c.request)
 		if err != nil {
 			t.Errorf("should not get error: %v", err)
 		}
@@ -131,36 +131,40 @@ func TestBucket(t *testing.T) {
 
 func TestNeedToDelete(t *testing.T) {
 	now := func() time.Time { return time.Unix(1521221450, 0) }
+	m := &Manager{now: now}
 
 	cases := map[string]struct {
-		requests []*Request
-		checked  time.Time
-		want     bool
+		request *Request
+		checked time.Time
+		want    bool
 	}{
 		"empty": {
-			want: true,
+			request: &Request{},
+			want:    true,
 		},
 		"recently checked": {
+			request: &Request{},
 			checked: now(),
 			want:    false,
 		},
 		"not recently checked": {
+			request: &Request{},
 			checked: now().Add(-time.Hour),
 			want:    true,
 		},
 		"has pending requests": {
-			requests: []*Request{},
-			checked:  now().Add(-time.Hour),
-			want:     false,
+			request: &Request{Weight: 1},
+			checked: now().Add(-time.Hour),
+			want:    false,
 		},
 	}
 
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
 		b := bucket{
-			now:         now,
+			manager:     m,
 			deleteAfter: time.Minute,
-			requests:    c.requests,
+			request:     c.request,
 			checked:     c.checked,
 		}
 		if c.want != b.needToDelete() {
@@ -171,36 +175,40 @@ func TestNeedToDelete(t *testing.T) {
 
 func TestNeedToSync(t *testing.T) {
 	now := func() time.Time { return time.Unix(1521221450, 0) }
+	m := &Manager{now: now}
 
 	cases := map[string]struct {
-		requests []*Request
-		synced   time.Time
-		want     bool
+		request *Request
+		synced  time.Time
+		want    bool
 	}{
 		"empty": {
-			want: true,
+			request: &Request{},
+			want:    true,
 		},
 		"recently synced": {
-			synced: now(),
-			want:   false,
+			request: &Request{},
+			synced:  now(),
+			want:    false,
 		},
 		"not recently synced": {
-			synced: now().Add(-time.Hour),
-			want:   true,
+			request: &Request{},
+			synced:  now().Add(-time.Hour),
+			want:    true,
 		},
 		"has pending requests": {
-			synced:   now(),
-			requests: []*Request{},
-			want:     true,
+			request: &Request{Weight: 1},
+			synced:  now(),
+			want:    true,
 		},
 	}
 
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
 		b := bucket{
-			now:          now,
+			manager:      m,
 			refreshAfter: time.Minute,
-			requests:     c.requests,
+			request:      c.request,
 			synced:       c.synced,
 		}
 		if c.want != b.needToSync() {

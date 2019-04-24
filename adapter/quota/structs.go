@@ -14,14 +14,15 @@
 
 package quota
 
+import "time"
+
 // A Request is sent to Apigee's quota server to allocate quota.
 type Request struct {
-	Identifier      string `json:"identifier"`
-	Weight          int64  `json:"weight"`
-	Interval        int64  `json:"interval"`
-	Allow           int64  `json:"allow"`
-	TimeUnit        string `json:"timeUnit"`
-	DeduplicationID string `json:"-"` // for Istio, not Apigee
+	Identifier string `json:"identifier"`
+	Weight     int64  `json:"weight"`
+	Interval   int64  `json:"interval"`
+	Allow      int64  `json:"allow"`
+	TimeUnit   string `json:"timeUnit"`
 }
 
 // A Result is a response from Apigee's quota server that gives information
@@ -33,4 +34,8 @@ type Result struct {
 	Exceeded   int64 `json:"exceeded"`
 	ExpiryTime int64 `json:"expiryTime"`
 	Timestamp  int64 `json:"timestamp"`
+}
+
+func (r *Result) expiredAt(tm time.Time) bool {
+	return time.Unix(r.ExpiryTime, 0).After(tm)
 }
