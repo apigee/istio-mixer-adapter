@@ -43,7 +43,13 @@ the matching version label. For example, for Istio 1.0.7 you would use the follo
     MIXER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:1.0.7
 
 There are many ways to set the appropriate image for your mesh that depend upon your specific installation of Istio, but 
-a couple of common examples are below: 
+a couple of common examples are below.
+
+Note: [Istio on GKE](https://cloud.google.com/istio/docs/istio-on-gke/overview) add-on currently only supports Istio 1.0 
+but does not support replacing the Mixer (it will self-heal and override any change you make). Therefore, it cannot work 
+with custom adapters, including the Apigee Adapter. Instead, you must install Open Source Istio on your GKE cluster
+manually--see [Installing Istio on GKE](https://cloud.google.com/kubernetes-engine/docs/tutorials/installing-istio)
+for more details--and don't forget to replace the Mixer (see below).
 
 #### Upgrade Istio running on Kubernetes
 
@@ -54,6 +60,8 @@ the following commands against the Kubernetes in your Istio mesh:
 
     kubectl -n istio-system set image deployment/istio-telemetry mixer=${MIXER_IMAGE}
     kubectl -n istio-system set image deployment/istio-policy mixer=${MIXER_IMAGE}
+    
+Note that this method is ephemeral: If you re-install or upgrade Istio, you will need to replace the Mixer image again. 
 
 #### Install Istio 1.0 onto Kubernetes using Helm
 
