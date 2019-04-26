@@ -199,6 +199,7 @@ func TestSync(t *testing.T) {
 
 	fakeTime = fakeTime + 10
 	time.Sleep(10 * time.Millisecond) // allow idle sync
+	b.refreshAfter = time.Hour
 
 	b.lock.RLock()
 	if b.request.Weight != 0 {
@@ -228,7 +229,10 @@ func TestSync(t *testing.T) {
 		t.Errorf("should not have received error on apply: %v", err)
 	}
 	fakeTime = fakeTime + 10
-	b.sync()
+	err = b.sync()
+	if err != nil {
+		t.Errorf("should not have received error on sync: %v", err)
+	}
 
 	b.lock.Lock()
 	if b.request.Weight != 0 {
@@ -249,8 +253,6 @@ func TestSync(t *testing.T) {
 	if m.buckets[quotaID] != nil {
 		t.Errorf("old bucket should have been deleted")
 	}
-
-	b.refreshAfter = time.Hour
 }
 
 func TestDisconnected(t *testing.T) {
