@@ -20,8 +20,10 @@ package adapter
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -189,8 +191,25 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	if b.adapterConfig.ClientTimeout == nil || toDuration(b.adapterConfig.ClientTimeout) < time.Second {
 		return nil, fmt.Errorf("ClientTimeout must be > 1")
 	}
+	tr := http.DefaultTransport
+	if b.adapterConfig.AllowUnverifiedSSLCert {
+		tr = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			TLSClientConfig:       &tls.Config{InsecureSkipVerify: b.adapterConfig.AllowUnverifiedSSLCert},
+		}
+	}
 	httpClient := &http.Client{
-		Timeout: toDuration(b.adapterConfig.ClientTimeout),
+		Timeout:   toDuration(b.adapterConfig.ClientTimeout),
+		Transport: tr,
 	}
 
 	productMan, err := product.NewManager(env, product.Options{
