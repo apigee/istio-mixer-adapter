@@ -109,6 +109,10 @@ message Params {
     // Optional. Default: none.
     string api_key_claim = 9;
 
+    // Set to true to allow an unknown server SSL Certificate (eg. self-signed)
+    // Optional. Default: false.
+    bool allowUnverifiedSSLCert = 10;
+
     // Options specific to to products handling.
     message product_options {
         // The rate at which the list of products is refreshed from Apigee.

@@ -48,18 +48,16 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -72,21 +70,19 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {
-				 "code": 7,
-				 "message": "handler.apigee.istio-system:invalid authentication"
-				},
-				"ValidDuration": 0,
-				"ValidUseCount": 0
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {
+							"code": 7,
+							"message": "handler.apigee.istio-system:invalid authentication"
+						},
+						"ValidDuration": 0,
+						"ValidUseCount": 0
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -99,18 +95,16 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -123,21 +117,19 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {
-				 "code": 7,
-				 "message": "handler.apigee.istio-system:not authorized"
-				},
-				"ValidDuration": 0,
-				"ValidUseCount": 0
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {
+							"code": 7,
+							"message": "handler.apigee.istio-system:not authorized"
+						},
+						"ValidDuration": 0,
+						"ValidUseCount": 0
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -150,18 +142,16 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -174,21 +164,19 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {
-				 "code": 7,
-				 "message": "handler.apigee.istio-system:invalid authentication"
-				},
-				"ValidDuration": 0,
-				"ValidUseCount": 0
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {
+							"code": 7,
+							"message": "handler.apigee.istio-system:invalid authentication"
+						},
+						"ValidDuration": 0,
+						"ValidUseCount": 0
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -202,18 +190,16 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -227,18 +213,16 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -250,21 +234,19 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {
-				"code": 7,
-				"message": "handler.apigee.istio-system:missing authentication"
-				},
-				"ValidDuration": 0,
-				"ValidUseCount": 0
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {
+							"code": 7,
+							"message": "handler.apigee.istio-system:missing authentication"
+						},
+						"ValidDuration": 0,
+						"ValidUseCount": 0
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -277,21 +259,19 @@ func TestAuthorization(t *testing.T) {
 			},
 			want: `
 			{
-			 "AdapterState": null,
-			 "Returns": [
-			  {
-			   "Check": {
-				"Status": {
-				"code": 8,
-				"message": "handler.apigee.istio-system:quota exceeded"
-				},
-				"ValidDuration": 0,
-				"ValidUseCount": 1
-			   },
-			   "Quota": null,
-			   "Error": null
-			  }
-			 ]
+				"AdapterState": null,
+				"Returns": [{
+					"Check": {
+						"Status": {
+							"code": 8,
+							"message": "handler.apigee.istio-system:quota exceeded"
+						},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
+					},
+					"Quota": null,
+					"Error": null
+				}]
 			}
 			`,
 		},
@@ -493,6 +473,7 @@ spec:
   key: key
   secret: secret
   api_key_claim: api_key
+  allowUnverifiedSSLCert: false
 ---
 apiVersion: config.istio.io/v1alpha2
 kind: rule
@@ -525,3 +506,91 @@ spec:
     method: request.method | ""
 `
 )
+
+func TestUnknownCert(t *testing.T) {
+	c := struct {
+		attrs map[string]interface{}
+		want  string
+	}{
+		attrs: map[string]interface{}{
+			"api.service":     "service",
+			"request.path":    "/path",
+			"request.api_key": "goodkey",
+		},
+		want: `
+		{
+			"AdapterState": null,
+			"Returns": [{
+				"Check": {
+					"Status": {
+						"code": 7,
+						"message": "handler.apigee.istio-system:invalid authentication"
+					},
+					"ValidDuration": 0,
+					"ValidUseCount": 0
+				},
+				"Quota": null,
+				"Error": {}
+			}]
+		}		
+		`,
+	}
+
+	info := apigeeAdapter.GetInfo()
+
+	// delete analytics as the custom template is not supported by test framework
+	info.SupportedTemplates = []string{
+		authT.TemplateName,
+	}
+
+	ts := httptest.NewTLSServer(cloudMockHandler(t))
+	defer ts.Close()
+
+	serviceCfg := strings.Replace(adapterConfig, "__SERVER_BASE_URL__", ts.URL, -1)
+
+	aif := func() adapter.Info {
+		return info
+	}
+
+	// should fail, bad SSL cert
+	integration.RunTest(t, aif, integration.Scenario{
+		ParallelCalls: []integration.Call{
+			{
+				CallKind: integration.CHECK,
+				Attrs:    c.attrs,
+			},
+		},
+		Configs: []string{serviceCfg},
+		Want:    c.want,
+	})
+
+	serviceCfg = strings.Replace(serviceCfg, "allowUnverifiedSSLCert: false", "allowUnverifiedSSLCert: true", -1)
+
+	c.want = `
+	{
+		"AdapterState": null,
+		"Returns": [{
+			"Check": {
+				"Status": {},
+				"ValidDuration": 0,
+				"ValidUseCount": 1
+			},
+			"Quota": null,
+			"Error": null
+		}]
+	}
+	`
+
+	// should succeed, ignore bad SSL cert
+	integration.RunTest(t, aif, integration.Scenario{
+		ParallelCalls: []integration.Call{
+			{
+				CallKind: integration.CHECK,
+				Attrs:    c.attrs,
+			},
+		},
+		Configs: []string{serviceCfg},
+		Want:    c.want,
+	})
+
+}
