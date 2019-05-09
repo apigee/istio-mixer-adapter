@@ -600,10 +600,10 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 	}
 	auth.ApplyTo(req)
 	resp, err := p.Client.Do(req, nil)
-	defer resp.Body.Close()
 	if err != nil && resp == nil {
 		fatalf("%s", err)
 	}
+	defer resp.Body.Close()
 	if err != nil {
 		verifyErrors = multierr.Append(verifyErrors, err)
 	}
@@ -615,10 +615,10 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 	}
 	auth.ApplyTo(req)
 	resp, err = p.Client.Do(req, nil)
-	defer resp.Body.Close()
 	if err != nil && resp == nil {
 		fatalf("%s", err)
 	}
+	defer resp.Body.Close()
 	if err != nil {
 		verifyErrors = multierr.Append(verifyErrors, err)
 	}
@@ -637,10 +637,10 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		}
 		auth.ApplyTo(req)
 		resp, err := p.Client.Do(req, nil)
-		defer resp.Body.Close()
 		if err != nil && resp == nil {
 			fatalf("%s", err)
 		}
+		defer resp.Body.Close()
 		return err
 	}
 
