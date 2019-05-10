@@ -4,7 +4,7 @@ metadata:
   name: apigee-adapter
   namespace: istio-system
 spec:
-  replicas: 2
+  replicas: 1
   template:
     metadata:
       labels:
@@ -28,6 +28,13 @@ spec:
         args:
           - --address=:5000
           - --log_output_level=adapters:debug
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 10m
+            memory: 100Mi
 ---
 apiVersion: v1
 kind: Service
