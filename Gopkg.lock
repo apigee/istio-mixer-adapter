@@ -4,14 +4,14 @@
 [[projects]]
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
-  revision = "2fa99f4c25c422525316dcb1fd3d5b94e1944cfd"
-  version = "v0.37.1"
+  revision = "8c41231e01b2085512d98153bcffb847ff9b4b9f"
+  version = "v0.38.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
-  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+  revision = "4b2b341e8d7715fae06375aa633dbb6e91b3fb46"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -116,10 +116,10 @@
   version = "v1.3.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/google/btree"
   packages = ["."]
   revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/google/go-querystring"
@@ -128,10 +128,10 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/google/gofuzz"
   packages = ["."]
-  revision = "24818f796faf91cd76ec7bddd72458fbced7a6c1"
+  revision = "f140a6486e521aad38f5917de355cbf147cc0496"
+  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/googleapis/gnostic"
@@ -146,8 +146,8 @@
 [[projects]]
   name = "github.com/gorilla/mux"
   packages = ["."]
-  revision = "a7962380ca08b5a188038c69871b8d3fbdf31e89"
-  version = "v1.7.0"
+  revision = "c5c6c98bc25355028a63748a498942a6398ccd22"
+  version = "v1.7.1"
 
 [[projects]]
   branch = "master"
@@ -201,7 +201,7 @@
   branch = "master"
   name = "github.com/istio/tools"
   packages = ["protoc-gen-docs"]
-  revision = "c3c3214c1887981acf76c12658c0cc1f5ac10cdb"
+  revision = "6a73063160ab6915f1e7687bf12e6153aca1e579"
 
 [[projects]]
   name = "github.com/json-iterator/go"
@@ -267,8 +267,8 @@
     "ext",
     "log"
   ]
-  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
-  version = "v1.0.2"
+  revision = "659c90643e714681897ec2521c60567dd21da733"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -279,8 +279,8 @@
 [[projects]]
   name = "github.com/peterbourgon/diskv"
   packages = ["."]
-  revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
-  version = "v2.0.1"
+  revision = "0be1b92a6df0e4f5cb0a5d15fb7f643d0ad93ce6"
+  version = "v3.0.0"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -317,26 +317,23 @@
     "internal/bitbucket.org/ww/goautoneg",
     "model"
   ]
-  revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
-  version = "v0.2.0"
+  revision = "1ba88736f028e37bc17328369e94a537ae9e0234"
+  version = "v0.4.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
-    "internal/util",
-    "iostats",
-    "nfs",
-    "xfs"
+    "internal/fs"
   ]
-  revision = "40f3c57fb1983891f95378042bd0bfd590f52384"
+  revision = "5867b95ac084bbfee6ea16595c4e05ab009021da"
 
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/prom2json"
   packages = ["."]
-  revision = "47e3ee600b5a838d6b19b887fc51d4b77c52fd4e"
+  revision = "cc632dc2cb971b935fa10ad4014a426be22afb42"
 
 [[projects]]
   name = "github.com/shurcooL/sanitized_anchor_name"
@@ -375,7 +372,7 @@
     "utils",
     "zipkin"
   ]
-  revision = "f4d58ba83788c8fa0e25d5be5e593145a1acf825"
+  revision = "896f2abd37e099bae3eae942250d1a37e4bdce0b"
 
 [[projects]]
   name = "github.com/uber/jaeger-lib"
@@ -396,11 +393,13 @@
   name = "go.opencensus.io"
   packages = [
     ".",
-    "exemplar",
     "exporter/prometheus",
     "internal",
     "internal/tagencoding",
+    "metric/metricdata",
+    "metric/metricproducer",
     "plugin/ocgrpc",
+    "resource",
     "stats",
     "stats/internal",
     "stats/view",
@@ -410,14 +409,14 @@
     "trace/propagation",
     "trace/tracestate"
   ]
-  revision = "f305e5c4e2cf345eba88de13d10de1126fa45a61"
-  version = "v0.19.1"
+  revision = "75c0cca22312e51bfd4fafdbe9197ae399e18b38"
+  version = "v0.20.2"
 
 [[projects]]
   name = "go.uber.org/atomic"
   packages = ["."]
-  revision = "1ea20fb1cbb1cc08cbd0d913a96dead89aa18289"
-  version = "v1.3.2"
+  revision = "df976f2515e274675050de7b3f42545de80594fd"
+  version = "v1.4.0"
 
 [[projects]]
   name = "go.uber.org/multierr"
@@ -436,14 +435,14 @@
     "zapcore",
     "zapgrpc"
   ]
-  revision = "ff33455a0e382e8a81d14dd7c922020b6b5e7982"
-  version = "v1.9.1"
+  revision = "27376062155ad36be76b0f12cf1572a221d3a48c"
+  version = "v1.10.0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
-  revision = "a1f597ede03a7bef967a422b5b3a5bd08805a01e"
+  revision = "e1dfcc566284e143ba8f9afbb3fa563f2a0d212b"
 
 [[projects]]
   branch = "master"
@@ -460,7 +459,7 @@
     "internal/timeseries",
     "trace"
   ]
-  revision = "1272bf9dcd53ea65c09668fb4c76e65deb740072"
+  revision = "f4e77d36d62c17c2336347bb2670ddbd02d092b7"
 
 [[projects]]
   branch = "master"
@@ -473,7 +472,7 @@
     "jws",
     "jwt"
   ]
-  revision = "c85d3e98c914e3a33234ad863dcbff5dbc425bb8"
+  revision = "9f3314589c9a9136388751d9adae6b0ed400978a"
 
 [[projects]]
   branch = "master"
@@ -482,7 +481,7 @@
     "unix",
     "windows"
   ]
-  revision = "6c81ef8f67ca3f42fc9cd71dfbd5f35b0c4b5771"
+  revision = "12bbe5a7a5209180b72cc7e3ed9da40442fe3246"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -491,6 +490,8 @@
     "collate/build",
     "internal/colltab",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
     "internal/triegen",
     "internal/ucd",
@@ -502,8 +503,8 @@
     "unicode/norm",
     "unicode/rangetable"
   ]
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
-  version = "v0.3.0"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [[projects]]
   branch = "master"
@@ -517,7 +518,6 @@
   packages = [
     "go/ast/astutil",
     "go/gcexportdata",
-    "go/internal/cgo",
     "go/internal/gcimporter",
     "go/internal/packagesdriver",
     "go/packages",
@@ -528,7 +528,7 @@
     "internal/module",
     "internal/semver"
   ]
-  revision = "b6b7807791df8aa3e230578a98256106c4f912ab"
+  revision = "cf84161cff3fdeddfd5ab5e686c1e2c17cb5db04"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -544,14 +544,14 @@
     "internal/urlfetch",
     "urlfetch"
   ]
-  revision = "e9657d882bb81064595ca3b56cbe2546bbabf7b1"
-  version = "v1.4.0"
+  revision = "54a98f90d1c46b7731eb8fb305d2a321c30ef610"
+  version = "v1.5.0"
 
 [[projects]]
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "5fe7a883aa19554f42890211544aa549836af7b7"
+  revision = "54afdca5d873f7b529e2ce3def1a99df16feda90"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -573,6 +573,7 @@
     "health/grpc_health_v1",
     "internal",
     "internal/backoff",
+    "internal/balancerload",
     "internal/binarylog",
     "internal/channelz",
     "internal/envconfig",
@@ -591,8 +592,8 @@
     "status",
     "tap"
   ]
-  revision = "2fdaae294f38ed9a121193c51ec99fecd3b13eb7"
-  version = "v1.19.0"
+  revision = "25c4f928eaa6d96443009bd842389fb4fa48664e"
+  version = "v1.20.1"
 
 [[projects]]
   name = "gopkg.in/inf.v0"
@@ -626,7 +627,7 @@
     "policy/v1beta1",
     "rbac/v1alpha1"
   ]
-  revision = "65308844fdbb171d3afb9cff25d53e3e8dac8891"
+  revision = "162827b552e84a48f0d9d45a8f10ea1623706663"
 
 [[projects]]
   name = "istio.io/istio"
@@ -708,14 +709,14 @@
     "pkg/tracing",
     "pkg/version"
   ]
-  revision = "82797c0c0649a3f73029b33957ae105260458c6e"
-  version = "1.1.0"
+  revision = "9b6d31b74d1c0cc9358cc82d395b53f71393326b"
+  version = "1.1.5"
 
 [[projects]]
-  branch = "howardjohn-patch-1"
+  branch = "dev"
   name = "istio.io/tools"
   packages = ["pkg/protocgen"]
-  revision = "1dd8d2a2e3788056ff4932bb830e92bc89a17526"
+  revision = "e10b2dce3aaa32c265aa3d673d45b1c284077450"
 
 [[projects]]
   branch = "release-1.11"
@@ -935,6 +936,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ff06875764b6b471b09fa96c57e96ea9378511f88c957dc30095918bf756a69f"
+  inputs-digest = "625280838149e663e4c472febe3b48db52a9d0a08c8c9475de0dadfc268761a5"
   solver-name = "gps-cdcl"
   solver-version = 1
