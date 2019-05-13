@@ -207,11 +207,8 @@ func (t *token) inspectToken(printf, fatalf shared.FormatFn) error {
 	if err != nil {
 		fatalf("certificate error: %v", err)
 	}
-	tokenURL := fmt.Sprintf(tokenURLFormat, t.CustomerProxyURL)
 	err = token.Verify(
 		jwt.WithAcceptableSkew(time.Minute),
-		jwt.WithAudience("istio"),
-		jwt.WithIssuer(tokenURL),
 	)
 	if err != nil {
 		fatalf("verification error: %v", err)
