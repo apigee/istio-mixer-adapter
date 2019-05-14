@@ -75,6 +75,7 @@ ANALYTICS=$(go run $MIXGEN template -d $templateDS -n apigee-analytics)
 templateDS=$GOPATH/src/github.com/apigee/istio-mixer-adapter/adapter/config/config.proto_descriptor
 APIGEE=$(go run $MIXGEN adapter -c $templateDS -s=false -t apigee-authorization -t apigee-analytics -n apigee)
 
-echo "$DEFINITIONS_BASE $AUTHORIZATION $ANALYTICS $APIGEE" > $DEFINITIONS_FILE
+NEWLINE=$'\n'
+echo "$DEFINITIONS_BASE $NEWLINE $AUTHORIZATION $NEWLINE $ANALYTICS $NEWLINE $APIGEE" > $DEFINITIONS_FILE
 
 echo "Generated new file: $DEFINITIONS_FILE"
