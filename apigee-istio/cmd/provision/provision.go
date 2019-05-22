@@ -171,17 +171,17 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 				if err := xml.Unmarshal(bytes, &callout); err != nil {
 					return errors.Wrapf(err, "error unmarshalling %s", calloutFile)
 				}
-				setMgmtUrl := false
+				setMgmtURL := false
 				for i, cp := range callout.Properties {
 					if cp.Name == "REGION_MAP" {
 						callout.Properties[i].Value = fmt.Sprintf("DN=%s", p.RouterBase)
 					}
 					if cp.Name == "MGMT_URL_PREFIX" {
-						setMgmtUrl = true
+						setMgmtURL = true
 						callout.Properties[i].Value = p.ManagementBase
 					}
 				}
-				if !setMgmtUrl {
+				if !setMgmtURL {
 					callout.Properties = append(callout.Properties,
 						javaCalloutProperty{
 							Name:  "MGMT_URL_PREFIX",
@@ -787,6 +787,7 @@ type credential struct {
 	Secret string `json:"secret"`
 }
 
+// JavaCallout must be capitalized to ensure correct generation
 type JavaCallout struct {
 	Name                                string `xml:"name,attr"`
 	DisplayName, ClassName, ResourceURL string
