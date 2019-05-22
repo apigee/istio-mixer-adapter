@@ -18,65 +18,15 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 You must have an [Apigee Edge](https://login.apigee.com) account. If needed, you may create one [here](https://login.apigee.com/sign_up).
 
-## Prerequisite: Istio
+## Prerequisite: Istio 1.1
 
-### Istio 1.1
-
-As of Istio 1.1, a custom Mixer image in no longer required. Instead, the Apigee Adapter can simply run as a
-stand-alone service and configuration can tell Mixer how to call it. So, choose your favorite way of installing Istio
-and [have at it](https://istio.io/docs/setup/).
+Choose your favorite way of [installing Istio](https://istio.io/docs/setup/).
 
 _Important_  
 A key feature of the Apigee adapter that we'll be exploring below is to automatically enforce Apigee policy in Istio 
-using Istio's Mixer. However, as of Istio 1.1, policy is not enabled by default. For Apigee policy features to take 
+using Istio's Mixer. However, in Istio 1.1, policy is not enabled by default. For Apigee policy features to take 
 effect, policy control *must be explicitly enabled* in Istio config and the Mixer policy image must be running. See  
 [Enabling Policy Enforcement](https://istio.io/docs/tasks/policy-enforcement/enabling-policy/) for more details.
-
-[next step](#download-a-mixer-adapter-release)
-
-### Istio 1.0
-
-If installing onto Istio 1.0, your mesh will need run a custom Mixer (policy and telemetry) image that contains the Apigee 
-adapter. There is a release of the Apigee Adapter Mixer corresponding to each release of Istio 1.0 and you should use 
-the matching version label. For example, for Istio 1.0.7 you would use the following image:
-
-    MIXER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:1.0.7
-
-There are many ways to set the appropriate image for your mesh that depend upon your specific installation of Istio, but 
-a couple of common examples are below.
-
-Note: [Istio on GKE](https://cloud.google.com/istio/docs/istio-on-gke/overview) add-on currently only supports Istio 1.0 
-but does not support replacing the Mixer (it will self-heal and override any change you make). Therefore, it cannot work 
-with custom adapters, including the Apigee Adapter. Instead, you must install Open Source Istio on your GKE cluster
-manually--see [Installing Istio on GKE](https://cloud.google.com/kubernetes-engine/docs/tutorials/installing-istio)
-for more details--and don't forget to replace the Mixer (see below).
-
-#### Upgrade Istio running on Kubernetes
-
-If you're using Kubernetes, the simplest method to get started with Istio 1.0 is to simply install it, then replace the Mixer 
-image with the correct one containing the Apigee adapter. There is a release of the Apigee Adapter Mixer corresponding to
-each release of Istio 1.0 and you should use the matching version label. For example, for Istio 1.0.7, you could run
-the following commands against the Kubernetes in your Istio mesh:
-
-    kubectl -n istio-system set image deployment/istio-telemetry mixer=${MIXER_IMAGE}
-    kubectl -n istio-system set image deployment/istio-policy mixer=${MIXER_IMAGE}
-    
-Note that this method is ephemeral: If you re-install or upgrade Istio, you will need to replace the Mixer image again. 
-
-#### Install Istio 1.0 onto Kubernetes using Helm
-
-Follow the official Istio [Helm Install](https://istio.io/docs/setup/kubernetes/helm-install) instructions, but add
-a `--set` parameter to the `helm` command referencing the appropriate Mixer image.
-
-Option 1: Helm Template
-
-    helm template install/kubernetes/helm/istio --name istio --namespace istio-system --set mixer.image=${MIXER_IMAGE} > istio.yaml
-
-Option 2: Helm and Tiller
-
-    helm install install/kubernetes/helm/istio --name istio --namespace istio-system --set mixer.image=${MIXER_IMAGE} 
-
-NOTE: You may also change the container name to `istio-mixer-debug` if you need a Mixer container with debug tools. 
 
 ## Download a Mixer Adapter Release
 
@@ -117,14 +67,13 @@ _Credentials_
 [.netrc](https://ec.haxx.se/usingcurl-netrc.html) file in your home directory (or where you specify with the `--netrc` 
 option) if you have an entry for `machine api.enterprise.apigee.com` (or the host you specified for OPDK).
 
+### Handler
 
-### Istio 1.1
+To create an Istio handler file, run the following:
 
-To create an Istio 1.1 handler file, run the following:
+    apigee-istio provision --grpc -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/handler.yaml
 
-    apigee-istio provision --grpc -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/grpc/handler.yaml
-
-Once it completes, check your `samples/apigee/grpc/handler.yaml` file. It should look similar to this:
+Once it completes, check your `samples/apigee/handler.yaml` file. It should look similar to this:
 
     # Istio handler configuration for Apigee gRPC adapter for Mixer
     apiVersion: config.istio.io/v1alpha2
@@ -144,35 +93,10 @@ Once it completes, check your `samples/apigee/grpc/handler.yaml` file. It should
         key: 06a40b65005d03ea24c0d53de69ab795590b0c332526e97fed549471bdea00b9
         secret: 93550179f344150c6474956994e0943b3e93a3c90c64035f378dc05c98389633   
 
-As noted above, Istio 1.1 adapters are run in a separate process from Mixer and Mixer will connect to the adapter 
+Istio adapters are run in a separate process from Mixer and Mixer will connect to the adapter 
 via gRPC to the address specified in the `connection.address` property in the Apigee adapter handler config. This 
 address must be reachable by the Mixer processes in the Istio mesh. If you deploy the adapter to a location other than
 the default, just change the `connection.address` value as appropriate.
-
-[next step](#install-a-target-service)
-
-### Istio 1.0
-
-To create an Istio 1.0 handler file, run the following:
-
-    apigee-istio provision -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/handler.yaml
-
-Once it completes, check your `samples/apigee/handler.yaml` file. It should look similar to this:
-
-    # istio handler configuration for apigee adapter
-    apiVersion: config.istio.io/v1alpha2
-    kind: apigee
-    metadata:
-      name: apigee-handler
-      namespace: istio-system
-    spec:
-      apigee_base: https://istioservices.apigee.net/edgemicro
-      customer_base: https://myorg-myenv.apigee.net/istio-auth
-      org_name: myorg
-      env_name: myenv
-      key: 06a40b65005d03ea24c0d53de69ab795590b0c332526e97fed549471bdea00b9
-      secret: 93550179f344150c6474956994e0943b3e93a3c90c64035f378dc05c98389633
-
 
 ## Install a target service
 
@@ -182,7 +106,7 @@ service into the Istio mesh as a target. From your Istio directory:
     kubectl label namespace default istio-injection=enabled    
     kubectl apply -f samples/helloworld/helloworld.yaml
     
-If you're using Istio 1.1, you'll also need to add the gateway:
+You'll also need to add the gateway to reach it from outside the mesh:
 
     kubectl apply -f samples/helloworld/helloworld-gateway.yaml
     
@@ -202,16 +126,9 @@ the INGRESS_IP and INGRESS_PORT variables. Then, your GATEWAY_URL can be set wit
 
 ## Configure Istio for the Apigee Adapter 
 
-Now it's time to install Apigee policy onto Istio. Once again, the configuration varies slightly depending on Istio version.
+Now it's time to install Apigee policy onto Istio.
 
-### Istio 1.1
-
-    kubectl apply -f samples/apigee/grpc
-
-[next step](#authentication-test)
-
-### Istio 1.0
-
+    kubectl apply -f samples/apigee/adapter.yaml
     kubectl apply -f samples/apigee/definitions.yaml
     kubectl apply -f samples/apigee/handler.yaml
     kubectl apply -f samples/apigee/rule.yaml
