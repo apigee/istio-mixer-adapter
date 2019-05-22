@@ -71,7 +71,7 @@ option) if you have an entry for `machine api.enterprise.apigee.com` (or the hos
 
 To create an Istio handler file, run the following:
 
-    apigee-istio provision --grpc -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/handler.yaml
+    apigee-istio provision -u {username} -p {password} -o {organization} -e {environment} > samples/apigee/handler.yaml
 
 Once it completes, check your `samples/apigee/handler.yaml` file. It should look similar to this:
 
