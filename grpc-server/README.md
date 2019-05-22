@@ -4,7 +4,7 @@ Build binary and docker image:
 	
 Deploy docker image into Kubernetes
 
-    kubectl apply -f samples/apigee/grpc/apigee-adapter.yaml
+    kubectl apply -f samples/apigee/adapter.yaml
 
 FYI: If needed, root certs file is created via:
 

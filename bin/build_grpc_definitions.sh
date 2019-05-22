@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# This script will build the samples/apigee/grpc/definitions.yaml file.
+# This script will build the samples/apigee/definitions.yaml file.
 # Run this if any of the proto files (config, authorization, analytics) are changed.
 # See RELEASING.md for documentation of full release process.
 
 ISTIO_ROOT="${GOPATH-$HOME/go}/src/github.com/apigee/istio-mixer-adapter"
 MIXGEN=$ISTIO_ROOT/vendor/istio.io/istio/mixer/tools/mixgen/main.go
-DEFINITIONS_FILE="${ISTIO_ROOT}/samples/apigee/grpc/definitions.yaml"
+DEFINITIONS_FILE="${ISTIO_ROOT}/samples/apigee/definitions.yaml"
 
 read -r -d '' DEFINITIONS_BASE <<"EOT"
 # This file generated via bin/build_grpc_definitions.sh. Regenerate if

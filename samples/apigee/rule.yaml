@@ -11,7 +11,7 @@ metadata:
 spec:
   match: context.reporter.kind == "inbound" && destination.namespace == "default"
   actions:
-  - handler: apigee-handler.apigee.istio-system
+  - handler: apigee-handler
     instances:
-    - apigee.authorization
-    - apigee.analytics
+    - apigee-authorization
+    - apigee-analytics
