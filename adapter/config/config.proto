@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// If this file changes, regenerate dependent files via: `go generate ./...`
+
 syntax = "proto3";
 
 // $title: Apigee
@@ -23,7 +25,7 @@ syntax = "proto3";
 // $source_link: https://github.com/apigee/istio-mixer-adapter
 // $latest_release_link: https://github.com/apigee/istio-mixer-adapter/releases
 // $helm_chart_link:
-// $istio_versions: "1.0.0, 1.0.2, 1.0.3, 1.0.4, 1.0.5, 1.0.6"
+// $istio_versions: "1.0.x, 1.1.x"
 // $supported_templates: authorization, analytics
 
 // The Apigee Mixer adapter provides Apigee's distributed authentication and quota policy checks
@@ -60,6 +62,7 @@ syntax = "proto3";
 //     legacy_endpoint: false
 //     file_limit: 1024
 //   api_key_claim:
+//   allowUnverifiedSSLCert: false
 // ```
 package config;
 

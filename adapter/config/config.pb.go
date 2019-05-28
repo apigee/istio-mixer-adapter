@@ -35,6 +35,7 @@
 //     legacy_endpoint: false
 //     file_limit: 1024
 //   api_key_claim:
+//   allowUnverifiedSSLCert: false
 // ```
 
 package config
