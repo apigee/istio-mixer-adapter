@@ -28,42 +28,6 @@ jobs:
           path: /go/src/github.com/apigee/istio-mixer-adapter/dist
           destination: dist
 
-  # Istio 1.0.x - mixer build and image
-  build-test-image-1.0:
-    docker:
-      - image: circleci/golang:1.11
-    working_directory: /go/src/github.com/apigee/istio-mixer-adapter
-    steps:
-      - checkout
-      - run:
-          name: Run local install script
-          command: INSTALL_PROTOC=1 ./bin/local_install.sh
-        # test needs dep ensure to be run again, since the Mixer plugin install
-        # will have removed the vendor link.
-      - run: dep ensure
-      - run:
-          name: Run tests
-          command: go test -coverprofile=coverage.txt ./...
-      - setup_remote_docker
-      - run:
-          name: Install docker
-          command: ./bin/install_docker.sh
-      - run:
-          name: Install gcloud
-          command: ./bin/install_gcloud.sh
-      - run:
-          name: Build and push istio-mixer Docker image with tag latest
-          command: TAG=${CIRCLE_TAG:-nightly} GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/istio-mixer-debug:$TAG ./bin/build_mixer_docker.sh
-      - run:
-          name: Build and push apigee-adapter Docker image with tag latest
-          command: TAG=${CIRCLE_TAG:-nightly} GCP_PROJECT=apigee-api-management-istio MAKE_PUBLIC=1 DEBUG=1 TARGET_DOCKER_IMAGE=gcr.io/apigee-api-management-istio/apigee-adapter:$TAG TARGET_DOCKER_DEBUG_IMAGE=gcr.io/apigee-api-management-istio/apigee-adapter-debug:$TAG ./bin/build_adapter_docker.sh
-      - run:
-          command: DRYRUN=1 ./bin/build_release.sh
-      - store_artifacts:
-          path: /go/src/github.com/apigee/istio-mixer-adapter/dist
-          destination: dist
-
-  # Istio 1.1 and later - no mixer build
   build-test-image:
     docker:
       - image: circleci/golang:1.11
@@ -123,12 +87,6 @@ workflows:
 
   on-version-tag:
     jobs:
-      - build-test-image-1.0:
-          filters:
-            branches:
-              ignore: /.*/
-            tags:
-              only: /1\.0\.\d/
       - build-test-image:
           filters:
             branches:

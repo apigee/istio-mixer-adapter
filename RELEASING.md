@@ -1,7 +1,7 @@
 # Building a new draft release on Github
 
 1. set RELEASE env var
-    (eg. `RELEASE=1.1.0`)
+    (eg. `RELEASE=1.1.2`)
     
 2. create a release branch: `git checkout -b $RELEASE-prep`
 
@@ -18,9 +18,7 @@
     4. push: `git push --set-upstream origin $RELEASE-prep ${RELEASE}`
     (CircleCI will automatically build and tag docker image)
 
-5. verify the image
-    a. for Istio 1.0.x releases, verify mixer: gcr.io/apigee-api-management-istio/istio-mixer:$RELEASE
-    b. for newer releases, verify adapter: gcr.io/apigee-api-management-istio/apigee-adapter:$RELEASE
+5. verify the image: gcr.io/apigee-api-management-istio/apigee-adapter:$RELEASE
 
 6. `bin/build_release.sh`
     (creates a draft release on Github)
