@@ -17,17 +17,17 @@ spec:
         imagePullPolicy: IfNotPresent #Always
         ports:
         - containerPort: 5000
-#        readinessProbe:
-#          exec:
-#            command: ["/grpc_health_probe", "-addr=:5000"]
-#          initialDelaySeconds: 5
-#        livenessProbe:
-#          exec:
-#            command: ["/grpc_health_probe", "-addr=:5000"]
-#          initialDelaySeconds: 10
+        readinessProbe:
+          exec:
+            command: ["/grpc_health_probe", "-addr=:5000"]
+          initialDelaySeconds: 5
+        livenessProbe:
+          exec:
+            command: ["/grpc_health_probe", "-addr=:5000"]
+          initialDelaySeconds: 10
         args:
           - --address=:5000
-          - --log_output_level=adapters:debug
+          - --log_output_level=default:warn,adapters:debug
         resources:
           limits:
             cpu: 100m
