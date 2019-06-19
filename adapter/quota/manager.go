@@ -38,19 +38,20 @@ const (
 
 // A Manager tracks multiple Apigee quotas
 type Manager struct {
-	baseURL        *url.URL
-	close          chan bool
-	closed         chan bool
-	client         *http.Client
-	now            func() time.Time
-	log            adapter.Logger
-	syncRate       time.Duration
-	bucketsLock    sync.RWMutex
-	buckets        map[string]*bucket // Map from ID -> bucket
-	syncQueue      chan *bucket
-	numSyncWorkers int
-	dupCache       ResultCache
-	syncingBuckets map[*bucket]struct{}
+	baseURL            *url.URL
+	close              chan bool
+	closed             chan bool
+	client             *http.Client
+	now                func() time.Time
+	log                adapter.Logger
+	syncRate           time.Duration
+	bucketsLock        sync.RWMutex
+	buckets            map[string]*bucket // Map from ID -> bucket
+	syncQueue          chan *bucket
+	numSyncWorkers     int
+	dupCache           ResultCache
+	syncingBuckets     map[*bucket]struct{}
+	syncingBucketsLock sync.Mutex
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
@@ -141,8 +142,14 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 		if !ok || !b.compatible(req) {
 			forceSync = true
 			b = newBucket(*req, m, auth)
+			m.syncingBucketsLock.Lock()
 			m.syncingBuckets[b] = struct{}{}
-			defer delete(m.syncingBuckets, b)
+			m.syncingBucketsLock.Unlock()
+			defer func() {
+				m.syncingBucketsLock.Lock()
+				delete(m.syncingBuckets, b)
+				m.syncingBucketsLock.Unlock()
+			}()
 			m.buckets[quotaID] = b
 			m.log.Debugf("new quota bucket: %s", quotaID)
 		}
@@ -202,11 +209,15 @@ func (m *Manager) syncBucketWorker() {
 	for {
 		bucket, ok := <-m.syncQueue
 		if ok {
+			m.syncingBucketsLock.Lock()
 			if _, ok := m.syncingBuckets[bucket]; !ok {
 				m.syncingBuckets[bucket] = struct{}{}
+				m.syncingBucketsLock.Unlock()
 				bucket.sync()
+				m.syncingBucketsLock.Lock()
 				delete(m.syncingBuckets, bucket)
 			}
+			m.syncingBucketsLock.Unlock()
 		} else {
 			m.log.Debugf("closing quota sync worker")
 			m.closed <- true
