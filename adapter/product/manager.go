@@ -160,60 +160,66 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(ctx context.Context) error
 			return err
 		}
 
-		pm := ProductsMap{}
-		for _, v := range res.APIProducts {
-			product := v
-			// only save products that actually map to something
-			for _, attr := range product.Attributes {
-				if ctx.Err() != nil {
-					p.log.Debugf("product polling canceled, exiting")
-					return nil
-				}
-				if attr.Name == ServicesAttr {
-					targets := strings.Split(attr.Value, ",")
-					for _, t := range targets {
-						product.Targets = append(product.Targets, strings.TrimSpace(t))
-					}
-
-					// server returns empty scopes as array with a single empty string, remove for consistency
-					if len(product.Scopes) == 1 && product.Scopes[0] == "" {
-						product.Scopes = []string{}
-					}
-
-					// parse limit from server
-					if product.QuotaLimit != "" && product.QuotaInterval != "null" {
-						product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
-						if err != nil {
-							p.log.Errorf("unable to parse quota limit: %#v", product)
-						}
-					}
-
-					// parse interval from server
-					if product.QuotaInterval != "" && product.QuotaInterval != "null" {
-						product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
-						if err != nil {
-							p.log.Errorf("unable to parse quota interval: %#v", product)
-						}
-					}
-
-					// normalize null from server to empty
-					if product.QuotaTimeUnit == "null" {
-						product.QuotaTimeUnit = ""
-					}
-
-					p.resolveResourceMatchers(&product)
-
-					pm[product.Name] = &product
-					break
-				}
-			}
-		}
+		pm := p.getProductsMap(ctx, res)
 		p.productsMux.Set(pm)
 
 		p.log.Debugf("retrieved %d products, kept %d", len(res.APIProducts), len(pm))
 
 		return nil
 	}
+}
+
+func (p *Manager) getProductsMap(ctx context.Context, res APIResponse) ProductsMap {
+	pm := ProductsMap{}
+	for _, v := range res.APIProducts {
+		product := v
+		// only save products that actually map to something
+		for _, attr := range product.Attributes {
+			if ctx.Err() != nil {
+				p.log.Debugf("product polling canceled, exiting")
+				return nil
+			}
+			if attr.Name == ServicesAttr {
+				var err error
+				targets := strings.Split(attr.Value, ",")
+				for _, t := range targets {
+					product.Targets = append(product.Targets, strings.TrimSpace(t))
+				}
+
+				// server returns empty scopes as array with a single empty string, remove for consistency
+				if len(product.Scopes) == 1 && product.Scopes[0] == "" {
+					product.Scopes = []string{}
+				}
+
+				// parse limit from server
+				if product.QuotaLimit != "" && product.QuotaInterval != "null" {
+					product.QuotaLimitInt, err = strconv.ParseInt(product.QuotaLimit, 10, 64)
+					if err != nil {
+						p.log.Errorf("unable to parse quota limit: %#v", product)
+					}
+				}
+
+				// parse interval from server
+				if product.QuotaInterval != "" && product.QuotaInterval != "null" {
+					product.QuotaIntervalInt, err = strconv.ParseInt(product.QuotaInterval, 10, 64)
+					if err != nil {
+						p.log.Errorf("unable to parse quota interval: %#v", product)
+					}
+				}
+
+				// normalize null from server to empty
+				if product.QuotaTimeUnit == "null" {
+					product.QuotaTimeUnit = ""
+				}
+
+				p.resolveResourceMatchers(&product)
+
+				pm[product.Name] = &product
+				break
+			}
+		}
+	}
+	return pm
 }
 
 // generate matchers for resources (path)

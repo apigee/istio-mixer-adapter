@@ -158,60 +158,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 		}
 
 		if p.IsOPDK {
-
-			customizedZip, err := getCustomizedProxy(tempDir, internalProxyZip, func(proxyDir string) error {
-
-				// change server locations
-				calloutFile := filepath.Join(proxyDir, "policies", "Callout.xml")
-				bytes, err := ioutil.ReadFile(calloutFile)
-				if err != nil {
-					return errors.Wrapf(err, "error reading file %s", calloutFile)
-				}
-				var callout JavaCallout
-				if err := xml.Unmarshal(bytes, &callout); err != nil {
-					return errors.Wrapf(err, "error unmarshalling %s", calloutFile)
-				}
-				setMgmtURL := false
-				for i, cp := range callout.Properties {
-					if cp.Name == "REGION_MAP" {
-						callout.Properties[i].Value = fmt.Sprintf("DN=%s", p.RouterBase)
-					}
-					if cp.Name == "MGMT_URL_PREFIX" {
-						setMgmtURL = true
-						callout.Properties[i].Value = p.ManagementBase
-					}
-				}
-				if !setMgmtURL {
-					callout.Properties = append(callout.Properties,
-						javaCalloutProperty{
-							Name:  "MGMT_URL_PREFIX",
-							Value: p.ManagementBase,
-						})
-				}
-
-				writer, err := os.OpenFile(calloutFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
-				if err != nil {
-					return errors.Wrapf(err, "error writing %s", calloutFile)
-				}
-				writer.WriteString(xml.Header)
-				encoder := xml.NewEncoder(writer)
-				encoder.Indent("", "  ")
-				err = encoder.Encode(callout)
-				if err != nil {
-					return errors.Wrapf(err, "error encoding xml to %s", calloutFile)
-				}
-				err = writer.Close()
-				if err != nil {
-					return errors.Wrapf(err, "error closing file %s", calloutFile)
-				}
-
-				return replaceVirtualHosts(proxyDir)
-			})
-			if err != nil {
-				fatalf(err.Error())
-			}
-
-			if err := p.checkAndDeployProxy(internalProxyName, customizedZip, verbosef); err != nil {
+			if err := p.deployInternalProxy(replaceVirtualHosts, tempDir, verbosef); err != nil {
 				fatalf("error deploying internal proxy: %v", err)
 			}
 		}
@@ -279,6 +226,63 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 	}
 
 	verbosef("provisioning verified OK")
+}
+
+func (p *provision) deployInternalProxy(replaceVirtualHosts func(proxyDir string) error, tempDir string, verbosef shared.FormatFn) error {
+
+	customizedZip, err := getCustomizedProxy(tempDir, internalProxyZip, func(proxyDir string) error {
+
+		// change server locations
+		calloutFile := filepath.Join(proxyDir, "policies", "Callout.xml")
+		bytes, err := ioutil.ReadFile(calloutFile)
+		if err != nil {
+			return errors.Wrapf(err, "error reading file %s", calloutFile)
+		}
+		var callout JavaCallout
+		if err := xml.Unmarshal(bytes, &callout); err != nil {
+			return errors.Wrapf(err, "error unmarshalling %s", calloutFile)
+		}
+		setMgmtURL := false
+		for i, cp := range callout.Properties {
+			if cp.Name == "REGION_MAP" {
+				callout.Properties[i].Value = fmt.Sprintf("DN=%s", p.RouterBase)
+			}
+			if cp.Name == "MGMT_URL_PREFIX" {
+				setMgmtURL = true
+				callout.Properties[i].Value = p.ManagementBase
+			}
+		}
+		if !setMgmtURL {
+			callout.Properties = append(callout.Properties,
+				javaCalloutProperty{
+					Name:  "MGMT_URL_PREFIX",
+					Value: p.ManagementBase,
+				})
+		}
+
+		writer, err := os.OpenFile(calloutFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0)
+		if err != nil {
+			return errors.Wrapf(err, "error writing %s", calloutFile)
+		}
+		writer.WriteString(xml.Header)
+		encoder := xml.NewEncoder(writer)
+		encoder.Indent("", "  ")
+		err = encoder.Encode(callout)
+		if err != nil {
+			return errors.Wrapf(err, "error encoding xml to %s", calloutFile)
+		}
+		err = writer.Close()
+		if err != nil {
+			return errors.Wrapf(err, "error closing file %s", calloutFile)
+		}
+
+		return replaceVirtualHosts(proxyDir)
+	})
+	if err != nil {
+		return err
+	}
+
+	return p.checkAndDeployProxy(internalProxyName, customizedZip, verbosef)
 }
 
 type proxyModFunc func(name string) error
