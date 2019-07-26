@@ -31,6 +31,7 @@ type ProxiesService interface {
 	GetDeployedRevision(proxy, env string) (*Revision, error)
 }
 
+// ProxiesServiceOp represents operations against Apigee proxies
 type ProxiesServiceOp struct {
 	client *EdgeClient
 }
@@ -83,7 +84,8 @@ type ProxyRevisionDeployment struct {
 	Servers      []EdgeServer `json:"server,omitempty"`
 }
 
-// When inquiring the deployment status of an API PRoxy revision, even implicitly
+// EdgeServer is the deployment status for the edge server.
+// When inquiring the deployment status of an API Proxy revision, even implicitly
 // as when performing a Deploy or Undeploy, the response includes the deployment
 // status for each particular Edge Server in the environment. This struct
 // deserializes that information. It will normally not be useful at all. In rare
@@ -93,7 +95,7 @@ type ProxyRevisionDeployment struct {
 // API Proxy, this struct will hold relevant information.
 type EdgeServer struct {
 	Status string   `json:"status,omitempty"`
-	Uuid   string   `json:"uUID,omitempty"`
+	UUID   string   `json:"uUID,omitempty"`
 	Type   []string `json:"type,omitempty"`
 }
 
@@ -105,19 +107,20 @@ type ProxyDeployment struct {
 	Organization string                  `json:"organization,omitempty"`
 }
 
+// EnvironmentDeployment is the deployment state of an environment
 type EnvironmentDeployment struct {
 	Name     string               `json:"name,omitempty"`
 	Revision []RevisionDeployment `json:"revision,omitempty"`
 }
 
+// RevisionDeployment is the deployment state of a revision
 type RevisionDeployment struct {
 	Number  Revision     `json:"name,omitempty"`
 	State   string       `json:"state,omitempty"`
 	Servers []EdgeServer `json:"server,omitempty"`
 }
 
-// When Delete returns successfully, it returns a payload that contains very little useful
-// information. This struct deserializes that information.
+// DeletedProxyInfo contains the name of the deleted proxy
 type DeletedProxyInfo struct {
 	Name string `json:"name,omitempty"`
 }
@@ -225,6 +228,9 @@ func zipDirectory(source string, target string, filter func(string) bool) error 
 			}
 			defer file.Close()
 			_, err = io.Copy(writer, file)
+			if err != nil {
+				return err
+			}
 		}
 		return err
 	})
@@ -250,12 +256,12 @@ func (s *ProxiesServiceOp) Import(proxyName string, source string) (*ProxyRevisi
 		}
 		tempDir, e := ioutil.TempDir("", "go-apigee-edge-")
 		if e != nil {
-			return nil, nil, errors.New(fmt.Sprintf("while creating temp dir, error: %#v", e))
+			return nil, nil, fmt.Errorf("while creating temp dir, error: %#v", e)
 		}
 		zipfileName = path.Join(tempDir, "apiproxy.zip")
 		e = zipDirectory(path.Join(source, "apiproxy"), zipfileName, smartFilter)
 		if e != nil {
-			return nil, nil, errors.New(fmt.Sprintf("while creating temp dir, error: %#v", e))
+			return nil, nil, fmt.Errorf("while creating temp dir, error: %#v", e)
 		}
 		//fmt.Printf("zipped %s into %s\n\n", source, zipfileName)
 	}
@@ -443,6 +449,7 @@ func (s *ProxiesServiceOp) GetDeployments(proxy string) (*ProxyDeployment, *Resp
 	return &deployments, resp, e
 }
 
+// GetDeployedRevision returns the Revision that is deployed to an environment.
 func (s *ProxiesServiceOp) GetDeployedRevision(proxy, env string) (*Revision, error) {
 	deployment, resp, err := s.GetDeployments(proxy)
 	if err != nil && resp == nil {

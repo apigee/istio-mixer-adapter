@@ -78,6 +78,9 @@ func TestBucketClose(t *testing.T) {
 	m.closeWait.Wait()
 
 	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
 	if len(files) != 1 {
 		t.Errorf("got %d files, expected %d files: %v", len(files), 1, files)
 	}

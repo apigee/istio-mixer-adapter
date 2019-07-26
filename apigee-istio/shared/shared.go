@@ -87,7 +87,7 @@ func (r *RootArgs) Resolve(skipAuth bool) error {
 	r.CustomerProxyURL = fmt.Sprintf(customerProxyURLFormat, r.RouterBase)
 
 	r.ClientOpts = &apigee.EdgeClientOptions{
-		MgmtUrl: r.ManagementBase,
+		MgmtURL: r.ManagementBase,
 		Org:     r.Org,
 		Env:     r.Env,
 		Auth: &apigee.EdgeAuth{

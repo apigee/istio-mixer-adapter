@@ -15,17 +15,20 @@ type KVMService interface {
 	AddEntry(kvmName string, entry Entry) (*Response, error)
 }
 
+// Entry is an entry in the KVM
 type Entry struct {
 	Name  string `json:"name,omitempty"`
 	Value string `json:"value,omitempty"`
 }
 
+// KVM represents an Apigee KVM
 type KVM struct {
 	Name      string  `json:"name,omitempty"`
 	Encrypted bool    `json:"encrypted,omitempty"`
 	Entries   []Entry `json:"entry,omitempty"`
 }
 
+// GetValue returns a value from the KVM
 func (k *KVM) GetValue(name string) (v string, ok bool) {
 	for _, e := range k.Entries {
 		if e.Name == name {
@@ -35,12 +38,14 @@ func (k *KVM) GetValue(name string) (v string, ok bool) {
 	return
 }
 
+// KVMServiceOp represents a KVM service operation
 type KVMServiceOp struct {
 	client *EdgeClient
 }
 
 var _ KVMService = &KVMServiceOp{}
 
+// Get returns a response given a KVM map name
 func (s *KVMServiceOp) Get(mapname string) (*KVM, *Response, error) {
 	path := path.Join(kvmPath, mapname)
 	req, e := s.client.NewRequest("GET", path, nil)
@@ -55,6 +60,7 @@ func (s *KVMServiceOp) Get(mapname string) (*KVM, *Response, error) {
 	return &returnedKVM, resp, e
 }
 
+// Create creates a KVM and returns a response
 func (s *KVMServiceOp) Create(kvm KVM) (*Response, error) {
 	path := path.Join(kvmPath)
 	req, e := s.client.NewRequest("POST", path, kvm)
@@ -65,6 +71,7 @@ func (s *KVMServiceOp) Create(kvm KVM) (*Response, error) {
 	return resp, e
 }
 
+// UpdateEntry updates a KVM entry
 func (s *KVMServiceOp) UpdateEntry(kvmName string, entry Entry) (*Response, error) {
 	path := path.Join(kvmPath, kvmName, "entries", entry.Name)
 	req, e := s.client.NewRequest("POST", path, entry)
@@ -75,6 +82,7 @@ func (s *KVMServiceOp) UpdateEntry(kvmName string, entry Entry) (*Response, erro
 	return resp, e
 }
 
+// AddEntry add an entry to the KVM
 func (s *KVMServiceOp) AddEntry(kvmName string, entry Entry) (*Response, error) {
 	path := path.Join(kvmPath, kvmName, "entries")
 	req, e := s.client.NewRequest("POST", path, entry)

@@ -25,7 +25,7 @@ const (
 	libraryVersion = "0.1.0"
 	defaultBaseURL = "https://api.enterprise.apigee.com/"
 	userAgent      = "go-apigee-edge/" + libraryVersion
-	appJson        = "application/json"
+	appJSON        = "application/json"
 	octetStream    = "application/octet-stream"
 )
 
@@ -78,7 +78,7 @@ type ListOptions struct {
 	Expand bool `url:"expand"`
 }
 
-// wrap the standard http.Response returned from Apigee Edge. (why?)
+// Response wraps the standard http.Response returned from Apigee Edge. (why?)
 type Response struct {
 	*http.Response
 }
@@ -119,12 +119,13 @@ func addOptions(s string, opt interface{}) (string, error) {
 	return origURL.String(), nil
 }
 
+// EdgeClientOptions sets options for accessing edge APIs
 type EdgeClientOptions struct {
 	httpClient *http.Client
 
-	// Optional. The Admin base URL. For example, if using OPDK this might be
-	// http://192.168.10.56:8080 . It defaults to https://api.enterprise.apigee.com
-	MgmtUrl string
+	// MgmtURL is the Admin base URL. Optional. For example, if using OPDK this might be
+	// http://192.168.10.56:8080. It defaults to https://api.enterprise.apigee.com.
+	MgmtURL string
 
 	// Specify the Edge organization name.
 	Org string
@@ -159,6 +160,7 @@ type EdgeAuth struct {
 	BearerToken string
 }
 
+// ApplyTo applies the auth info onto a request
 func (auth *EdgeAuth) ApplyTo(req *http.Request) {
 	if auth.BearerToken != "" {
 		req.Header.Add("Authorization", "Bearer "+auth.BearerToken)
@@ -191,13 +193,15 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 	if o.httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	mgmtUrl := o.MgmtUrl
-	if o.MgmtUrl == "" {
-		mgmtUrl = defaultBaseURL
+	mgmtURL := o.MgmtURL
+	if o.MgmtURL == "" {
+		mgmtURL = defaultBaseURL
 	}
-	baseURL, err := url.Parse(mgmtUrl)
-	baseURLEnv, err := url.Parse(mgmtUrl)
-
+	baseURL, err := url.Parse(mgmtURL)
+	if err != nil {
+		return nil, err
+	}
+	baseURLEnv, err := url.Parse(mgmtURL)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +213,7 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 	c.Proxies = &ProxiesServiceOp{client: c}
 	c.KVMService = &KVMServiceOp{client: c}
 
-	var e error = nil
+	var e error
 	if o.Auth == nil {
 		c.auth, e = retrieveAuthFromNetrc("", baseURL.Host)
 	} else if o.Auth.SkipAuth {
@@ -313,9 +317,9 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	if body != nil {
 		switch body.(type) {
 		default:
-			ctype = appJson
+			ctype = appJSON
 			buf := new(bytes.Buffer)
-			err := json.NewEncoder(buf).Encode(body)
+			err = json.NewEncoder(buf).Encode(body)
 			if err != nil {
 				return nil, err
 			}
@@ -335,7 +339,7 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	if ctype != "" {
 		req.Header.Add("Content-Type", ctype)
 	}
-	req.Header.Add("Accept", appJson)
+	req.Header.Add("Accept", appJSON)
 	req.Header.Add("User-Agent", c.UserAgent)
 	if c.auth != nil {
 		c.auth.ApplyTo(req)
@@ -343,7 +347,7 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	return req, nil
 }
 
-// sets the request completion callback for the API
+// OnRequestCompleted sets the request completion callback for the API
 func (c *EdgeClient) OnRequestCompleted(rc RequestCompletionCallback) {
 	c.onRequestCompleted = rc
 }

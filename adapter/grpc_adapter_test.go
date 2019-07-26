@@ -157,7 +157,7 @@ func TestGRPCAdapter_HandleAnalytics(t *testing.T) {
 
 	now := time.Now()
 	instanceMsg := &analyticsT.InstanceMsg{
-		Name: "name",
+		Name:                         "name",
 		ClientReceivedStartTimestamp: timestamp(now),
 		ClientReceivedEndTimestamp:   timestamp(now),
 		RequestUri:                   pathWithQueryString,

@@ -188,6 +188,9 @@ func (t *token) inspectToken(printf, fatalf shared.FormatFn) error {
 		return errors.Wrap(err, "error parsing jwt token")
 	}
 	jsonBytes, err := token.MarshalJSON()
+	if err != nil {
+		return errors.Wrap(err, "error printing jwt token")
+	}
 	var prettyJSON bytes.Buffer
 	err = json.Indent(&prettyJSON, jsonBytes, "", "\t")
 	if err != nil {

@@ -149,6 +149,9 @@ func (b *bucket) sync() error {
 
 	buf := bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
 	_, err = buf.ReadFrom(resp.Body)
+	if err != nil {
+		return revert(fmt.Errorf("read body: %v", err))
+	}
 	respBody := buf.Bytes()
 
 	switch resp.StatusCode {

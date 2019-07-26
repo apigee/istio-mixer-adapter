@@ -12,6 +12,7 @@ type Timestamp struct {
 	time.Time
 }
 
+// MarshalJSON creates a JSON representation of this Timestamp
 func (t Timestamp) MarshalJSON() ([]byte, error) {
 	ms := t.Time.UnixNano() / 1000000
 	stamp := fmt.Sprintf("%d", ms)

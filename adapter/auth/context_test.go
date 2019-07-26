@@ -45,7 +45,7 @@ func TestParseExp(t *testing.T) {
 	}
 
 	claims[expClaim] = "badexp"
-	exp, err = parseExp(claims)
+	_, err = parseExp(claims)
 	if err == nil {
 		t.Error("parseExp should have gotten an error")
 	}
