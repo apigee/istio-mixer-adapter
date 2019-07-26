@@ -134,6 +134,12 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/google/uuid"
+  packages = ["."]
+  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
+  version = "v1.1.1"
+
+[[projects]]
   name = "github.com/googleapis/gnostic"
   packages = [
     "OpenAPIv2",
@@ -171,10 +177,10 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/hashicorp/go-multierror"
   packages = ["."]
-  revision = "886a7fbe3eb1c874d46f623bfa70af45f425b3d1"
-  version = "v1.0.0"
+  revision = "bdca7bb83f603b80ef756bb953fe1dafa9cd00a2"
 
 [[projects]]
   name = "github.com/hashicorp/golang-lru"
@@ -936,6 +942,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "625280838149e663e4c472febe3b48db52a9d0a08c8c9475de0dadfc268761a5"
+  inputs-digest = "a797a0a0e1bf1d5e1da224114ba4be59660683ed174cd589e6e0b4d2437bf3ca"
   solver-name = "gps-cdcl"
   solver-version = 1
