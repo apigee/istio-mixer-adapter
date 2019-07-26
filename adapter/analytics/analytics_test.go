@@ -298,6 +298,7 @@ func TestPushAnalytics(t *testing.T) {
 
 	// Should have sent things out by now, check it out.
 	fs.lock.RLock()
+	checkAndClearGatewayFlowIDs(fs, t)
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %#v, want records %#v", fs.Records(), wantRecords)
 	}
@@ -447,6 +448,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 
 	// Should have sent things out by now, check it out.
 	fs.lock.RLock()
+	checkAndClearGatewayFlowIDs(fs, t)
 	if !reflect.DeepEqual(fs.Records(), wantRecords) {
 		t.Errorf("got records %v, want records %v", fs.Records(), wantRecords)
 	}
@@ -464,6 +466,20 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 			t.Errorf("got %d records on disk, want 0", len(files))
 			for _, f := range files {
 				t.Log(path.Join(bufferPath, f.Name()))
+			}
+		}
+	}
+}
+
+func checkAndClearGatewayFlowIDs(fs *fakeServer, t *testing.T) {
+	for tid, recs := range fs.Records() {
+		for i, trp := range recs {
+			for j, rec := range trp.records {
+				if rec.GatewayFlowID == "" {
+					t.Errorf("gateway_flow_id not set on record %#v", rec)
+				}
+				fs.Records()[tid][i].records[j].GatewayFlowID = ""
+				rec.GatewayFlowID = "" // clear for DeepEqual check
 			}
 		}
 	}

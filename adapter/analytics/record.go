@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -49,6 +50,7 @@ type Record struct {
 	Organization                 string `json:"organization"`
 	Environment                  string `json:"environment"`
 	GatewaySource                string `json:"gateway_source"`
+	GatewayFlowID                string `json:"gateway_flow_id"`
 }
 
 func (r Record) ensureFields(ctx *auth.Context) Record {
@@ -61,6 +63,8 @@ func (r Record) ensureFields(ctx *auth.Context) Record {
 	r.ClientID = ctx.ClientID
 	r.Organization = ctx.Organization()
 	r.Environment = ctx.Environment()
+
+	r.GatewayFlowID = uuid.New().String()
 
 	// todo: select best APIProduct based on path, otherwise arbitrary
 	if len(ctx.APIProducts) > 0 {
@@ -79,6 +83,9 @@ func (r Record) validate(now time.Time) error {
 	}
 	if r.Environment == "" {
 		err = multierror.Append(err, errors.New("missing Environment"))
+	}
+	if r.GatewayFlowID == "" {
+		err = multierror.Append(err, errors.New("missing GatewayFlowID"))
 	}
 	if r.ClientReceivedStartTimestamp == 0 {
 		err = multierror.Append(err, errors.New("missing ClientReceivedStartTimestamp"))

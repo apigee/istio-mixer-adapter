@@ -4,6 +4,7 @@
 required = [
   "github.com/istio/tools/protoc-gen-docs",
   "golang.org/x/tools/imports",
+  "github.com/google/uuid",
 ]
 
 # Below is for apigee-istio

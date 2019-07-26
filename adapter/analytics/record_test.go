@@ -32,45 +32,59 @@ func TestValidationFailure(t *testing.T) {
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: ts * 1000,
 			ClientReceivedEndTimestamp:   ts * 1000,
+			GatewayFlowID:                "x",
 		}, ""},
 		{"missing org", Record{
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: ts * 1000,
 			ClientReceivedEndTimestamp:   ts * 1000,
+			GatewayFlowID:                "x",
 		}, "missing Organization"},
 		{"missing env", Record{
 			Organization:                 "hi",
 			ClientReceivedStartTimestamp: ts * 1000,
 			ClientReceivedEndTimestamp:   ts * 1000,
+			GatewayFlowID:                "x",
 		}, "missing Environment"},
 		{"missing start timestamp", Record{
 			Organization:               "hi",
 			Environment:                "test",
 			ClientReceivedEndTimestamp: ts * 1000,
+			GatewayFlowID:              "x",
 		}, "missing ClientReceivedStartTimestamp"},
 		{"missing end timestamp", Record{
 			Organization:                 "hi",
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: ts * 1000,
+			GatewayFlowID:                "x",
 		}, "missing ClientReceivedEndTimestamp"},
 		{"end < start", Record{
 			Organization:                 "hi",
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: ts * 1000,
 			ClientReceivedEndTimestamp:   ts*1000 - 1,
+			GatewayFlowID:                "x",
 		}, "ClientReceivedStartTimestamp > ClientReceivedEndTimestamp"},
 		{"in the future", Record{
 			Organization:                 "hi",
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: (ts + 1) * 1000,
 			ClientReceivedEndTimestamp:   (ts + 1) * 1000,
+			GatewayFlowID:                "x",
 		}, "in the future"},
 		{"too old", Record{
 			Organization:                 "hi",
 			Environment:                  "test",
 			ClientReceivedStartTimestamp: (ts - 91*24*3600) * 1000,
 			ClientReceivedEndTimestamp:   (ts - 91*24*3600) * 1000,
+			GatewayFlowID:                "x",
 		}, "more than 90 days old"},
+		{"missing GatewayFlowID", Record{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+		}, "missing GatewayFlowID"},
 	} {
 		t.Log(test.desc)
 
