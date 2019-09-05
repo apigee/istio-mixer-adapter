@@ -232,6 +232,29 @@
             <Response/>
             <Condition>(proxy.pathsuffix MatchesPath "/rotate") and (request.verb = "POST")</Condition>
         </Flow>
+        <Flow name="DistributedQuota">
+            <Request>
+                <Step>
+                    <Name>AuthenticationError</Name>
+                    <Condition>request.header.Authorization is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Authenticate-Call</Name>
+                </Step>
+                <Step>
+                    <Name>Set-Quota-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>DistributedQuota</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Set-Quota-Response</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/quotas") and (request.verb = "POST")</Condition>
+        </Flow>
         <Flow name="Unknown Request">
             <Description>Unknown Request</Description>
             <Request>

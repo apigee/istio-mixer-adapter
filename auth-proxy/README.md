@@ -4,18 +4,19 @@ An Apigee Edge proxy to support generating, refreshing and revoking access token
 
 ## Development
 
-IMPORTANT: If you change the proxy source, you must run `bin/build_proxy_sources.sh` and rebuild the 
+IMPORTANT: If you change the proxy source, you must run `bin/build_proxy_resources.sh` and rebuild the 
 `apigee-istio` CLI to include it.
 
 ## Description
 
-The istio-auth proxy acts as an auth server and provides four functions:
+The istio-auth proxy acts as an auth server and provides several functions:
 
 * Provides a list of all products in the org (/products)
 * Provides a signed JWT if the API Key is valid (/verifyApiKey)
 * Generates an access token, which is a signed JWT. Supports client_credentials grant type (/token)
 * Refresh an access token (/refresh)
 * Revoke a refresh token (/revoke)
+* Manage quotas (/quotas)
 
 ### Installation
 
