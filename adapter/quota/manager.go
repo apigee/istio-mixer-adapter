@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	quotaPath             = "/quotas/organization/%s/environment/%s"
+	quotaPath             = "/quotas"
 	defaultSyncRate       = time.Second
 	defaultNumSyncWorkers = 10
 	defaultRefreshAfter   = 1 * time.Minute
@@ -141,7 +141,7 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 		b, ok = m.buckets[quotaID]
 		if !ok || !b.compatible(req) {
 			forceSync = true
-			b = newBucket(*req, m, auth)
+			b = newBucket(*req, m)
 			m.syncingBucketsLock.Lock()
 			m.syncingBuckets[b] = struct{}{}
 			m.syncingBucketsLock.Unlock()

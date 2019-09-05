@@ -154,15 +154,6 @@ func TestSync(t *testing.T) {
 
 	env := test.NewEnv(t)
 	context := authtest.NewContext(ts.URL, env)
-	context.SetOrganization("org")
-	context.SetEnvironment("env")
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
 
 	quotaID := "id"
 	request := &Request{
@@ -188,7 +179,7 @@ func TestSync(t *testing.T) {
 		syncingBuckets: map[*bucket]struct{}{},
 	}
 
-	b := newBucket(*request, m, authContext)
+	b := newBucket(*request, m)
 	b.checked = now()
 	b.result = result
 	m.buckets = map[string]*bucket{quotaID: b}
