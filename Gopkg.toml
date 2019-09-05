@@ -27,7 +27,7 @@ required = [
   name = "github.com/lestrrat-go/jwx"
   revision = "master"
 
-[[constraint]]
+[[override]]
   name = "github.com/gogo/googleapis"
   version = "v1.2.0"
 
