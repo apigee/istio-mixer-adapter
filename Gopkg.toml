@@ -27,6 +27,10 @@ required = [
   name = "github.com/lestrrat-go/jwx"
   revision = "master"
 
+[[constraint]]
+  name = "github.com/gogo/googleapis"
+  version = "v1.2.0"
+
 # only used in tests
 [[constraint]]
   name = "github.com/dgrijalva/jwt-go"
