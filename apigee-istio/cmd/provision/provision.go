@@ -60,8 +60,8 @@ const (
 	certsURLFormat          = "%s/certs"                                      // customerProxyURL
 	productsURLFormat       = "%s/products"                                   // customerProxyURL
 	verifyAPIKeyURLFormat   = "%s/verifyApiKey"                               // customerProxyURL
+	quotasURLFormat         = "%s/quotas"                                     // customerProxyURL
 	analyticsURLFormat      = "%s/analytics/organization/%s/environment/%s"   // internalProxyURL, org, env
-	quotasURLFormat         = "%s/quotas/organization/%s/environment/%s"      // internalProxyURL, org, env
 	legacyAnalyticURLFormat = "%s/axpublisher/organization/%s/environment/%s" // internalProxyURL, org, env
 
 	virtualHostReplaceText    = "<VirtualHost>default</VirtualHost>"
@@ -597,26 +597,13 @@ func (p *provision) verifyInternalProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 		verifyErrors = multierr.Append(verifyErrors, err)
 	}
 
-	quotasURL := fmt.Sprintf(quotasURLFormat, p.InternalProxyURL, p.Org, p.Env)
-	req, err = http.NewRequest(http.MethodPost, quotasURL, strings.NewReader("{}"))
-	if err != nil {
-		fatalf("unable to create request", err)
-	}
-	auth.ApplyTo(req)
-	resp, err = p.Client.Do(req, nil)
-	if err != nil && resp == nil {
-		fatalf("%s", err)
-	}
-	defer resp.Body.Close()
-	if err != nil {
-		verifyErrors = multierr.Append(verifyErrors, err)
-	}
 	return verifyErrors
 }
 
 // verify GET customerProxyURL/certs
 // verify GET customerProxyURL/products
 // verify POST customerProxyURL/verifyApiKey
+// verify POST customerProxyURL/quotas
 func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf shared.FormatFn) error {
 
 	verifyGET := func(targetURL string) error {
@@ -657,6 +644,22 @@ func (p *provision) verifyCustomerProxy(auth *apigee.EdgeAuth, printf, fatalf sh
 	if resp.StatusCode != 401 { // 401 is ok, we don't actually have a valid api key to test
 		verifyErrors = multierr.Append(verifyErrors, err)
 	}
+
+	quotasURL := fmt.Sprintf(quotasURLFormat, p.CustomerProxyURL)
+	req, err = http.NewRequest(http.MethodPost, quotasURL, strings.NewReader("{}"))
+	if err != nil {
+		fatalf("unable to create request", err)
+	}
+	auth.ApplyTo(req)
+	resp, err = p.Client.Do(req, nil)
+	if err != nil && resp == nil {
+		fatalf("%s", err)
+	}
+	defer resp.Body.Close()
+	if err != nil {
+		verifyErrors = multierr.Append(verifyErrors, err)
+	}
+
 	return verifyErrors
 }
 

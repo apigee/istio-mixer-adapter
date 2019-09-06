@@ -10,16 +10,16 @@ builds:
     goarch:
       - amd64
 # Archive customization
-archive:
-  format: tar.gz
-  replacements:
-    darwin: macOS
-    amd64: 64-bit
-  files:
-    - LICENSE
-    - README.md
-    - samples/**/*
-    - install/**/*
+archives:
+  - format: tar.gz
+    replacements:
+      darwin: macOS
+      amd64: 64-bit
+    files:
+      - LICENSE
+      - README.md
+      - samples/**/*
+      - install/**/*
 release:
   draft: true
   prerelease: true

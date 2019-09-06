@@ -232,8 +232,10 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	}
 
 	quotaMan, err := quota.NewManager(env, quota.Options{
-		BaseURL: apigeeBase,
+		BaseURL: customerBase,
 		Client:  httpClient,
+		Key:     b.adapterConfig.Key,
+		Secret:  b.adapterConfig.Secret,
 	})
 	if err != nil {
 		return nil, err

@@ -65,6 +65,8 @@ func TestQuota(t *testing.T) {
 	m, err = NewManager(env, Options{
 		BaseURL: context.ApigeeBase(),
 		Client:  http.DefaultClient,
+		Key:     "key",
+		Secret:  "secret",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -154,15 +156,6 @@ func TestSync(t *testing.T) {
 
 	env := test.NewEnv(t)
 	context := authtest.NewContext(ts.URL, env)
-	context.SetOrganization("org")
-	context.SetEnvironment("env")
-	authContext := &auth.Context{
-		Context:        context,
-		DeveloperEmail: "email",
-		Application:    "app",
-		AccessToken:    "token",
-		ClientID:       "clientId",
-	}
 
 	quotaID := "id"
 	request := &Request{
@@ -186,9 +179,11 @@ func TestSync(t *testing.T) {
 		baseURL:        context.ApigeeBase(),
 		numSyncWorkers: 1,
 		syncingBuckets: map[*bucket]struct{}{},
+		key:            "key",
+		secret:         "secret",
 	}
 
-	b := newBucket(*request, m, authContext)
+	b := newBucket(*request, m)
 	b.checked = now()
 	b.result = result
 	m.buckets = map[string]*bucket{quotaID: b}
@@ -289,6 +284,8 @@ func TestDisconnected(t *testing.T) {
 		buckets:        map[string]*bucket{},
 		syncingBuckets: map[*bucket]struct{}{},
 		log:            env.Logger(),
+		key:            "key",
+		secret:         "secret",
 	}
 
 	p := &product.APIProduct{
@@ -370,6 +367,8 @@ func TestWindowExpired(t *testing.T) {
 		buckets:        map[string]*bucket{},
 		syncingBuckets: map[*bucket]struct{}{},
 		log:            env.Logger(),
+		key:            "key",
+		secret:         "secret",
 	}
 
 	p := &product.APIProduct{
@@ -433,6 +432,13 @@ func testServer(serverResult *Result, now func() time.Time, errC *errControl) *h
 		if errC != nil && errC.send != 200 {
 			w.WriteHeader(errC.send)
 			w.Write([]byte("error"))
+			return
+		}
+
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "key" || password != "secret" {
+			w.WriteHeader(403)
+			w.Write([]byte("invalid basic auth"))
 			return
 		}
 

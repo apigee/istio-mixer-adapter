@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	quotaPath             = "/quotas/organization/%s/environment/%s"
+	quotaPath             = "/quotas"
 	defaultSyncRate       = time.Second
 	defaultNumSyncWorkers = 10
 	defaultRefreshAfter   = 1 * time.Minute
@@ -52,6 +52,8 @@ type Manager struct {
 	dupCache           ResultCache
 	syncingBuckets     map[*bucket]struct{}
 	syncingBucketsLock sync.Mutex
+	key                string
+	secret             string
 }
 
 // NewManager constructs and starts a new Manager. Call Close when done.
@@ -59,13 +61,13 @@ func NewManager(env adapter.Env, options Options) (*Manager, error) {
 	if err := options.validate(); err != nil {
 		return nil, err
 	}
-	m := newManager(options.BaseURL, options.Client)
+	m := newManager(options.BaseURL, options.Client, options.Key, options.Secret)
 	m.Start(env)
 	return m, nil
 }
 
 // newManager constructs a new Manager
-func newManager(baseURL *url.URL, client *http.Client) *Manager {
+func newManager(baseURL *url.URL, client *http.Client, key, secret string) *Manager {
 	return &Manager{
 		close:          make(chan bool),
 		closed:         make(chan bool),
@@ -78,6 +80,8 @@ func newManager(baseURL *url.URL, client *http.Client) *Manager {
 		numSyncWorkers: defaultNumSyncWorkers,
 		dupCache:       ResultCache{size: resultCacheBufferSize},
 		syncingBuckets: map[*bucket]struct{}{},
+		key:            key,
+		secret:         secret,
 	}
 }
 
@@ -141,7 +145,7 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 		b, ok = m.buckets[quotaID]
 		if !ok || !b.compatible(req) {
 			forceSync = true
-			b = newBucket(*req, m, auth)
+			b = newBucket(*req, m)
 			m.syncingBucketsLock.Lock()
 			m.syncingBuckets[b] = struct{}{}
 			m.syncingBucketsLock.Unlock()
@@ -232,11 +236,17 @@ type Options struct {
 	Client *http.Client
 	// BaseURL of the Apigee internal proxy
 	BaseURL *url.URL
+	// Key is provisioning key
+	Key string
+	// Secret is provisioning secret
+	Secret string
 }
 
 func (o *Options) validate() error {
 	if o.Client == nil ||
-		o.BaseURL == nil {
+		o.BaseURL == nil ||
+		o.Key == "" ||
+		o.Secret == "" {
 		return fmt.Errorf("all quota options are required")
 	}
 	return nil

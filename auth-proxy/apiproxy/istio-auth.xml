@@ -17,6 +17,7 @@
         <Policy>AuthenticationError</Policy>
         <Policy>Create-OAuth-Request</Policy>
         <Policy>Create-Refresh-Request</Policy>
+        <Policy>DistributedQuota</Policy>
         <Policy>Extract-API-Key</Policy>
         <Policy>Extract-OAuth-Params</Policy>
         <Policy>Extract-Refresh-Params</Policy>
@@ -37,6 +38,7 @@
         <Policy>Send-JWK-Message</Policy>
         <Policy>Send-Version</Policy>
         <Policy>Set-JWT-Variables</Policy>
+        <Policy>Set-Quota-Variables</Policy>
         <Policy>Set-Response</Policy>
         <Policy>Update-Keys</Policy>
         <Policy>Verify-API-Key</Policy>
@@ -51,6 +53,7 @@
         <Resource>jsc://jwt-initialization.js</Resource>
         <Resource>jsc://send-jwk-response.js</Resource>
         <Resource>jsc://set-jwt-variables.js</Resource>
+        <Resource>jsc://set-quota-variables.js</Resource>
         <Resource>jsc://set-response.js</Resource>
     </Resources>
     <Spec></Spec>

@@ -22,8 +22,6 @@ import (
 	"path"
 	"sync"
 	"time"
-
-	"github.com/apigee/istio-mixer-adapter/adapter/auth"
 )
 
 // bucket tracks a specific quota instance
@@ -42,11 +40,9 @@ type bucket struct {
 	syncError    error
 }
 
-func newBucket(req Request, m *Manager, auth *auth.Context) *bucket {
-	org := auth.Context.Organization()
-	env := auth.Context.Environment()
+func newBucket(req Request, m *Manager) *bucket {
 	quotaURL := *m.baseURL
-	quotaURL.Path = path.Join(quotaURL.Path, fmt.Sprintf(quotaPath, org, env))
+	quotaURL.Path = path.Join(quotaURL.Path, quotaPath)
 	return &bucket{
 		request:      &req,
 		manager:      m,
@@ -138,6 +134,7 @@ func (b *bucket) sync() error {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.SetBasicAuth(b.manager.key, b.manager.secret)
 
 	log.Debugf("sending quota: %s", body)
 
