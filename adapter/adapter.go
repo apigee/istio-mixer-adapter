@@ -28,9 +28,8 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"time"
-
 	"strings"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
@@ -425,14 +424,18 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}
 	}
 	if anyError != nil {
+		h.Log().Errorf("authenticate err: %v", anyError)
 		return adapter.CheckResult{}, anyError
 	}
 	if exceeded {
+		h.Log().Debugf("quota exceeded: %v", err)
 		return adapter.CheckResult{
 			Status:        status.WithResourceExhausted("quota exceeded"),
 			ValidUseCount: 1, // call adapter each time to ensure quotas are applied
 		}, nil
 	}
+
+	h.Log().Debugf("request authorized")
 
 	okResult := adapter.CheckResult{
 		Status: status.OK,
