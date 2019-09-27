@@ -6,10 +6,9 @@
     </Remove>
     <Set>
         <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{
-    "allowed": @ratelimit.DistributedQuota.allowed.count#,
-    "used": @ratelimit.DistributedQuota.used.count#,
-    "exceeded": @ratelimit.DistributedQuota.exceed.count#,
-    "available": @ratelimit.DistributedQuota.available.count#,
+    "allowed": @quota.allow#,
+    "used": @quota.used#,
+    "exceeded": @quota.exceeded#,
     "expiryTime": @ratelimit.DistributedQuota.expiry.time#,
     "timestamp": @system.timestamp#
 }</Payload>
