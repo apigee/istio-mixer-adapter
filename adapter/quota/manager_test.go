@@ -116,7 +116,7 @@ func TestQuota(t *testing.T) {
 		}
 	}
 
-	// test incompatible product
+	// test incompatible product (replaces bucket)
 	p2 := &product.APIProduct{
 		QuotaLimitInt:    1,
 		QuotaIntervalInt: 2,
@@ -127,7 +127,7 @@ func TestQuota(t *testing.T) {
 		dedupID: "Z",
 		want: Result{
 			Used:     1,
-			Exceeded: 1,
+			Exceeded: 0,
 		},
 	}
 
@@ -300,21 +300,23 @@ func TestDisconnected(t *testing.T) {
 	}
 
 	_, err := m.Apply(authContext, p, args)
+	if err != nil {
+		t.Errorf("shouln't get error: %v", err)
+	}
 
-	wantErr := fmt.Sprintf("unable to sync quota app-: bad response (404): error")
-	if err == nil || err.Error() != wantErr {
-		t.Errorf("got error: %s, want: %s", err, wantErr)
+	// force sync error
+	err = m.forceSync(getQuotaID(authContext, p))
+	if err == nil {
+		t.Fatalf("should have received error: %s", err)
 	}
 
 	_, err = m.Apply(authContext, p, args)
-	if err == nil || err.Error() != wantErr {
-		t.Errorf("got error: %s, want: %s", err, wantErr)
+	if err != nil {
+		t.Errorf("shouln't get error: %v", err)
 	}
 
 	errC.send = 200
-	m.Start(env)
-	defer m.Close()
-	time.Sleep(10 * time.Millisecond) // allow sync
+	m.forceSync(getQuotaID(authContext, p))
 
 	res, err := m.Apply(authContext, p, args)
 	if err != nil {
@@ -382,10 +384,8 @@ func TestWindowExpired(t *testing.T) {
 		BestEffort:  true,
 	}
 
-	res, err := m.Apply(authContext, p, args) // sync is forced
-	if err != nil {
-		t.Errorf("got error: %v", err)
-	}
+	res, err := m.Apply(authContext, p, args)
+	m.forceSync(getQuotaID(authContext, p))
 
 	quotaID := fmt.Sprintf("%s-%s", authContext.Application, p.Name)
 	bucket := m.buckets[quotaID]
@@ -455,4 +455,22 @@ func testServer(serverResult *Result, now func() time.Time, errC *errControl) *h
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(serverResult)
 	}))
+}
+
+// ignores if no matching quota bucket
+func (m *Manager) forceSync(quotaID string) error {
+	m.bucketsLock.RLock()
+	b, ok := m.buckets[quotaID]
+	if !ok {
+		return nil
+	}
+	m.syncingBucketsLock.Lock()
+	m.syncingBuckets[b] = struct{}{}
+	m.syncingBucketsLock.Unlock()
+	defer func() {
+		m.syncingBucketsLock.Lock()
+		delete(m.syncingBuckets, b)
+		m.syncingBucketsLock.Unlock()
+	}()
+	return b.sync()
 }
