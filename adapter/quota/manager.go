@@ -116,6 +116,10 @@ func (m *Manager) Close() {
 	m.log.Infof("closed quota manager")
 }
 
+func getQuotaID(auth *auth.Context, p *product.APIProduct) string {
+	return fmt.Sprintf("%s-%s", auth.Application, p.Name)
+}
+
 // Apply a quota request to the local quota bucket and schedule for sync
 func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.QuotaArgs) (*Result, error) {
 
@@ -123,11 +127,10 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 		return result, nil
 	}
 
-	quotaID := fmt.Sprintf("%s-%s", auth.Application, p.Name)
+	quotaID := getQuotaID(auth, p)
 
 	req := &Request{
 		Identifier: quotaID,
-		Weight:     args.QuotaAmount,
 		Interval:   p.QuotaIntervalInt,
 		Allow:      p.QuotaLimitInt,
 		TimeUnit:   p.QuotaTimeUnit,
@@ -136,7 +139,6 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 	// a new bucket is created if missing or if product is no longer compatible
 	var result *Result
 	var err error
-	forceSync := false
 	m.bucketsLock.RLock()
 	b, ok := m.buckets[quotaID]
 	m.bucketsLock.RUnlock()
@@ -144,28 +146,15 @@ func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args adapter.
 		m.bucketsLock.Lock()
 		b, ok = m.buckets[quotaID]
 		if !ok || !b.compatible(req) {
-			forceSync = true
 			b = newBucket(*req, m)
-			m.syncingBucketsLock.Lock()
-			m.syncingBuckets[b] = struct{}{}
-			m.syncingBucketsLock.Unlock()
-			defer func() {
-				m.syncingBucketsLock.Lock()
-				delete(m.syncingBuckets, b)
-				m.syncingBucketsLock.Unlock()
-			}()
 			m.buckets[quotaID] = b
 			m.log.Debugf("new quota bucket: %s", quotaID)
 		}
 		m.bucketsLock.Unlock()
 	}
 
-	if forceSync {
-		err = b.sync() // force sync for new bucket
-		result = b.result
-	} else {
-		result, err = b.apply(req)
-	}
+	req.Weight = args.QuotaAmount
+	result, err = b.apply(req)
 
 	if result != nil && err == nil && args.DeduplicationID != "" {
 		m.dupCache.Add(args.DeduplicationID, result)
