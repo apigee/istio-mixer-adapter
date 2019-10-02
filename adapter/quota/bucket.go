@@ -37,7 +37,6 @@ type bucket struct {
 	refreshAfter time.Duration // duration after synced
 	deleteAfter  time.Duration // duration after checked
 	invalidAfter time.Time     // result window is no longer valid after this
-	syncError    error
 }
 
 func newBucket(req Request, m *Manager) *bucket {
@@ -88,7 +87,7 @@ func (b *bucket) apply(req *Request) (*Result, error) {
 		res.Used = res.Allowed
 	}
 
-	return res, b.syncError
+	return res, nil
 }
 
 func (b *bucket) compatible(r *Request) bool {
@@ -105,14 +104,6 @@ func (b *bucket) sync() error {
 	log := b.manager.log
 	log.Debugf("syncing quota %s", b.request.Identifier)
 
-	revert := func(err error) error {
-		err = log.Errorf("unable to sync quota %s: %v", b.request.Identifier, err)
-		b.lock.Lock()
-		b.syncError = err
-		b.lock.Unlock()
-		return err
-	}
-
 	b.lock.Lock()
 	r := *b.request // make copy
 
@@ -124,12 +115,12 @@ func (b *bucket) sync() error {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(r)
 	if err != nil {
-		return revert(fmt.Errorf("encode: %v", err))
+		return log.Errorf("encode: %v", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost, b.quotaURL, body)
 	if err != nil {
-		return revert(fmt.Errorf("new request: %v", err))
+		return log.Errorf("new request: %v", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -140,14 +131,14 @@ func (b *bucket) sync() error {
 
 	resp, err := b.manager.client.Do(req)
 	if err != nil {
-		return revert(fmt.Errorf("do request: %v", err))
+		return log.Errorf("do request: %v", err)
 	}
 	defer resp.Body.Close()
 
 	buf := bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return revert(fmt.Errorf("read body: %v", err))
+		return log.Errorf("read body: %v", err)
 	}
 	respBody := buf.Bytes()
 
@@ -155,7 +146,7 @@ func (b *bucket) sync() error {
 	case 200:
 		var quotaResult Result
 		if err = json.Unmarshal(respBody, &quotaResult); err != nil {
-			return revert(fmt.Errorf("bad response: %s", string(respBody)))
+			return log.Errorf("bad response: %s", string(respBody))
 		}
 
 		log.Debugf("quota synced: %#v", quotaResult)
@@ -167,12 +158,11 @@ func (b *bucket) sync() error {
 			b.request.Weight -= r.Weight // same window, keep accumulated Weight
 		}
 		b.result = &quotaResult
-		b.syncError = nil
 		b.lock.Unlock()
 		return nil
 
 	default:
-		return revert(fmt.Errorf("bad response (%d): %s", resp.StatusCode, string(respBody)))
+		return log.Errorf("bad response (%d): %s", resp.StatusCode, string(respBody))
 	}
 }
 

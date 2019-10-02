@@ -304,6 +304,12 @@ func TestDisconnected(t *testing.T) {
 		t.Errorf("shouln't get error: %v", err)
 	}
 
+	// force sync error
+	err = m.forceSync(getQuotaID(authContext, p))
+	if err == nil {
+		t.Fatalf("should have received error: %s", err)
+	}
+
 	_, err = m.Apply(authContext, p, args)
 	if err != nil {
 		t.Errorf("shouln't get error: %v", err)

@@ -250,7 +250,7 @@ func TestAuthorization(t *testing.T) {
 			}
 			`,
 		},
-		"Quota exceeded request": { // note: special case below
+		"Quota request": { // note: cannot test quota exceeded via integration
 			attrs: map[string]interface{}{
 				"api.service":     "service",
 				"request.path":    "/ExceededQuota",
@@ -260,25 +260,14 @@ func TestAuthorization(t *testing.T) {
 			want: `
 			{
 				"Returns": [{
-						"Check": {
-							"Status": {},
-							"ValidDuration": 0,
-							"ValidUseCount": 1
-						}
-					},{
-						"Check": {
-							"Status": {
-								"code": 8,
-								"message": "handler.apigee.istio-system:quota exceeded"
-							},
-							"ValidDuration": 0,
-							"ValidUseCount": 1
-						},
-						"Quota": null,
-						"Error": null
+					"Check": {
+						"Status": {},
+						"ValidDuration": 0,
+						"ValidUseCount": 1
 					}
-				]
-			}			`,
+				}]
+			}			
+			`,
 		},
 	}
 
@@ -295,26 +284,18 @@ func TestAuthorization(t *testing.T) {
 	serviceCfg := strings.Replace(adapterConfig, "__SERVER_BASE_URL__", ts.URL, -1)
 	for id, c := range cases {
 		t.Logf("** Executing test case '%s' **", id)
-		calls := []integration.Call{
-			{
-				CallKind: integration.CHECK,
-				Attrs:    c.attrs,
-			},
-		}
-		if id == "Quota exceeded request" {
-			calls = append(calls, integration.Call{
-				CallKind: integration.CHECK,
-				Attrs:    c.attrs,
-			})
-		}
-
 		integration.RunTest(
 			t,
 			func() adapter.Info {
 				return info
 			},
 			integration.Scenario{
-				ParallelCalls: calls,
+				ParallelCalls: []integration.Call{
+					{
+						CallKind: integration.CHECK,
+						Attrs:    c.attrs,
+					},
+				},
 
 				Setup: func() (interface{}, error) {
 					return nil, nil
