@@ -91,11 +91,11 @@ func newVerifier(env adapter.Env, jwtMan *jwtManager, opts keyVerifierOpts) keyV
 }
 
 func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (map[string]interface{}, error) {
-	if _, ok := kv.knownBad.Get(apiKey); ok {
+	if errResp, ok := kv.knownBad.Get(apiKey); ok {
 		if kv.env.Logger().DebugEnabled() {
 			kv.env.Logger().Debugf("fetchToken: known bad token: %s", util.Truncate(apiKey, 5))
 		}
-		return nil, ErrBadAuth
+		return nil, errResp.(error)
 	}
 
 	if kv.env.Logger().DebugEnabled() {
@@ -122,6 +122,7 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (map[s
 
 	resp, err := kv.client.Do(req)
 	if err != nil {
+		kv.knownBad.Set(apiKey, err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -131,7 +132,7 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (map[s
 
 	token := apiKeyResp.Token
 	if token == "" { // bad API Key
-		kv.knownBad.Set(apiKey, apiKey)
+		kv.knownBad.Set(apiKey, ErrBadAuth)
 		kv.cache.Remove(apiKey)
 		return nil, ErrBadAuth
 	}
@@ -139,12 +140,16 @@ func (kv *keyVerifierImpl) fetchToken(ctx context.Context, apiKey string) (map[s
 	// no need to verify our own token, just parse it
 	claims, err := kv.jwtMan.parseJWT(ctx, token, false)
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing jwt")
+		err = errors.Wrap(err, "parsing jwt")
+		kv.knownBad.Set(apiKey, err)
+		return nil, err
 	}
 
 	exp, err := parseExp(claims)
 	if err != nil {
-		return nil, errors.Wrap(err, "bad exp")
+		err = errors.Wrap(err, "bad exp")
+		kv.knownBad.Set(apiKey, err)
+		return nil, err
 	}
 	claims[parsedExpClaim] = exp
 
