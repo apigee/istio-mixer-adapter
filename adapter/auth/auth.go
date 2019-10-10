@@ -24,8 +24,18 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/adapter/context"
 	"github.com/apigee/istio-mixer-adapter/adapter/util"
+	"github.com/pkg/errors"
 	"istio.io/istio/mixer/pkg/adapter"
 )
+
+// ErrNoAuth is an error because of missing auth
+var ErrNoAuth = errors.New("missing authentication")
+
+// ErrBadAuth is an error because of incorrect auth
+var ErrBadAuth = errors.New("invalid authentication")
+
+// ErrInternalError is an error because of internal error
+var ErrInternalError = errors.New("internal error")
 
 // NewManager constructs a new Manager and begins an update loop to
 // periodically refresh JWT credentials if options.pollInterval > 0.
@@ -35,8 +45,9 @@ func NewManager(env adapter.Env, options Options) (*Manager, error) {
 		return nil, err
 	}
 	jwtMan := newJWTManager(options.PollInterval)
-	v := newVerifier(jwtMan, keyVerifierOpts{
-		Client: options.Client,
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
+		Client:   options.Client,
+		CacheTTL: options.APIKeyCacheDuration,
 	})
 	am := &Manager{
 		env:      env,
@@ -73,88 +84,83 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 	claims map[string]interface{}, apiKeyClaimKey string) (*Context, error) {
 	log := ctx.Log()
 
-	redacts := []interface{}{
-		claims["access_token"],
-		claims["client_id"],
-		claims[apiKeyClaimKey],
+	if log.DebugEnabled() {
+		redacts := []interface{}{
+			claims["access_token"],
+			claims["client_id"],
+			claims[apiKeyClaimKey],
+		}
+		redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
+		log.Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 	}
-	redactedClaims := util.SprintfRedacts(redacts, "%#v", claims)
-	log.Debugf("Authenticate: key: %v, claims: %v", util.Truncate(apiKey, 5), redactedClaims)
 
 	var authContext = &Context{Context: ctx}
 
 	// use API Key in JWT if available
 	authAttempted := false
-	var err error
+	var authenticationError, claimsError error
 	var verifiedClaims map[string]interface{}
+
 	if claims[apiKeyClaimKey] != nil {
 		authAttempted = true
 		if apiKey, ok := claims[apiKeyClaimKey].(string); ok {
-			verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
-			if err == nil {
+			verifiedClaims, authenticationError = m.verifier.Verify(ctx, apiKey)
+			if authenticationError == nil {
 				log.Debugf("using api key from jwt claim %s", apiKeyClaimKey)
 				authContext.APIKey = apiKey
+				claimsError = authContext.setClaims(verifiedClaims)
 			}
 		}
 	}
 
 	// else, use API Key if available
-	if verifiedClaims == nil && apiKey != "" {
+	if !authAttempted && apiKey != "" {
 		authAttempted = true
-		verifiedClaims, err = m.verifier.Verify(ctx, apiKey)
-		if err == nil {
+		verifiedClaims, authenticationError = m.verifier.Verify(ctx, apiKey)
+		if authenticationError == nil {
 			log.Debugf("using api key from request")
 			authContext.APIKey = apiKey
+			claimsError = authContext.setClaims(verifiedClaims)
 		}
 	}
 
-	// else, use JWT claims
-	if len(verifiedClaims) == 0 && len(claims) > 0 {
+	// if we're not authenticated yet, try the jwt claims directly
+	if !authContext.isAuthenticated() && len(claims) > 0 {
+		claimsError = authContext.setClaims(claims)
+		if authAttempted && claimsError == nil {
+			log.Warningf("apiKey verification error: %s, using jwt claims", authenticationError)
+			authenticationError = nil
+		}
 		authAttempted = true
-		verifiedClaims = claims
 	}
 
-	err = authContext.setClaims(verifiedClaims)
+	if authenticationError != nil && authenticationError != ErrBadAuth {
+		authenticationError = ErrInternalError
+	}
+
+	if authenticationError == nil && claimsError != nil {
+		authenticationError = claimsError
+	}
+
+	if !authAttempted {
+		authenticationError = ErrNoAuth
+	}
 
 	if log.DebugEnabled() {
-		redacts = []interface{}{authContext.APIKey, authContext.AccessToken, authContext.ClientID}
+		redacts := []interface{}{authContext.APIKey, authContext.AccessToken, authContext.ClientID}
 		redactedAC := util.SprintfRedacts(redacts, "%v", authContext)
-		if err == nil {
+		if authenticationError == nil {
 			log.Debugf("Authenticate success: %s", redactedAC)
 		} else {
-			log.Debugf("Authenticate error: %s [%v]", redactedAC, err)
+			log.Debugf("Authenticate error: %s [%v]", redactedAC, authenticationError)
 		}
 	}
 
-	if verifiedClaims[apiProductListClaim] == nil {
-		if authAttempted {
-			err = &BadAuthError{}
-		} else {
-			err = &NoAuthError{}
-		}
-	}
-
-	return authContext, err
+	return authContext, authenticationError
 }
 
 func (m *Manager) start() {
 	m.jwtMan.start(m.env)
-}
-
-// NoAuthError indicates that the error was because of missing auth
-type NoAuthError struct {
-}
-
-func (e *NoAuthError) Error() string {
-	return "missing authentication"
-}
-
-// BadAuthError indicates that the error was because of invalid auth
-type BadAuthError struct {
-}
-
-func (e *BadAuthError) Error() string {
-	return "invalid authentication"
 }
 
 // Options allows us to specify options for how this auth manager will run
@@ -163,6 +169,8 @@ type Options struct {
 	PollInterval time.Duration
 	// Client is a configured HTTPClient
 	Client *http.Client
+	// APIKeyCacheDuration is the length of time APIKeys are cached when unable to refresh
+	APIKeyCacheDuration time.Duration
 }
 
 func (o *Options) validate() error {

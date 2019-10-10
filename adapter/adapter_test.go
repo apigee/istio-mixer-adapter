@@ -121,6 +121,9 @@ func TestValidateBuild(t *testing.T) {
 		Products: &config.ParamsProductOptions{
 			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 		},
+		Auth: &config.ParamsAuthOptions{
+			ApiKeyCacheDuration: pbtypes.DurationProto(30 * time.Minute),
+		},
 	}
 	b.SetAdapterConfig(&validConfig)
 
@@ -153,6 +156,9 @@ func TestValidateBuild(t *testing.T) {
 		},
 		Products: &config.ParamsProductOptions{
 			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
+		},
+		Auth: &config.ParamsAuthOptions{
+			ApiKeyCacheDuration: pbtypes.DurationProto(30 * time.Minute),
 		},
 	}
 	if !reflect.DeepEqual(validConfig, derivedConfig) {

@@ -32,16 +32,14 @@ import (
 	"testing"
 	"time"
 
-	"istio.io/istio/mixer/pkg/status"
-
 	"github.com/apigee/istio-mixer-adapter/adapter"
-
 	"github.com/apigee/istio-mixer-adapter/adapter/analytics"
 	"github.com/apigee/istio-mixer-adapter/adapter/config"
 	"github.com/apigee/istio-mixer-adapter/adapter/product"
 	analyticsT "github.com/apigee/istio-mixer-adapter/template/analytics"
 	protobuf "github.com/gogo/protobuf/types"
 	istio_policy_v1beta1 "istio.io/api/policy/v1beta1"
+	"istio.io/istio/mixer/pkg/status"
 	"istio.io/istio/mixer/template/authorization"
 )
 
@@ -259,7 +257,7 @@ func TestGRPCAdapter_HandleAuthorization(t *testing.T) {
 	if err != nil {
 		t.Errorf("error in HandleAuthorization: %v", err)
 	}
-	expected := status.WithPermissionDenied("missing authentication")
+	expected := status.WithUnauthenticated("missing authentication")
 	if !reflect.DeepEqual(expected, checkResult.Status) {
 		t.Errorf("checkResult expected: %v got: %v", expected, checkResult)
 	}

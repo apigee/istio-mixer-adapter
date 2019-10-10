@@ -193,7 +193,7 @@ func (g *GRPCAdapter) Close() error {
 
 // HandleAuthorization is in the context of a single tenant
 func (h *ApigeeHandler) HandleAuthorization(ctx context.Context, im *authorization.InstanceMsg) (*model.CheckResult, error) {
-	h.env.Logger().Debugf("HandleAuthorization: %v", im)
+	h.env.Logger().Debugf("gRPC HandleAuthorization")
 
 	decodeValue := func(in interface{}) interface{} {
 		switch t := in.(type) {
@@ -251,7 +251,10 @@ func (h *ApigeeHandler) HandleAuthorization(ctx context.Context, im *authorizati
 
 // HandleAnalytics is in the context of a single tenant
 func (h *ApigeeHandler) HandleAnalytics(ctx context.Context, im []*analytics.InstanceMsg) error {
-	h.env.Logger().Debugf("HandleAnalytics: %v", im)
+	if len(im) == 0 {
+		return nil
+	}
+	h.env.Logger().Debugf("gRPC HandleAnalytics")
 
 	decodeTimestamp := func(t *policy.TimeStamp) time.Time {
 		if t == nil {

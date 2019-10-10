@@ -134,6 +134,9 @@ func GetInfo() adapter.Info {
 				FileLimit:       1024,
 				SendChannelSize: 10,
 			},
+			Auth: &config.ParamsAuthOptions{
+				ApiKeyCacheDuration: pbtypes.DurationProto(30 * time.Minute),
+			},
 		},
 		NewBuilder: func() adapter.HandlerBuilder { return &builder{} },
 	}
@@ -223,8 +226,9 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	}
 
 	authMan, err := auth.NewManager(env, auth.Options{
-		PollInterval: certPollInterval,
-		Client:       httpClient,
+		PollInterval:        certPollInterval,
+		Client:              httpClient,
+		APIKeyCacheDuration: toDuration(b.adapterConfig.Auth.ApiKeyCacheDuration),
 	})
 	if err != nil {
 		return nil, err
@@ -266,7 +270,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		authMan:        authMan,
 		analyticsMan:   analyticsMan,
 		quotaMan:       quotaMan,
-		apiKeyClaimKey: b.adapterConfig.ApiKeyClaim,
+		apiKeyClaimKey: b.adapterConfig.Auth.ApiKeyClaim,
 	}
 
 	return h, nil
@@ -374,12 +378,14 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 
 // Handle Authentication, Authorization, and Quotas
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	redacts := []interface{}{
-		inst.Subject.Properties[apiKeyAttribute],
-		inst.Subject.Properties[jsonClaimsKey],
+	if h.Log().DebugEnabled() {
+		redacts := []interface{}{
+			inst.Subject.Properties[apiKeyAttribute],
+			inst.Subject.Properties[jsonClaimsKey],
+		}
+		redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
+		h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 	}
-	redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
-	h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 
 	claims := h.resolveClaimsInterface(inst.Subject.Properties)
 
@@ -387,10 +393,10 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims, h.apiKeyClaimKey)
 	if err != nil {
-		if _, ok := err.(*auth.NoAuthError); ok {
+		if err == auth.ErrNoAuth {
 			h.Log().Debugf("authenticate err: %v", err)
 			return adapter.CheckResult{
-				Status: status.WithPermissionDenied(err.Error()),
+				Status: status.WithUnauthenticated(err.Error()),
 			}, nil
 		}
 		h.Log().Errorf("authenticate err: %v", err)

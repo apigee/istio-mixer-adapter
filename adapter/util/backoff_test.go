@@ -73,3 +73,26 @@ func TestBackoffWithJitter(t *testing.T) {
 
 	b.Reset()
 }
+
+func TestDefaultBackoff(t *testing.T) {
+	backoff := DefaultExponentialBackoff()
+	eb, ok := backoff.(*ExponentialBackoff)
+	if !ok {
+		t.Errorf("not an *ExponentialBackoff")
+	}
+	if eb.initial != defaultInitial {
+		t.Errorf("want: %v, got: %v", defaultInitial, eb.initial)
+	}
+	if defaultInitial != eb.initial {
+		t.Errorf("want: %v, got: %v", defaultInitial, eb.initial)
+	}
+	if defaultMax != eb.max {
+		t.Errorf("want: %v, got: %v", defaultMax, eb.max)
+	}
+	if defaultFactor != eb.factor {
+		t.Errorf("want: %v, got: %v", defaultFactor, eb.factor)
+	}
+	if defaultJitter != eb.jitter {
+		t.Errorf("want: %v, got: %v", defaultJitter, eb.jitter)
+	}
+}

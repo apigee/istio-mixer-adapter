@@ -238,7 +238,7 @@ func TestAuthorization(t *testing.T) {
 				"Returns": [{
 					"Check": {
 						"Status": {
-							"code": 7,
+							"code": 16,
 							"message": "handler.apigee.istio-system:missing authentication"
 						},
 						"ValidDuration": 0,
@@ -466,7 +466,9 @@ spec:
   env_name: env
   key: key
   secret: secret
-  api_key_claim: api_key
+  auth:
+    api_key_claim: api_key
+    api_key_cache_duration: 30m
   allowUnverifiedSSLCert: false
 ---
 apiVersion: config.istio.io/v1alpha2
@@ -518,7 +520,7 @@ func TestUnknownCert(t *testing.T) {
 				"Check": {
 					"Status": {
 						"code": 7,
-						"message": "handler.apigee.istio-system:invalid authentication"
+						"message": "handler.apigee.istio-system:internal error"
 					},
 					"ValidDuration": 0,
 					"ValidUseCount": 0
@@ -572,7 +574,7 @@ func TestUnknownCert(t *testing.T) {
 			"Quota": null,
 			"Error": null
 		}]
-	}
+	}	
 	`
 
 	// should succeed, ignore bad SSL cert

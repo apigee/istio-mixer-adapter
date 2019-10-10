@@ -15,7 +15,6 @@
 package auth
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -26,8 +25,8 @@ import (
 )
 
 type testVerifier struct {
-	goodAPIKey string
-	claims     map[string]interface{}
+	keyErrors map[string]error
+	claims    map[string]interface{}
 }
 
 var testJWTClaims = map[string]interface{}{
@@ -39,10 +38,11 @@ var testJWTClaims = map[string]interface{}{
 }
 
 func (tv *testVerifier) Verify(ctx context.Context, apiKey string) (map[string]interface{}, error) {
-	if apiKey != tv.goodAPIKey {
-		return nil, fmt.Errorf("invalid auth key")
+	err := tv.keyErrors[apiKey]
+	if err != nil {
+		return nil, err
 	}
-	// Just return some dummy value.
+
 	return testJWTClaims, nil
 }
 
@@ -68,30 +68,35 @@ func TestNewManager(t *testing.T) {
 
 func TestAuthenticate(t *testing.T) {
 	goodAPIKey := "good"
+	badAPIKey := "bad"
+	errAPIKey := "error"
+	missingProductListError := "api_product_list claim is required"
 
 	for _, test := range []struct {
 		desc           string
 		apiKey         string
 		apiKeyClaimKey string
 		claims         map[string]interface{}
-		wantError      bool
+		wantError      string
 	}{
-		{"with valid JWT", "", "", testJWTClaims, false},
-		{"with invalid JWT", "", "", map[string]interface{}{}, true},
-		{"with valid API key", "good", "", nil, false},
-		{"with invalid API key", "bad", "", nil, true},
+		{"with valid JWT", "", "", testJWTClaims, ""},
+		{"with invalid JWT", "", "", map[string]interface{}{"exp": "1"}, missingProductListError},
+		{"with valid API key", goodAPIKey, "", nil, ""},
+		{"with invalid API key", badAPIKey, "", nil, ErrBadAuth.Error()},
 		{"with valid claims API key", "", "goodkey", map[string]interface{}{
+			"exp":              "1",
 			"api_product_list": "[]",
-			"goodkey":          "good",
-		}, false},
+			"goodkey":          goodAPIKey,
+		}, ""},
 		{"with invalid claims API key", "", "badkey", map[string]interface{}{
-			"api_product_list": "[]",
-			"somekey":          "good",
-			"badkey":           "bad",
-		}, true},
-		{"with missing claims API key", "", "badkey", map[string]interface{}{
-			"api_product_list": "[]",
-		}, true},
+			"exp":     "1",
+			"somekey": goodAPIKey,
+			"badkey":  badAPIKey,
+		}, ErrBadAuth.Error()},
+		{"with missing claims API key", "", "missingkey", map[string]interface{}{
+			"exp": "1",
+		}, missingProductListError},
+		{"error verifying API key", errAPIKey, "", nil, ErrInternalError.Error()},
 	} {
 		t.Log(test.desc)
 
@@ -99,7 +104,11 @@ func TestAuthenticate(t *testing.T) {
 
 		jwtMan := newJWTManager(time.Hour)
 		tv := &testVerifier{
-			goodAPIKey: goodAPIKey,
+			keyErrors: map[string]error{
+				goodAPIKey: nil,
+				badAPIKey:  ErrBadAuth,
+				errAPIKey:  ErrInternalError,
+			},
 		}
 		authMan := &Manager{
 			env:      env,
@@ -112,14 +121,11 @@ func TestAuthenticate(t *testing.T) {
 		ctx := authtest.NewContext("", adaptertest.NewEnv(t))
 		_, err := authMan.Authenticate(ctx, test.apiKey, test.claims, test.apiKeyClaimKey)
 		if err != nil {
-			if !test.wantError {
-				t.Errorf("unexpected error: %s", err)
+			if test.wantError != err.Error() {
+				t.Errorf("wanted error: %s, got: %s", test.wantError, err.Error())
 			}
-			continue
-		}
-		if test.wantError {
+		} else if test.wantError != "" {
 			t.Errorf("wanted error, got none")
-			continue
 		}
 	}
 }
