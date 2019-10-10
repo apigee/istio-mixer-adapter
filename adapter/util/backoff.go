@@ -20,9 +20,12 @@ import (
 	"time"
 )
 
-const defaultInitial = 200 * time.Millisecond
-const defaultMax = 10 * time.Second
-const defaultFactor float64 = 2
+const (
+	defaultInitial         = 200 * time.Millisecond
+	defaultMax             = 10 * time.Second
+	defaultFactor  float64 = 2
+	defaultJitter          = false
+)
 
 // Backoff defines functions for RPC Backoff strategy.
 type Backoff interface {
@@ -40,7 +43,12 @@ type ExponentialBackoff struct {
 	factor          float64
 }
 
-// NewExponentialBackoff constructs a new ExponentialBackoff struct.
+// DefaultExponentialBackoff constructs a new ExponentialBackoff with defaults.
+func DefaultExponentialBackoff() Backoff {
+	return NewExponentialBackoff(0, 0, 0, defaultJitter)
+}
+
+// NewExponentialBackoff constructs a new ExponentialBackoff.
 func NewExponentialBackoff(initial, max time.Duration, factor float64, jitter bool) Backoff {
 	backoff := &ExponentialBackoff{}
 

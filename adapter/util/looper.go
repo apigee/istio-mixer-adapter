@@ -32,18 +32,18 @@ type Looper struct {
 // Passed ctx is passed on to the work function and work should check for cancel if long-running.
 // If errHandler itself returns an error, the daemon will exit.
 func (a *Looper) Start(ctx context.Context, work func(ctx context.Context) error, period time.Duration, errHandler func(error) error) {
-	a.Env.Logger().Debugf("Looper starting")
+	// a.Env.Logger().Debugf("Looper starting")
 	run := time.After(0 * time.Millisecond) // start first run immediately
-	log := a.Env.Logger()
+	// log := a.Env.Logger()
 
 	a.Env.ScheduleDaemon(func() {
 		for {
 			select {
 			case <-ctx.Done():
-				log.Debugf("Looper exiting")
+				// log.Debugf("Looper exiting")
 				return
 			case <-run:
-				log.Debugf("Looper work running")
+				// log.Debugf("Looper work running")
 				err := work(ctx)
 				if ctx.Err() != nil {
 					return
@@ -54,13 +54,13 @@ func (a *Looper) Start(ctx context.Context, work func(ctx context.Context) error
 					nextRunIn = period
 				} else {
 					if errHandler(err) != nil {
-						log.Debugf("Looper quit on error")
+						// log.Debugf("Looper quit on error")
 						return
 					}
 					nextRunIn = a.Backoff.Duration()
 				}
 				run = time.After(nextRunIn)
-				log.Debugf("Looper work scheduled to run in %s", nextRunIn)
+				// log.Debugf("Looper work scheduled to run in %s", nextRunIn)
 			}
 		}
 	})

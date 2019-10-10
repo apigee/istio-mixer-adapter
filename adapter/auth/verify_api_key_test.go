@@ -125,7 +125,7 @@ func TestVerifyAPIKeyValid(t *testing.T) {
 	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
 		Client: http.DefaultClient,
 	})
 
@@ -155,7 +155,7 @@ func TestVerifyAPIKeyCacheWithClear(t *testing.T) {
 	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
 		Client: http.DefaultClient,
 	})
 
@@ -207,7 +207,8 @@ func TestVerifyAPIKeyCacheWithExpiry(t *testing.T) {
 	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
+		CacheTTL:              50 * time.Millisecond,
 		CacheEvictionInterval: 50 * time.Millisecond,
 		Client:                http.DefaultClient,
 	})
@@ -267,7 +268,7 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
 		Client: http.DefaultClient,
 	})
 
@@ -283,8 +284,8 @@ func TestVerifyAPIKeyFail(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("error should not be nil")
-	} else if err.Error() != "invalid api key" {
-		t.Errorf("got error: '%s', expected: 'invalid api key'", err.Error())
+	} else if err.Error() != ErrBadAuth.Error() {
+		t.Errorf("got error: '%s', expected: 'invalid api key'", ErrBadAuth.Error())
 	}
 }
 
@@ -293,7 +294,7 @@ func TestVerifyAPIKeyError(t *testing.T) {
 	jwtMan := newJWTManager(time.Hour)
 	jwtMan.start(env)
 	defer jwtMan.stop()
-	v := newVerifier(jwtMan, keyVerifierOpts{
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
 		Client: http.DefaultClient,
 	})
 
@@ -306,5 +307,28 @@ func TestVerifyAPIKeyError(t *testing.T) {
 
 	if success != nil {
 		t.Errorf("success should be nil, is: %v", success)
+	}
+}
+
+func TestVerifyAPIKeyCallFail(t *testing.T) {
+	env := test.NewEnv(t)
+	jwtMan := newJWTManager(time.Hour)
+	jwtMan.start(env)
+	defer jwtMan.stop()
+	v := newVerifier(env, jwtMan, keyVerifierOpts{
+		Client: http.DefaultClient,
+	})
+
+	ctx := authtest.NewContext("http://badhost/badpath", test.NewEnv(t))
+	success, err := v.Verify(ctx, "badKey")
+
+	if success != nil {
+		t.Errorf("success should be nil, is: %v", success)
+	}
+
+	if err == nil {
+		t.Errorf("error should not be nil")
+	} else if err.Error() == "invalid api key" {
+		t.Errorf("error should not be %s", err.Error())
 	}
 }

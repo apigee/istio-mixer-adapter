@@ -96,12 +96,14 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	}
 
 	var ok bool
-	if a.ClientID, ok = claims[clientIDClaim].(string); !ok {
+	if _, ok = claims[clientIDClaim].(string); !ok {
 		return errors.Wrapf(err, "unable to interpret %s: %v", clientIDClaim, claims[clientIDClaim])
 	}
-	if a.Application, ok = claims[applicationNameClaim].(string); !ok {
+	if _, ok = claims[applicationNameClaim].(string); !ok {
 		return errors.Wrapf(err, "unable to interpret %s: %v", applicationNameClaim, claims[applicationNameClaim])
 	}
+	a.ClientID = claims[clientIDClaim].(string)
+	a.Application = claims[applicationNameClaim].(string)
 	a.APIProducts = products
 	a.Scopes = scopes
 	a.Expires = exp
@@ -109,6 +111,10 @@ func (a *Context) setClaims(claims map[string]interface{}) error {
 	a.AccessToken, _ = claims[accessTokenClaim].(string)
 
 	return nil
+}
+
+func (a *Context) isAuthenticated() bool {
+	return a.ClientID != ""
 }
 
 func parseArrayOfStrings(obj interface{}) (results []string, err error) {
