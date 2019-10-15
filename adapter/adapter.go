@@ -430,7 +430,7 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}
 	}
 	if anyError != nil {
-		h.Log().Errorf("authenticate err: %v", anyError)
+		h.Log().Debugf("authenticate err: %v", anyError)
 		return adapter.CheckResult{}, anyError
 	}
 	if exceeded {
