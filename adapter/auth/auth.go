@@ -32,7 +32,7 @@ import (
 var ErrNoAuth = errors.New("missing authentication")
 
 // ErrBadAuth is an error because of incorrect auth
-var ErrBadAuth = errors.New("invalid authentication")
+var ErrBadAuth = errors.New("permission denied")
 
 // ErrInternalError is an error because of internal error
 var ErrInternalError = errors.New("internal error")

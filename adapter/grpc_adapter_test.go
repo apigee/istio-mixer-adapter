@@ -267,7 +267,7 @@ func TestGRPCAdapter_HandleAuthorization(t *testing.T) {
 	if err != nil {
 		t.Errorf("error in HandleAuthorization: %v", err)
 	}
-	expected = status.WithPermissionDenied("invalid authentication")
+	expected = status.WithPermissionDenied("permission denied")
 	if !reflect.DeepEqual(expected, checkResult.Status) {
 		t.Errorf("checkResult expected: %v got: %v", expected, checkResult)
 	}

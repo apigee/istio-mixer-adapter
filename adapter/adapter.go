@@ -376,6 +376,21 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	return h.analyticsMan.SendRecords(authContext, records)
 }
 
+// static values for HandleAuthorization...
+var quotaArgs = adapter.QuotaArgs{QuotaAmount: 1}
+var checkResultNil = adapter.CheckResult{}
+var checkResultOk = adapter.CheckResult{Status: status.OK}
+var checkResultOkWithQuotas = adapter.CheckResult{
+	Status:        status.OK,
+	ValidUseCount: 1, // call adapter each time to ensure quotas are applied
+}
+var checkResultQuotaExceeded = adapter.CheckResult{
+	Status:        status.WithResourceExhausted("quota exceeded"),
+	ValidUseCount: 1, // call adapter each time to ensure quotas are applied
+}
+var checkResultNotAuthorized = adapter.CheckResult{Status: status.WithPermissionDenied("permission denied")}
+var checkResultMissingAuth = adapter.CheckResult{Status: status.WithUnauthenticated("missing authentication")}
+
 // Handle Authentication, Authorization, and Quotas
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
 	if h.Log().DebugEnabled() {
@@ -388,40 +403,34 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}
 
 	claims := h.resolveClaimsInterface(inst.Subject.Properties)
-
 	apiKey, _ := inst.Subject.Properties[apiKeyAttribute].(string)
-
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims, h.apiKeyClaimKey)
 	if err != nil {
-		if err == auth.ErrNoAuth {
-			h.Log().Debugf("authenticate err: %v", err)
+		h.Log().Debugf("authenticate err: %v", err)
+		switch err {
+		case auth.ErrNoAuth:
+			return checkResultMissingAuth, nil
+		case auth.ErrBadAuth:
+			return checkResultNotAuthorized, nil
+		default:
 			return adapter.CheckResult{
-				Status: status.WithUnauthenticated(err.Error()),
+				Status: status.WithPermissionDenied(err.Error()),
 			}, nil
 		}
-		h.Log().Errorf("authenticate err: %v", err)
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied(err.Error()),
-		}, nil
 	}
 
 	products := h.productMan.Resolve(authContext, inst.Action.Service, inst.Action.Path)
 	if len(products) == 0 {
-		return adapter.CheckResult{
-			Status: status.WithPermissionDenied("not authorized"),
-		}, nil
+		return checkResultNotAuthorized, nil
 	}
 
-	args := adapter.QuotaArgs{
-		QuotaAmount: 1,
-	}
 	var anyQuotas, exceeded bool
 	var anyError error
 	// apply to all matching products
 	for _, p := range products {
 		if p.QuotaLimitInt > 0 {
 			anyQuotas = true
-			result, err := h.quotaMan.Apply(authContext, p, args)
+			result, err := h.quotaMan.Apply(authContext, p, quotaArgs)
 			if err != nil {
 				anyError = err
 			} else if result.Exceeded > 0 {
@@ -431,23 +440,20 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 	}
 	if anyError != nil {
 		h.Log().Debugf("authenticate err: %v", anyError)
-		return adapter.CheckResult{}, anyError
+		return checkResultNil, anyError
 	}
 	if exceeded {
 		h.Log().Debugf("quota exceeded: %v", err)
-		return adapter.CheckResult{
-			Status:        status.WithResourceExhausted("quota exceeded"),
-			ValidUseCount: 1, // call adapter each time to ensure quotas are applied
-		}, nil
+		return checkResultQuotaExceeded, nil
 	}
 
 	h.Log().Debugf("request authorized")
 
-	okResult := adapter.CheckResult{
-		Status: status.OK,
-	}
+	var okResult adapter.CheckResult
 	if anyQuotas {
-		okResult.ValidUseCount = 1 // call adapter each time to ensure quotas are applied
+		okResult = checkResultOkWithQuotas
+	} else {
+		okResult = checkResultOk
 	}
 	return okResult, nil
 }

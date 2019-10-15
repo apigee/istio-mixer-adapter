@@ -75,7 +75,7 @@ func TestAuthorization(t *testing.T) {
 					"Check": {
 						"Status": {
 							"code": 7,
-							"message": "handler.apigee.istio-system:invalid authentication"
+							"message": "handler.apigee.istio-system:permission denied"
 						},
 						"ValidDuration": 0,
 						"ValidUseCount": 0
@@ -122,7 +122,7 @@ func TestAuthorization(t *testing.T) {
 					"Check": {
 						"Status": {
 							"code": 7,
-							"message": "handler.apigee.istio-system:not authorized"
+							"message": "handler.apigee.istio-system:permission denied"
 						},
 						"ValidDuration": 0,
 						"ValidUseCount": 0
@@ -169,7 +169,7 @@ func TestAuthorization(t *testing.T) {
 					"Check": {
 						"Status": {
 							"code": 7,
-							"message": "handler.apigee.istio-system:invalid authentication"
+							"message": "handler.apigee.istio-system:permission denied"
 						},
 						"ValidDuration": 0,
 						"ValidUseCount": 0
