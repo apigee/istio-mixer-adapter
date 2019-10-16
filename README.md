@@ -18,13 +18,13 @@ A Quick Start Tutorial continues below, but complete Apigee documentation on the
 
 You must have an [Apigee Edge](https://login.apigee.com) account. If needed, you may create one [here](https://login.apigee.com/sign_up).
 
-## Prerequisite: Istio 1.1
+## Prerequisite: Istio 1.1 or newer
 
 Choose your favorite way of [installing Istio](https://istio.io/docs/setup/).
 
 _Important_  
 A key feature of the Apigee adapter that we'll be exploring below is to automatically enforce Apigee policy in Istio 
-using Istio's Mixer. However, in Istio 1.1, policy is not enabled by default. For Apigee policy features to take 
+using Istio's Mixer. However, starting in Istio 1.1, policy is not enabled by default. For Apigee policy features to take 
 effect, policy control *must be explicitly enabled* in Istio config and the Mixer policy image must be running. See  
 [Enabling Policy Enforcement](https://istio.io/docs/tasks/policy-enforcement/enabling-policy/) for more details.
 
