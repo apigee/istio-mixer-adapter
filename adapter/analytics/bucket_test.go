@@ -19,6 +19,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
+	"sync"
 	"testing"
 
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
@@ -26,17 +28,17 @@ import (
 
 func TestBucketClose(t *testing.T) {
 
-	d, err := ioutil.TempDir("", "")
+	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
-	defer os.RemoveAll(d)
+	defer os.RemoveAll(testDir)
 
 	env := adaptertest.NewEnv(t)
 
 	opts := Options{
 		LegacyEndpoint:   true,
-		BufferPath:       d,
+		BufferPath:       testDir,
 		StagingFileLimit: 10,
 		BaseURL:          url.URL{},
 		Key:              "key",
@@ -51,20 +53,11 @@ func TestBucketClose(t *testing.T) {
 	m.env = env
 	m.log = env
 
-	dir, err := ioutil.TempDir(d, "")
+	tempDir, err := ioutil.TempDir(testDir, "temp")
 	if err != nil {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
-
-	b := &bucket{
-		manager:  m,
-		log:      m.log,
-		dir:      dir,
-		tenant:   "tenant",
-		incoming: make(chan []Record),
-		closer:   make(chan closeReq, 1),
-	}
-	m.env.ScheduleDaemon(b.runLoop)
+	b := newBucket(m, tempDir)
 
 	records := []Record{
 		{
@@ -73,15 +66,36 @@ func TestBucketClose(t *testing.T) {
 		},
 	}
 	b.write(records)
-	m.closeWait.Add(1)
-	b.stop()
-	m.closeWait.Wait()
 
-	files, err := ioutil.ReadDir(dir)
+	stageDir, err := ioutil.TempDir(testDir, "stage")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+
+	wait := &sync.WaitGroup{}
+	wait.Add(1)
+	b.close(stageDir, wait)
+	wait.Wait()
+
+	files, err := ioutil.ReadDir(tempDir)
+	if err != nil {
+		t.Errorf("unexpected error %v", err)
+	}
+	if len(files) != 0 {
+		t.Errorf("got %d files, expected %d files: %v", len(files), 0, files)
+	}
+
+	files, err = ioutil.ReadDir(stageDir)
 	if err != nil {
 		t.Errorf("unexpected error %v", err)
 	}
 	if len(files) != 1 {
 		t.Errorf("got %d files, expected %d files: %v", len(files), 1, files)
+	}
+
+	stagedFile := filepath.Join(stageDir, files[0].Name())
+	err = b.manager.validateGZip(stagedFile)
+	if err != nil {
+		t.Errorf("error validating gzip: %v", err)
 	}
 }

@@ -26,7 +26,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
@@ -124,7 +124,7 @@ func (fs *fakeServer) handler(t *testing.T) http.Handler {
 		fp := r.FormValue("relative_file_path")
 		fs.records[tenant] = append(fs.records[tenant], testRecordPush{
 			records: recs,
-			dir:     path.Dir(fp),
+			dir:     filepath.Dir(fp),
 		})
 
 		w.WriteHeader(http.StatusOK)
@@ -157,22 +157,19 @@ func TestPushAnalytics(t *testing.T) {
 	fs := newFakeServer(t)
 	defer fs.Close()
 
-	t1 := "hi~test"
-	t2 := "otherorg~test"
+	t1 := getTenantName("hi", "test")
+	t2 := getTenantName("otherorg", "test")
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-	d, err := ioutil.TempDir("", "")
+	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
-	defer os.RemoveAll(d)
-
-	// Use a subdirectory to ensure that we can set up the directory properly.
-	bufferPath := path.Join(d, "subdir")
+	defer os.RemoveAll(testDir)
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath:       bufferPath,
+		BufferPath:       testDir,
 		StagingFileLimit: 10,
 		BaseURL:          *baseURL,
 		Key:              "key",
@@ -183,7 +180,7 @@ func TestPushAnalytics(t *testing.T) {
 		t.Fatalf("newManager: %s", err)
 	}
 	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 100 * time.Millisecond
+	m.collectionInterval = 10 * time.Millisecond
 	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
 
 	sendRecords := map[string][]testRecordPush{
@@ -294,7 +291,8 @@ func TestPushAnalytics(t *testing.T) {
 		t.Errorf("Got %d records sent, want 0: %v", len(fs.Records()), fs.Records())
 	}
 
-	m.Close()
+	defer m.Close()
+	time.Sleep(100 * time.Millisecond)
 
 	// Should have sent things out by now, check it out.
 	fs.lock.RLock()
@@ -306,18 +304,18 @@ func TestPushAnalytics(t *testing.T) {
 
 	// Should have deleted everything.
 	for _, p := range []string{
-		"/temp/hi~test/",
-		"/temp/otherorg~test/",
-		"/staging/hi~test/",
-		"/staging/otherorg~test/",
+		m.getTempDir(t1),
+		m.getTempDir(t2),
+		m.getStagingDir(t1),
+		m.getStagingDir(t2),
 	} {
-		files, err := ioutil.ReadDir(bufferPath + p)
+		files, err := ioutil.ReadDir(p)
 		if err != nil {
 			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
 		} else if len(files) > 0 {
 			t.Errorf("got %d records on disk, want 0", len(files))
 			for _, f := range files {
-				t.Log(path.Join(bufferPath, f.Name()))
+				t.Log(filepath.Join(testDir, f.Name()))
 			}
 		}
 	}
@@ -329,22 +327,19 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	fs := newFakeServer(t)
 	defer fs.Close()
 
-	t1 := "hi~test"
-	t2 := "hi~test~2"
+	t1 := getTenantName("hi", "test")
+	t2 := getTenantName("hi", "test~2")
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-	d, err := ioutil.TempDir("", "")
+	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
-	defer os.RemoveAll(d)
-
-	// Use a subdirectory to ensure that we can set up the directory properly.
-	bufferPath := path.Join(d, "subdir")
+	defer os.RemoveAll(testDir)
 
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath:       bufferPath,
+		BufferPath:       testDir,
 		StagingFileLimit: 10,
 		BaseURL:          *baseURL,
 		Key:              "key",
@@ -456,16 +451,122 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 
 	// Should have deleted everything.
 	for _, p := range []string{
-		"/temp/hi~test/",
-		"/staging/hi~test/",
+		m.getTempDir(t1),
+		m.getStagingDir(t1),
 	} {
-		files, err := ioutil.ReadDir(bufferPath + p)
+		files, err := ioutil.ReadDir(p)
 		if err != nil {
 			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
 		} else if len(files) > 0 {
 			t.Errorf("got %d records on disk, want 0", len(files))
 			for _, f := range files {
-				t.Log(path.Join(bufferPath, f.Name()))
+				t.Log(filepath.Join(testDir, f.Name()))
+			}
+		}
+	}
+}
+
+func TestLoad(t *testing.T) {
+	t.Parallel()
+
+	const SendRecs = 100
+
+	fs := newFakeServer(t)
+	defer fs.Close()
+
+	t1 := "load~test"
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	testDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(testDir)
+
+	baseURL, _ := url.Parse(fs.URL())
+	m, err := newManager(Options{
+		BufferPath:       testDir,
+		StagingFileLimit: 10,
+		BaseURL:          *baseURL,
+		Key:              "key",
+		Secret:           "secret",
+		Client:           http.DefaultClient,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+	m.now = func() time.Time { return time.Unix(ts, 0) }
+	m.collectionInterval = 5 * time.Millisecond
+	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
+
+	record := Record{
+		Organization:                 "load",
+		Environment:                  "test",
+		ClientReceivedStartTimestamp: ts * 1000,
+		ClientReceivedEndTimestamp:   ts * 1000,
+		APIProxy:                     "proxy",
+	}
+
+	sendRecords := map[string][]testRecordPush{
+		t1: {{
+			records: []Record{record},
+			dir:     uploadDir,
+		}},
+	}
+
+	env := adaptertest.NewEnv(t)
+	m.Start(env)
+
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("load")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	for i := 0; i < SendRecs; i++ {
+		recs := sendRecords[t1][0].records
+		recs[0].APIProxyRevision = i
+		if err := m.SendRecords(ctx, sendRecords[t1][0].records); err != nil {
+			t.Errorf("Error on SendRecords(): %s", err)
+		}
+		if i%50 == 0 {
+			t.Log("uploadAll")
+			m.uploadAll()
+		}
+	}
+
+	m.uploadAll()
+	m.Close()
+
+	// Should have sent things out by now, check it out.
+	fs.lock.RLock()
+	checkAndClearGatewayFlowIDs(fs, t)
+	pushes := fs.Records()["load~test"]
+	receivedRecs := []Record{}
+	for _, push := range pushes {
+		receivedRecs = append(receivedRecs, push.records...)
+	}
+	if len(receivedRecs) != SendRecs {
+		t.Errorf("got %d records, want %d records", len(receivedRecs), SendRecs)
+		for _, r := range receivedRecs {
+			t.Errorf("record: %v", r)
+			// r.APIProxyRevision
+		}
+		// t.Errorf("records: %v", receivedRecs)
+	}
+	fs.lock.RUnlock()
+
+	// Should have deleted everything.
+	for _, p := range []string{
+		m.getTempDir(t1),
+		m.getStagingDir(t1),
+	} {
+		files, err := ioutil.ReadDir(p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
+		} else if len(files) > 0 {
+			t.Errorf("got %d records on disk, want 0", len(files))
+			for _, f := range files {
+				t.Log(filepath.Join(testDir, f.Name()))
 			}
 		}
 	}

@@ -20,9 +20,105 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-
-	"istio.io/istio/mixer/pkg/adapter"
+	"path/filepath"
+	"sync"
 )
+
+func newBucket(m *manager, dir string) *bucket {
+	b := &bucket{
+		manager:  m,
+		dir:      dir,
+		incoming: make(chan []Record, m.sendChannelSize),
+		closer:   make(chan closeReq),
+	}
+	m.env.ScheduleDaemon(b.runLoop)
+	return b
+}
+
+// A bucket writes analytics to a temp file
+type bucket struct {
+	manager  *manager
+	dir      string
+	w        *writer
+	incoming chan []Record
+	closer   chan closeReq
+}
+
+// write records to bucket
+func (b *bucket) write(records []Record) {
+	if b != nil && len(records) > 0 {
+		b.incoming <- records
+	}
+}
+
+// close bucket
+func (b *bucket) close(moveTo string, wait *sync.WaitGroup) {
+	b.closer <- closeReq{
+		wait:   wait,
+		moveTo: moveTo,
+	}
+}
+
+func (b *bucket) runLoop() {
+	log := b.manager.log
+
+	for {
+		select {
+
+		// write records
+		case records := <-b.incoming:
+
+			// lazy create file
+			if b.w == nil {
+				f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-", b.manager.now().Unix()))
+				if err != nil {
+					log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
+					return
+				}
+				b.w = &writer{
+					f:  f,
+					gz: gzip.NewWriter(f),
+				}
+
+				log.Debugf("new bucket created: %s", f.Name())
+			}
+
+			if err := b.w.write(records); err != nil {
+				log.Errorf("writing records: %s", err)
+			} else {
+				// log.Debugf("%d records written to %s", len(records), b.w.f.Name())
+			}
+
+		// close and move to staging
+		case req := <-b.closer:
+			log.Debugf("closing bucket: %s", b.w.f.Name())
+
+			if b.w != nil {
+				if err := b.w.close(); err != nil {
+					log.Errorf("Can't close bucket file: %s", err)
+				}
+			}
+
+			newFile := filepath.Join(req.moveTo, filepath.Base(b.w.f.Name()))
+			if err := os.Rename(b.w.f.Name(), newFile); err != nil {
+				log.Errorf("can't rename file: %s", err)
+			} else {
+				b.manager.log.Debugf("staged file: %s", newFile)
+			}
+
+			if req.wait != nil {
+				req.wait.Done()
+			}
+
+			return
+		}
+	}
+}
+
+type closeReq struct {
+	wait   *sync.WaitGroup
+	moveTo string
+}
 
 type writer struct {
 	gz *gzip.Writer
@@ -50,80 +146,4 @@ func (w *writer) close() error {
 		return fmt.Errorf("f.Close: %s", err)
 	}
 	return nil
-}
-
-// A bucket keeps track of a tenant's analytics
-type bucket struct {
-	manager  *manager
-	log      adapter.Logger
-	dir      string // containing dir
-	tenant   string // org~env
-	w        *writer
-	incoming chan []Record
-	closer   chan closeReq
-}
-
-func (b *bucket) runLoop() {
-	for {
-		select {
-		case records := <-b.incoming:
-			if b.w == nil {
-				f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-", b.manager.now().Unix()))
-				if err != nil {
-					b.log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
-					return
-				}
-				b.w = &writer{
-					f:  f,
-					gz: gzip.NewWriter(f),
-				}
-
-				b.log.Debugf("new bucket created: %s", f.Name())
-			}
-			w := b.w
-			if err := w.write(records); err != nil {
-				b.log.Errorf("writing records: %s", err)
-			} else {
-				b.log.Debugf("%d records written to %s", len(records), b.w.f.Name())
-			}
-		case req := <-b.closer:
-			if b.w != nil {
-				if req.filename == "" || b.w.f.Name() == req.filename {
-					b.w.close()
-					b.log.Debugf("bucket file closed: %s", b.w.f.Name())
-				}
-				b.w = nil
-			}
-			if req.stop {
-				b.log.Debugf("bucket loop closed")
-				b.manager.closeWait.Done()
-				return
-			}
-		}
-	}
-}
-
-type closeReq struct {
-	filename string
-	stop     bool
-}
-
-func (b *bucket) write(records []Record) {
-	if len(records) > 0 {
-		b.incoming <- records
-	}
-}
-
-// will close bucket if passed filename is current file or ""
-func (b *bucket) close(filename string) {
-	b.closer <- closeReq{
-		filename: filename,
-	}
-}
-
-// exit bucket loop
-func (b *bucket) stop() {
-	b.closer <- closeReq{
-		stop: true,
-	}
 }

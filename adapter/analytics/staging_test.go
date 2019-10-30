@@ -17,17 +17,17 @@ package analytics
 import (
 	"compress/gzip"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
-	"reflect"
-	"sort"
-	"strings"
 	"testing"
+	"time"
 
+	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/authtest"
 	"go.uber.org/multierr"
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -36,125 +36,20 @@ func TestStagingSizeCap(t *testing.T) {
 	t.Parallel()
 
 	fs := newFakeServer(t)
-	// Let's pretend Apigee is down, so we end up backlogging.
-	fs.failUpload = http.StatusInternalServerError
 	defer fs.Close()
 
-	for _, test := range []struct {
-		desc     string
-		files    map[string][]string
-		wantStag []string
-	}{
-		{"too many files, clean some up",
-			map[string][]string{
-				tempDir:    {"6", "7"},
-				stagingDir: {"1", "2", "3", "4"},
-			},
-			[]string{"3", "4", "6", "7"},
-		},
-		{"under limit, don't delete",
-			map[string][]string{
-				tempDir:    {"6", "7"},
-				stagingDir: {"1", "2"},
-			},
-			[]string{"1", "2", "6", "7"},
-		},
-		{"clean up even if nothing in temp",
-			map[string][]string{
-				tempDir:    {},
-				stagingDir: {"1", "2", "3", "4", "5"},
-			},
-			[]string{"2", "3", "4", "5"},
-		},
-	} {
-		t.Log(test.desc)
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
 
-		d, err := ioutil.TempDir("", "")
-		if err != nil {
-			t.Fatalf("ioutil.TempDir(): %s", err)
-		}
-		defer os.RemoveAll(d)
-
-		baseURL, _ := url.Parse(fs.URL())
-		m, err := newManager(Options{
-			BufferPath:       d,
-			StagingFileLimit: 4,
-			BaseURL:          *baseURL,
-			Key:              "key",
-			Secret:           "secret",
-			Client:           http.DefaultClient,
-		})
-		if err != nil {
-			t.Fatalf("newManager: %s", err)
-		}
-		m.log = adaptertest.NewEnv(t).Logger()
-
-		// Add a bunch of files in staging and temp, and then try to commit.
-		ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-		rec := Record{
-			Organization:                 "hi",
-			Environment:                  "test",
-			ClientReceivedStartTimestamp: ts * 1000,
-			ClientReceivedEndTimestamp:   ts * 1000,
-			APIProxy:                     "proxy",
-		}
-		for dir, files := range test.files {
-			p := path.Join(d, dir, "hi~test")
-			if err := os.MkdirAll(p, 0700); err != nil {
-				t.Fatalf("mkdir %s: %s", p, err)
-			}
-			for _, f := range files {
-				f, err := os.Create(path.Join(p, fmt.Sprintf("%s.json.gz", f)))
-				if err != nil {
-					t.Fatalf("unexpected error on create: %s", err)
-				}
-
-				gz := gzip.NewWriter(f)
-				json.NewEncoder(gz).Encode([]Record{rec})
-				gz.Close()
-				f.Close()
-			}
-		}
-
-		if err = m.uploadAll(); err == nil {
-			t.Fatalf("got nil error on upload, want one")
-		} else if !strings.Contains(err.Error(), "500 Internal Server Error") {
-			t.Fatalf("got error %s, want 500", err)
-		}
-
-		// Confirm that the files we want are in staging.
-		var got []string
-		fis, err := ioutil.ReadDir(path.Join(m.stagingDir, "hi~test"))
-		if err != nil {
-			t.Fatalf("ReadDir(%s): %s", m.stagingDir, err)
-		}
-		for _, fi := range fis {
-			got = append(got, strings.TrimSuffix(fi.Name(), ".json.gz"))
-		}
-
-		// Should delete the oldest ones: 1 and 2.
-		sort.Strings(got)
-		if !reflect.DeepEqual(got, test.wantStag) {
-			t.Errorf("got staging files %v, want %v", got, test.wantStag)
-		}
-	}
-}
-
-func TestCrashRecoveryInvalidFiles(t *testing.T) {
-	t.Parallel()
-
-	fs := newFakeServer(t)
-	defer fs.Close()
-
-	d, err := ioutil.TempDir("", "")
+	workDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("ioutil.TempDir(): %s", err)
 	}
-	defer os.RemoveAll(d)
+	defer os.RemoveAll(workDir)
+
 	baseURL, _ := url.Parse(fs.URL())
 	m, err := newManager(Options{
-		BufferPath:       d,
-		StagingFileLimit: 10,
+		BufferPath:       workDir,
+		StagingFileLimit: 3,
 		BaseURL:          *baseURL,
 		Key:              "key",
 		Secret:           "secret",
@@ -163,77 +58,81 @@ func TestCrashRecoveryInvalidFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.env = adaptertest.NewEnv(t)
-	m.log = m.env.Logger()
+	m.now = func() time.Time { return time.Unix(ts, 0) }
 
-	// Put two files into the temp dir:
-	// - a good gzip file
-	// - an unrecoverable file
-	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
-	rec := Record{
-		Organization:                 "hi",
-		Environment:                  "test",
-		ClientReceivedStartTimestamp: ts * 1000,
-		ClientReceivedEndTimestamp:   ts * 1000,
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
 	}
 
-	bucket := path.Join(m.tempDir, "hi~test")
-	targetBucket := path.Join(m.stagingDir, "hi~test")
-	if err := os.MkdirAll(bucket, 0700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(targetBucket, 0700); err != nil {
-		t.Fatal(err)
+	env := adaptertest.NewEnv(t)
+	m.env = env
+	m.log = env.Logger()
+
+	t1 := "hi~test"
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	ctx := &auth.Context{Context: tc}
+
+	for i := 1; i < m.stagingFileLimit+3; i++ {
+		if err := m.SendRecords(ctx, records); err != nil {
+			t.Errorf("Error on SendRecords(): %s", err)
+		}
+		m.stageAllBucketsWait()
+
+		if len(fs.Records()) > 0 {
+			t.Errorf("Got %d tenants sent, want 0: %v", len(fs.Records()), fs.Records())
+		}
+
+		limited := math.Min(float64(m.stagingFileLimit), float64(i))
+		wantFileCount(t, m.getTempDir(t1), 0)
+		wantFileCount(t, m.getStagingDir(t1), int(limited))
 	}
 
-	goodFile := path.Join(bucket, "good.json.gz")
-	brokeFile := path.Join(bucket, "broke.json.gz")
-
-	f, err := os.Create(goodFile)
+	err = m.uploadAll()
 	if err != nil {
-		t.Fatalf("error creating good file: %s", err)
-	}
-	gz := gzip.NewWriter(f)
-	json.NewEncoder(gz).Encode(&rec)
-	gz.Close()
-	f.Close()
-
-	f, _ = os.Create(brokeFile)
-	f.WriteString("this is not a json record")
-	f.Close()
-
-	if err := m.crashRecovery(); len(multierr.Errors(err)) != 1 {
-		t.Fatal("should have had an error for the bad file")
+		t.Errorf("Error on uploadAll(): %s", err)
 	}
 
-	files, err := ioutil.ReadDir(targetBucket)
+	// 1 tenant
+	if len(fs.Records()) != 1 {
+		t.Errorf("Got %d tenants sent, want 1: %v", len(fs.Records()), fs.Records())
+	}
+
+	// actual records
+	pushes := fs.Records()["hi~test"]
+	if len(pushes) != 3 {
+		t.Errorf("Got %d files sent, want %d: %v", len(pushes), 3, pushes)
+	}
+	for _, push := range pushes {
+		recs := push.records
+		if len(recs) != 2 {
+			t.Errorf("Got %d records sent, want %d: %v", len(recs), 2, recs)
+		}
+	}
+}
+
+func wantFileCount(t *testing.T, path string, want int) {
+	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		t.Fatalf("ls %s: %s", targetBucket, err)
-	}
-
-	if len(files) != 1 {
-		t.Errorf("got %d files in staging, want 1:", len(files))
-		for _, fi := range files {
-			t.Log(fi.Name())
+		if want != 0 || err.Error() != "no such file or directory" {
+			t.Errorf("ioutil.ReadDir(%s): %s", path, err)
 		}
-	}
-	for _, fi := range files {
-		f, err := os.Open(path.Join(targetBucket, fi.Name()))
-		if err != nil {
-			t.Fatalf("error opening %s: %s", fi.Name(), err)
-		}
-		gz, err := gzip.NewReader(f)
-		if err != nil {
-			t.Errorf("gzip error %s: %s", fi.Name(), err)
-		}
-		var got Record
-		if err := json.NewDecoder(gz).Decode(&got); err != nil {
-			t.Errorf("json decode error %s: %s", fi.Name(), err)
-		}
-
-		if got != rec {
-			t.Errorf("file %s: got %v, want %v", fi.Name(), got, rec)
-		}
+	} else if len(files) != want {
+		t.Errorf("got %d file, want %d in %s", len(files), want, path)
 	}
 }
 
@@ -274,17 +173,15 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 		ClientReceivedEndTimestamp:   ts * 1000,
 	}
 
-	bucket := path.Join(m.tempDir, "hi~test")
-	targetBucket := path.Join(m.stagingDir, "hi~test")
-	if err := os.MkdirAll(bucket, 0700); err != nil {
-		t.Fatal(err)
+	tenant := "hi~test"
+	if err := m.prepTenant(tenant); err != nil {
+		t.Fatalf("prepTenant: %v", err)
 	}
-	if err := os.MkdirAll(targetBucket, 0700); err != nil {
-		t.Fatal(err)
-	}
+	tempDir := m.getTempDir(tenant)
+	stagingDir := m.getStagingDir(tenant)
 
-	goodFile := path.Join(bucket, "good.json.gz")
-	brokeFile := path.Join(bucket, "broke.json.gz")
+	goodFile := path.Join(tempDir, "good.json.gz")
+	brokeFile := path.Join(tempDir, "broke.json.gz")
 
 	f, err := os.Create(goodFile)
 	if err != nil {
@@ -306,9 +203,9 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 		t.Fatal("should have had an error for the bad file")
 	}
 
-	files, err := ioutil.ReadDir(targetBucket)
+	files, err := ioutil.ReadDir(stagingDir)
 	if err != nil {
-		t.Fatalf("ls %s: %s", targetBucket, err)
+		t.Fatalf("ls %s: %s", stagingDir, err)
 	}
 
 	if len(files) != 2 {
@@ -319,7 +216,7 @@ func TestCrashRecoveryGoodFiles(t *testing.T) {
 	}
 	for _, fi := range files {
 		// Confirm that it's a valid gzip file.
-		f, err := os.Open(path.Join(targetBucket, fi.Name()))
+		f, err := os.Open(path.Join(stagingDir, fi.Name()))
 		if err != nil {
 			t.Fatalf("error opening %s: %s", fi.Name(), err)
 		}
