@@ -27,41 +27,112 @@ type Looper struct {
 	Backoff Backoff
 }
 
+// WorkFunc does work
+type WorkFunc func(ctx context.Context) error
+
+// ErrorFunc handles errors
+type ErrorFunc func(error) error
+
+// LogErrorsHandler just logs errors and continues
+func LogErrorsHandler(env adapter.Env) ErrorFunc {
+	return func(err error) error {
+		env.Logger().Errorf("looper: %v", err)
+		return nil
+	}
+}
+
 // Start a daemon that repeatedly calls work function according to period.
 // Passed ctx should be cancelable - to exit, cancel the Context.
 // Passed ctx is passed on to the work function and work should check for cancel if long-running.
 // If errHandler itself returns an error, the daemon will exit.
-func (a *Looper) Start(ctx context.Context, work func(ctx context.Context) error, period time.Duration, errHandler func(error) error) {
-	// a.Env.Logger().Debugf("Looper starting")
+func (l *Looper) Start(ctx context.Context, work WorkFunc, period time.Duration, errHandler ErrorFunc) {
+	// l.Env.Logger().Debugf("Looper starting")
 	run := time.After(0 * time.Millisecond) // start first run immediately
-	// log := a.Env.Logger()
 
-	a.Env.ScheduleDaemon(func() {
+	l.Env.ScheduleDaemon(func() {
 		for {
 			select {
 			case <-ctx.Done():
-				// log.Debugf("Looper exiting")
+				// l.Env.Logger().Debugf("Looper exiting")
 				return
 			case <-run:
-				// log.Debugf("Looper work running")
-				err := work(ctx)
-				if ctx.Err() != nil {
+				// l.Env.Logger().Debugf("Looper work running")
+				err := l.Run(ctx, work, errHandler)
+				if err != nil {
 					return
 				}
-				var nextRunIn time.Duration
-				if err == nil {
-					a.Backoff.Reset()
-					nextRunIn = period
-				} else {
-					if errHandler(err) != nil {
-						// log.Debugf("Looper quit on error")
-						return
-					}
-					nextRunIn = a.Backoff.Duration()
-				}
-				run = time.After(nextRunIn)
-				// log.Debugf("Looper work scheduled to run in %s", nextRunIn)
+				run = time.After(period)
 			}
 		}
 	})
+}
+
+// Run the work until successful (or ctx canceled) with backoff.
+// Passed ctx should be cancelable - to exit, cancel the Context.
+// Passed ctx is passed on to the work function and work should check for cancel if long-running.
+// If errHandler itself returns an error, the daemon will exit.
+func (l *Looper) Run(ctx context.Context, work WorkFunc, errHandler ErrorFunc) error {
+	run := time.After(0 * time.Millisecond) // start immediately
+	for {
+		select {
+		case <-ctx.Done():
+			// l.Env.Logger().Debugf("Looper exiting")
+			return nil
+		case <-run:
+			// l.Env.Logger().Debugf("Looper work running")
+			err := work(ctx)
+			if err == nil || ctx.Err() != nil {
+				return nil
+			}
+
+			if err := errHandler(err); err != nil {
+				// l.Env.Logger().Debugf("Looper quit on error")
+				return err
+			}
+
+			run = time.After(l.Backoff.Duration())
+			// l.Env.Logger().Debugf("Looper work scheduled to run in %s", nextRunIn)
+		}
+	}
+}
+
+// Chan pulls work from work channel until channel is closed of Context canceled.
+// Passed ctx is passed on to the work function and work should check for cancel if long-running.
+// If errHandler itself returns an error, the daemon will exit.
+func (l *Looper) Chan(ctx context.Context, work <-chan (WorkFunc), errHandler ErrorFunc) {
+	for {
+		select {
+		case <-ctx.Done():
+			// l.Env.Logger().Debugf("Looper exiting")
+			return
+		case work, ok := <-work:
+			if !ok {
+				// l.Env.Logger().Debugf("Looper channel close")
+				return
+			}
+			// l.Env.Logger().Debugf("Looper work running")
+			err := l.Run(ctx, work, errHandler)
+			if err != nil {
+				return
+			}
+		}
+	}
+}
+
+// NewChannelWithWorkerPool returns a channel to send work to and the set of workers.
+// Close the returned channel or cancel the Context and the workers will exit.
+// Passed ctx is passed on to the work function and work should check for cancel if long-running.
+// Beware: If errHandler itself returns an error, the worker will exit.
+func NewChannelWithWorkerPool(ctx context.Context, size int, env adapter.Env, errHandler ErrorFunc, backoff Backoff) chan WorkFunc {
+	channel := make(chan WorkFunc)
+	for i := 0; i < size; i++ {
+		l := Looper{
+			Env:     env,
+			Backoff: backoff.Clone(),
+		}
+		env.ScheduleDaemon(func() {
+			l.Chan(ctx, channel, errHandler)
+		})
+	}
+	return channel
 }

@@ -16,6 +16,7 @@ package util_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -116,4 +117,44 @@ func TestPollerCancel(t *testing.T) {
 	<-wait
 	cancel()
 	<-wait
+}
+
+func TestNewChannelWithWorkerPool(t *testing.T) {
+	env := test.NewEnv(t)
+	backoff := util.NewExponentialBackoff(time.Millisecond, time.Millisecond, 2, true)
+	ctx := context.Background()
+	errH := func(error) error {
+		return nil
+	}
+	channel := util.NewChannelWithWorkerPool(ctx, 2, env, errH, backoff)
+	var i = 0
+	ip := &i
+
+	work := func(ctx context.Context) error {
+		*ip++
+		return nil
+	}
+	work2 := func(ctx context.Context) error {
+		return fmt.Errorf("error")
+	}
+	channel <- work
+	time.Sleep(5 * time.Millisecond)
+
+	if *ip != 1 {
+		t.Errorf("want: 1, got: %d", *ip)
+	}
+
+	channel <- work2
+	time.Sleep(5 * time.Millisecond)
+	if *ip != 1 {
+		t.Errorf("want: 1, got: %d", *ip)
+	}
+
+	channel <- work
+	time.Sleep(5 * time.Millisecond)
+	if *ip != 2 {
+		t.Errorf("want: 2, got: %d", *ip)
+	}
+
+	close(channel)
 }
