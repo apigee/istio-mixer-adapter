@@ -20,28 +20,39 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"sync"
 )
 
-func newBucket(m *manager, dir string) *bucket {
+func newBucket(m *manager, tenant, dir string) (*bucket, error) {
 	b := &bucket{
 		manager:  m,
+		tenant:   tenant,
 		dir:      dir,
 		incoming: make(chan []Record, m.sendChannelSize),
-		closer:   make(chan closeReq),
 	}
+
+	f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-*.gz", b.manager.now().Unix()))
+	if err != nil {
+		m.log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
+		return nil, err
+	}
+	b.w = &writer{
+		f:  f,
+		gz: gzip.NewWriter(f),
+	}
+
 	m.env.ScheduleDaemon(b.runLoop)
-	return b
+	return b, nil
 }
 
 // A bucket writes analytics to a temp file
 type bucket struct {
 	manager  *manager
+	tenant   string
 	dir      string
 	w        *writer
 	incoming chan []Record
-	closer   chan closeReq
+	wait     *sync.WaitGroup
 }
 
 // write records to bucket
@@ -52,72 +63,34 @@ func (b *bucket) write(records []Record) {
 }
 
 // close bucket
-func (b *bucket) close(moveTo string, wait *sync.WaitGroup) {
-	b.closer <- closeReq{
-		wait:   wait,
-		moveTo: moveTo,
-	}
+func (b *bucket) close(wait *sync.WaitGroup) {
+	b.wait = wait
+	close(b.incoming)
+}
+
+func (b *bucket) fileName() string {
+	return b.w.f.Name()
 }
 
 func (b *bucket) runLoop() {
 	log := b.manager.log
 
-	for {
-		select {
-
-		// write records
-		case records := <-b.incoming:
-
-			// lazy create file
-			if b.w == nil {
-				f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-", b.manager.now().Unix()))
-				if err != nil {
-					log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
-					return
-				}
-				b.w = &writer{
-					f:  f,
-					gz: gzip.NewWriter(f),
-				}
-
-				log.Debugf("new bucket created: %s", f.Name())
-			}
-
-			if err := b.w.write(records); err != nil {
-				log.Errorf("writing records: %s", err)
-			} else {
-				// log.Debugf("%d records written to %s", len(records), b.w.f.Name())
-			}
-
-		// close and move to staging
-		case req := <-b.closer:
-			log.Debugf("closing bucket: %s", b.w.f.Name())
-
-			if b.w != nil {
-				if err := b.w.close(); err != nil {
-					log.Errorf("Can't close bucket file: %s", err)
-				}
-			}
-
-			newFile := filepath.Join(req.moveTo, filepath.Base(b.w.f.Name()))
-			if err := os.Rename(b.w.f.Name(), newFile); err != nil {
-				log.Errorf("can't rename file: %s", err)
-			} else {
-				b.manager.log.Debugf("staged file: %s", newFile)
-			}
-
-			if req.wait != nil {
-				req.wait.Done()
-			}
-
-			return
+	for records := range b.incoming {
+		if err := b.w.write(records); err != nil {
+			log.Errorf("writing records: %s", err)
 		}
 	}
-}
 
-type closeReq struct {
-	wait   *sync.WaitGroup
-	moveTo string
+	if err := b.w.close(); err != nil {
+		log.Errorf("Can't close bucket file: %s", err)
+	}
+
+	b.manager.stageFile(b.tenant, b.fileName())
+
+	if b.wait != nil {
+		b.wait.Done()
+	}
+	log.Debugf("bucket closed: %s", b.fileName())
 }
 
 type writer struct {

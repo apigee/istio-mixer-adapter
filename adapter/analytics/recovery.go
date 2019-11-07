@@ -17,12 +17,10 @@ package analytics
 import (
 	"bufio"
 	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/hashicorp/go-multierror"
@@ -45,110 +43,60 @@ func (m *manager) crashRecovery() error {
 			continue
 		}
 
-		// Ensure staging dir
-		bufferMode := os.FileMode(0700)
+		m.prepTenant(tenant)
 		stageDir := m.getStagingDir(tenant)
-		if err := os.MkdirAll(stageDir, bufferMode); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("mkdir %s: %s", stageDir, err))
-			continue
-		}
 
 		// recover temp to staging
 		for _, fi := range files {
 			tempFile := filepath.Join(tempDir, fi.Name())
 			stageFile := filepath.Join(stageDir, fi.Name())
-			if err := m.ensureValidGzip(tempFile); err != nil {
-				errs = multierror.Append(errs, err)
-				if err != ErrGZIPRepaired {
-					continue
+
+			dest, err := os.Create(stageFile)
+			if err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("create recovery file %s: %s", tempDir, err))
+				continue
+			}
+			if err := m.recoverFile(tempFile, dest); err != nil {
+				errs = multierror.Append(errs, fmt.Errorf("recoverFile %s: %s", tempDir, err))
+				if err := os.Remove(stageFile); err != nil {
+					errs = multierror.Append(errs, fmt.Errorf("remove stage file %s: %s", tempDir, err))
 				}
+				continue
 			}
-			// file should be good, just move to staging
-			if err := os.Rename(tempFile, stageFile); err != nil {
-				errs = multierror.Append(errs, err)
+
+			if err := os.Remove(tempFile); err != nil {
+				m.log.Warningf("unable to remove temp file: %s", tempFile)
 			}
+
+			// add to upload queue
+			m.uploadChan <- m.uploadWorkFunc(tenant, stageFile)
 		}
 	}
 	return errs
 }
 
-// ErrGZIPRepaired is used to indicate a gzip was repaired
-var ErrGZIPRepaired = errors.New("GZIP Repaired")
-var errGZip = errors.New("GZIP Error")
-
-// returns nil if was a good gzip, ErrGZIPRepaired if a bad gzip was repaired, other errors for unrecoverable
-// may replace file, do not have it open
-func (m *manager) ensureValidGzip(fileName string) error {
-	err := m.validateGZip(fileName)
-	if err != errGZip {
-		return err
-	}
-
-	tempFile, err := ioutil.TempFile("", "")
-	if err != nil {
-		return err
-	}
-	tempFilePath := path.Join(os.TempDir(), tempFile.Name())
-	defer os.Remove(tempFilePath)
-
-	if err := m.recoverFile(fileName, tempFile); err != nil {
-		return err
-	}
-
-	return ErrGZIPRepaired
-}
-
-// if gzip error, returns gzipError
-func (m *manager) validateGZip(fileName string) error {
-	// m.log.Debugf("validating gzip: %s", fileName)
-
-	f, err := os.Open(fileName)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		m.log.Errorf("gzip.NewReader(%s): %s", fileName, err)
-		return err
-	}
-	defer gz.Close()
-
-	b := make([]byte, 1000)
-	for {
-		if _, err := gz.Read(b); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return errGZip
-		}
-	}
-	return nil
-}
-
 // recoverFile recovers gzipped data in a file and puts it into a new file.
-// It's OK if the file ends up with invalid JSON, the server will ignore.
-func (m *manager) recoverFile(old string, new *os.File) error {
-	m.log.Warningf("recovering bad gzip file: %s", old)
-	in, err := os.Open(old)
+func (m *manager) recoverFile(oldName string, newFile *os.File) error {
+	m.log.Warningf("recover file: %s", oldName)
+	in, err := os.Open(oldName)
 	if err != nil {
-		return fmt.Errorf("open %s: %s", old, err)
+		return fmt.Errorf("open %s: %s", oldName, err)
 	}
 	br := bufio.NewReader(in)
 	gzr, err := gzip.NewReader(br)
 	if err != nil {
-		return fmt.Errorf("gzip.NewReader(%s): %s", old, err)
+		return fmt.Errorf("gzip.NewReader(%s): %s", oldName, err)
 	}
 	defer gzr.Close()
 
 	// buffer size is arbitrary and doesn't really matter
 	b := make([]byte, 1000)
-	gzw := gzip.NewWriter(new)
+	gzw := gzip.NewWriter(newFile)
 	for {
 		var nRead int
 		if nRead, err = gzr.Read(b); err != nil {
 			if err != io.EOF && err.Error() != "unexpected EOF" && err.Error() != "gzip: invalid header" {
-				return fmt.Errorf("scan gzip %s: %s", old, err)
+				return fmt.Errorf("scan gzip %s: %s", oldName, err)
 			}
 		}
 		gzw.Write(b[:nRead])
@@ -157,12 +105,12 @@ func (m *manager) recoverFile(old string, new *os.File) error {
 		}
 	}
 	if err := gzw.Close(); err != nil {
-		return fmt.Errorf("close gzw %s: %s", old, err)
+		return fmt.Errorf("close gzw %s: %s", oldName, err)
 	}
-	if err := new.Close(); err != nil {
-		return fmt.Errorf("close gzw file %s: %s", old, err)
+	if err := newFile.Close(); err != nil {
+		return fmt.Errorf("close gzw file %s: %s", oldName, err)
 	}
 
-	m.log.Infof("bad gzip %s recovered to: %s", old, new.Name())
+	m.log.Infof("%s recovered to: %s", oldName, newFile.Name())
 	return nil
 }

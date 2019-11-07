@@ -20,13 +20,15 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"sync"
 	"testing"
 
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
 
-func TestBucketClose(t *testing.T) {
+func TestBucket(t *testing.T) {
 
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -50,14 +52,22 @@ func TestBucketClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.env = env
-	m.log = env
 
-	tempDir, err := ioutil.TempDir(testDir, "temp")
+	tenant := getTenantName("test", "test")
+	err = m.prepTenant(tenant)
 	if err != nil {
-		t.Fatalf("ioutil.TempDir(): %s", err)
+		t.Fatalf("prepTenant: %v", err)
 	}
-	b := newBucket(m, tempDir)
+	tempDir := m.getTempDir(tenant)
+	stageDir := m.getStagingDir(tenant)
+
+	m.Start(env)
+	defer m.Close()
+
+	b, err := newBucket(m, tenant, tempDir)
+	if err != nil {
+		t.Fatalf("newBucket: %v", err)
+	}
 
 	records := []Record{
 		{
@@ -67,14 +77,9 @@ func TestBucketClose(t *testing.T) {
 	}
 	b.write(records)
 
-	stageDir, err := ioutil.TempDir(testDir, "stage")
-	if err != nil {
-		t.Fatalf("ioutil.TempDir(): %s", err)
-	}
-
 	wait := &sync.WaitGroup{}
 	wait.Add(1)
-	b.close(stageDir, wait)
+	b.close(wait)
 	wait.Wait()
 
 	files, err := ioutil.ReadDir(tempDir)
@@ -90,12 +95,21 @@ func TestBucketClose(t *testing.T) {
 		t.Errorf("unexpected error %v", err)
 	}
 	if len(files) != 1 {
-		t.Errorf("got %d files, expected %d files: %v", len(files), 1, files)
+		t.Fatalf("got %d files, expected %d files: %v", len(files), 1, files)
+	}
+
+	if !strings.HasSuffix(files[0].Name(), ".gz") {
+		t.Errorf("file %s should have .gz suffix", files[0])
 	}
 
 	stagedFile := filepath.Join(stageDir, files[0].Name())
-	err = b.manager.validateGZip(stagedFile)
+
+	recs, err := readRecordsFromGZipFile(stagedFile)
 	if err != nil {
-		t.Errorf("error validating gzip: %v", err)
+		t.Fatalf("readRecordsFromGZipFile: %v", err)
+	}
+
+	if !reflect.DeepEqual(records, recs) {
+		t.Errorf("got: %v, want: %v", recs, records)
 	}
 }

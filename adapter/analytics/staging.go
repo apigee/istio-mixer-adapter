@@ -19,43 +19,24 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
 )
 
-// ensureStagingSpace ensures that staging has space for N new files
-// if not, delete oldest files
-func (m *manager) ensureStagingSpace(toStage int) error {
-	paths, errs := m.getFilesInStaging()
+func (m *manager) stageFile(tenant, tempFile string) {
 
-	need := toStage - (m.stagingFileLimit - len(paths))
-	if need <= 0 { // enough space, do nothing
-		return errs
+	stageDir := m.getStagingDir(tenant)
+	stagedFile := filepath.Join(stageDir, filepath.Base(tempFile))
+	if err := os.Rename(tempFile, stagedFile); err != nil {
+		m.log.Errorf("can't rename file: %s", err)
+		return
 	}
 
-	// Loop through deleting files in order of creation time until we have cleared
-	// up enough space or until there is nothing left we can delete.
-	// Note: this will start breaking on 2286-11-20 since we are sorting
-	// lexicographically on a number.
-	sort.Slice(paths, func(i, j int) bool {
-		return filepath.Base(paths[i]) < filepath.Base(paths[j])
-	})
-	for _, p := range paths {
-		if need <= 0 {
-			break
-		}
+	// queue upload
+	m.uploadChan <- m.uploadWorkFunc(tenant, stagedFile)
 
-		m.log.Warningf("over staging limit, removing file %s", p)
-		if err := os.Remove(p); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("rm %s: %s", p, err))
-			continue
-		}
-		need--
-	}
-
-	return errs
+	m.log.Debugf("staged file: %s", stagedFile)
 }
 
 func (m *manager) getFilesInStaging() ([]string, error) {
@@ -93,28 +74,14 @@ func (m *manager) stageAllBuckets(wait *sync.WaitGroup) {
 	buckets := m.buckets
 	m.buckets = map[string]*bucket{}
 	m.bucketsLock.Unlock()
-	m.ensureStagingSpace(len(buckets))
 	for tenant, bucket := range buckets {
 		m.stageBucket(tenant, bucket, wait)
 	}
 }
 
 func (m *manager) stageBucket(tenant string, b *bucket, wait *sync.WaitGroup) {
-	stageDir := filepath.Join(b.manager.stagingDir, tenant)
-
 	if wait != nil {
 		wait.Add(1)
 	}
-	b.close(stageDir, wait)
-}
-
-func (m *manager) getStagedFiles(tenant string) ([]os.FileInfo, error) {
-	m.stageLock.Lock()
-	defer m.stageLock.Unlock()
-	p := filepath.Join(m.stagingDir, tenant)
-	f, err := ioutil.ReadDir(p)
-	if err != nil {
-		err = fmt.Errorf("ls %s: %s", p, err)
-	}
-	return f, err
+	b.close(wait)
 }

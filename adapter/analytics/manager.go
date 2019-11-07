@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
@@ -65,7 +66,7 @@ func newManager(opts Options) (*manager, error) {
 	}
 
 	return &manager{
-		close:              make(chan bool),
+		closeStaging:       make(chan bool),
 		client:             opts.Client,
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
@@ -78,6 +79,29 @@ func newManager(opts Options) (*manager, error) {
 		secret:             opts.Secret,
 		sendChannelSize:    opts.SendChannelSize,
 	}, nil
+}
+
+// A manager is a way for Istio to interact with Apigee's analytics platform.
+type manager struct {
+	env                adapter.Env
+	closeStaging       chan bool
+	client             *http.Client
+	now                func() time.Time
+	log                adapter.Logger
+	collectionInterval time.Duration
+	tempDir            string // open gzip files being written to
+	stagingDir         string // gzip files staged for upload
+	stagingFileLimit   int
+	bucketsLock        sync.RWMutex
+	buckets            map[string]*bucket // dir ("org~env") -> bucket
+	baseURL            url.URL
+	key                string
+	secret             string
+	sendChannelSize    int
+	stageLock          sync.Mutex
+	closed             bool
+	uploadChan         chan<- interface{}
+	uploadersWait      sync.WaitGroup
 }
 
 // Options allows us to specify options for how this analytics manager will run.

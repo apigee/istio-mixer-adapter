@@ -126,7 +126,7 @@ func TestNewChannelWithWorkerPool(t *testing.T) {
 	errH := func(error) error {
 		return nil
 	}
-	channel := util.NewChannelWithWorkerPool(ctx, 2, env, errH, backoff)
+	channel := util.NewChannelWithWorkerPool(ctx, 2, 2, env, errH, backoff)
 	var i = 0
 	ip := &i
 

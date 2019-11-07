@@ -28,10 +28,10 @@ type Looper struct {
 }
 
 // WorkFunc does work
-type WorkFunc func(ctx context.Context) error
+type WorkFunc = func(ctx context.Context) error
 
 // ErrorFunc handles errors
-type ErrorFunc func(error) error
+type ErrorFunc = func(error) error
 
 // LogErrorsHandler just logs errors and continues
 func LogErrorsHandler(env adapter.Env) ErrorFunc {
@@ -119,13 +119,13 @@ func (l *Looper) Chan(ctx context.Context, work <-chan (WorkFunc), errHandler Er
 	}
 }
 
-// NewChannelWithWorkerPool returns a channel to send work to and the set of workers.
+// NewChannelWithWorkerPool returns an unbuffered channel to send work to and the set of workers.
 // Close the returned channel or cancel the Context and the workers will exit.
 // Passed ctx is passed on to the work function and work should check for cancel if long-running.
 // Beware: If errHandler itself returns an error, the worker will exit.
-func NewChannelWithWorkerPool(ctx context.Context, size int, env adapter.Env, errHandler ErrorFunc, backoff Backoff) chan WorkFunc {
-	channel := make(chan WorkFunc)
-	for i := 0; i < size; i++ {
+func NewChannelWithWorkerPool(ctx context.Context, numWorkers, channelLen int, env adapter.Env, errHandler ErrorFunc, backoff Backoff) chan WorkFunc {
+	channel := make(chan WorkFunc, channelLen)
+	for i := 0; i < numWorkers; i++ {
 		l := Looper{
 			Env:     env,
 			Backoff: backoff.Clone(),

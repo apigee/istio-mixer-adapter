@@ -66,7 +66,7 @@ func (r Record) ensureFields(ctx *auth.Context) Record {
 
 	r.GatewayFlowID = uuid.New().String()
 
-	// todo: select best APIProduct based on path, otherwise arbitrary
+	// selects best APIProduct based on path, otherwise arbitrary
 	if len(ctx.APIProducts) > 0 {
 		r.APIProduct = ctx.APIProducts[0]
 	}
