@@ -8,7 +8,7 @@
             <Header name="Content-Type">application/json</Header>
         </Headers>
         <Payload contentType="application/json">
-        {"version":"1.4.0"}
+        {"version":"1.4.1"}
     </Payload>
     </Set>
     <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
