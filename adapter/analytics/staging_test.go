@@ -89,6 +89,7 @@ func TestStagingSizeCap(t *testing.T) {
 		}
 		m.stageAllBucketsWait()
 	}
+	time.Sleep(50 * time.Millisecond)
 
 	if f := filesIn(m.getTempDir(t1)); len(f) != 0 {
 		t.Errorf("got %d files, want %d: %v", len(f), 0, f)
