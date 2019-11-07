@@ -37,7 +37,7 @@ func (m *manager) crashRecovery() error {
 	for _, d := range dirs {
 		tenant := d.Name()
 		tempDir := m.getTempDir(tenant)
-		files, err := ioutil.ReadDir(tempDir)
+		tempFiles, err := ioutil.ReadDir(tempDir)
 		if err != nil {
 			errs = multierror.Append(errs, err)
 			continue
@@ -46,8 +46,14 @@ func (m *manager) crashRecovery() error {
 		m.prepTenant(tenant)
 		stageDir := m.getStagingDir(tenant)
 
-		// recover temp to staging
-		for _, fi := range files {
+		// put staged files in upload queue
+		stagedFiles, err := m.getFilesInStaging()
+		for _, fi := range stagedFiles {
+			m.uploadChan <- m.uploadWorkFunc(tenant, fi)
+		}
+
+		// recover temp to staging and upload
+		for _, fi := range tempFiles {
 			tempFile := filepath.Join(tempDir, fi.Name())
 			stageFile := filepath.Join(stageDir, fi.Name())
 

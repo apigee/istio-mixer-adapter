@@ -146,6 +146,7 @@ func TestCrashRecovery(t *testing.T) {
 
 	goodFile := filepath.Join(tempDir, "good.json.gz")
 	brokeFile := filepath.Join(tempDir, "broke.json.gz")
+	stagedFile := filepath.Join(stagingDir, "staged.gz")
 
 	f, err := os.Create(goodFile)
 	if err != nil {
@@ -163,6 +164,15 @@ func TestCrashRecovery(t *testing.T) {
 	f.WriteString("this is not a json record")
 	f.Close()
 
+	f, err = os.Create(stagedFile)
+	if err != nil {
+		t.Fatalf("error creating stagedFile file: %s", err)
+	}
+	gz = gzip.NewWriter(f)
+	json.NewEncoder(gz).Encode(&rec)
+	gz.Close()
+	f.Close()
+
 	env := adaptertest.NewEnv(t)
 	m.Start(env)
 
@@ -171,8 +181,8 @@ func TestCrashRecovery(t *testing.T) {
 		t.Fatalf("ls %s: %s", stagingDir, err)
 	}
 
-	if len(files) != 2 {
-		t.Errorf("got %d files in staging, want 2:", len(files))
+	if len(files) != 3 {
+		t.Errorf("got %d files in staging, want 3:", len(files))
 		for _, fi := range files {
 			t.Log(fi.Name())
 		}
@@ -205,7 +215,7 @@ func TestCrashRecovery(t *testing.T) {
 		t.Errorf("got %d files, want %d: %#v", len(f), 0, f)
 	}
 
-	if len(fs.uploadedRecords(tenant)) != 2 {
-		t.Errorf("Got %d records sent, want 2: %v", len(fs.pushes()), fs.pushes())
+	if uploaded := fs.uploadedRecords(tenant); len(uploaded) != 3 {
+		t.Errorf("Got %d records sent, want 3: %v", len(uploaded), uploaded)
 	}
 }
