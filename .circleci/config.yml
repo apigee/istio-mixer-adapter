@@ -5,7 +5,7 @@ version: 2
 jobs:
   build-and-test:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.13
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
@@ -17,7 +17,7 @@ jobs:
           command: go generate ./...
           name: generate protos
       - run:
-          command: go test -v -coverprofile=coverage.txt ./...
+          command: go test -coverprofile=coverage.txt ./...
           name: Run tests
       - run:
           command: bash <(curl -s https://codecov.io/bash)
@@ -30,7 +30,7 @@ jobs:
 
   build-test-image:
     docker:
-      - image: circleci/golang:1.11
+      - image: circleci/golang:1.13
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
@@ -43,7 +43,7 @@ jobs:
           name: generate protos
       - run:
           name: Run tests
-          command: go test -v -coverprofile=coverage.txt ./...
+          command: go test -coverprofile=coverage.txt ./...
       - run:
           name: upload codecov
           command: bash <(curl -s https://codecov.io/bash)

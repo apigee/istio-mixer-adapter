@@ -32,6 +32,7 @@ type Backoff interface {
 	Duration() time.Duration
 	Attempt() int
 	Reset()
+	Clone() Backoff
 }
 
 // ExponentialBackoff is a backoff strategy that backs off exponentially.
@@ -111,4 +112,16 @@ func (b *ExponentialBackoff) Reset() {
 // Attempt returns how many attempts have been made.
 func (b *ExponentialBackoff) Attempt() int {
 	return b.attempt
+}
+
+// Clone returns a copy
+func (b *ExponentialBackoff) Clone() Backoff {
+	return &ExponentialBackoff{
+		attempt:         b.attempt,
+		initial:         b.initial,
+		max:             b.max,
+		jitter:          b.jitter,
+		backoffStrategy: b.backoffStrategy,
+		factor:          b.factor,
+	}
 }

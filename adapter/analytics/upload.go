@@ -15,122 +15,77 @@
 package analytics
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 )
 
-// uploadAll commits everything from staging and then uploads it
-func (m *manager) uploadAll() error {
-	if err := m.stageUpload(); err != nil {
-		m.log.Errorf("Error moving analytics into staging dir: %s", err)
-		// Don't return here, we may have committed some dirs and will want to upload them
-	}
-
-	tenants, err := ioutil.ReadDir(m.stagingDir)
-	if err != nil {
-		return fmt.Errorf("ReadDir(%s): %s", m.stagingDir, err)
-	}
-
-	var errOut error
-	// TODO: If this is slow, use a pool of goroutines to upload
-	for _, tenant := range tenants {
-		if err := m.upload(tenant.Name()); err != nil {
-			errOut = multierror.Append(errOut, err)
-			if m.shortCircuitErr(err) {
-				return errOut
+func (m *manager) uploadWorkFunc(tenant, fileName string) util.WorkFunc {
+	return func(ctx context.Context) error {
+		if ctx.Err() != nil {
+			m.log.Warningf("canceled upload of %s: %v", fileName, ctx.Err())
+			err := os.Remove(fileName)
+			if err != nil && !os.IsNotExist(err) {
+				m.log.Warningf("unable to remove file %s: %v", fileName, err)
 			}
 		}
+		return m.upload(tenant, fileName)
 	}
-	return errOut
 }
 
-// upload sends all the files in a given staging subdir to UAP.
-func (m *manager) upload(tenant string) error {
-	p := path.Join(m.stagingDir, tenant)
-	files, err := ioutil.ReadDir(p)
+// upload sends a file to UAP
+func (m *manager) upload(tenant, fileName string) error {
+
+	file, err := os.Open(fileName)
 	if err != nil {
-		return fmt.Errorf("ls %s: %s", p, err)
+		return err
 	}
-	var errs error
-	var lastFn string
-	successes := 0
-	for _, fi := range files {
-		fn := path.Join(p, fi.Name())
-		if fn == lastFn {
-			continue
-		}
-		lastFn = fn
-		f, err := os.Open(fn)
-		if err != nil {
-			errs = multierror.Append(errs, err)
-			continue
-		}
 
-		// bad files shouldn't happen here, but bad things happen on the server if they do
-		// so pedantically ensure absolutely, positively no bad gzip files end up on the server
-		err = m.ensureValidGzip(fn)
-		if err != nil && err != ErrGZIPRepaired {
-			errs = multierror.Append(errs,
-				fmt.Errorf("unrecoverable gzip in staging (%s), removing: %s", fn, err))
-			if err := os.Remove(fn); err != nil {
-				errs = multierror.Append(errs, fmt.Errorf("failed remove: %s", err))
-			}
-			continue
-		}
-
-		nameWithSuffix := fi.Name() + ".gz" // suffix needed by Apigee processor
-		signedURL, err := m.signedURL(tenant, nameWithSuffix)
-		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("signedURL: %s", err))
-			if m.shortCircuitErr(err) {
-				return errs
-			}
-			continue
-		}
-		req, err := http.NewRequest("PUT", signedURL, f)
-		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("http.NewRequest: %s", err))
-			continue
-		}
-
-		req.Header.Set("Expect", "100-continue")
-		req.Header.Set("Content-Type", "application/x-gzip")
-		req.Header.Set("x-amz-server-side-encryption", "AES256")
-		req.ContentLength = fi.Size()
-
-		m.log.Debugf("uploading analytics package: %s to: %s", fn, signedURL)
-		resp, err := m.client.Do(req)
-		if err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("client.Do(): %s", err))
-			continue
-		}
-		resp.Body.Close()
-		if resp.StatusCode != 200 {
-			errs = multierror.Append(errs,
-				fmt.Errorf("push %s/%s to store returned %v", p, fi.Name(), resp.Status))
-			continue
-		}
-
-		if err := os.Remove(fn); err != nil {
-			errs = multierror.Append(errs, fmt.Errorf("rm %s: %s", fn, err))
-			continue
-		}
-		successes++
+	fi, err := file.Stat()
+	if err != nil {
+		return err
 	}
-	if successes > 0 {
-		m.log.Debugf("uploaded %d analytics packages.", successes)
+
+	m.log.Debugf("getting signed URL for %s", fileName)
+	signedURL, err := m.signedURL(tenant, fileName)
+	if err != nil {
+		return fmt.Errorf("signedURL: %s", err)
 	}
-	return errs
+	req, err := http.NewRequest("PUT", signedURL, file)
+	if err != nil {
+		return fmt.Errorf("http.NewRequest: %s", err)
+	}
+
+	req.Header.Set("Expect", "100-continue")
+	req.Header.Set("Content-Type", "application/x-gzip")
+	req.Header.Set("x-amz-server-side-encryption", "AES256")
+	req.ContentLength = fi.Size()
+
+	m.log.Debugf("uploading %s to %s", fileName, signedURL)
+	resp, err := m.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("client.Do(): %s", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("upload %s returned %s", fileName, resp.Status)
+	}
+
+	if err := os.Remove(fileName); err != nil {
+		return fmt.Errorf("rm %s: %s", fileName, err)
+	}
+
+	return nil
 }
 
-func (m *manager) orgEnvFromSubdir(subdir string) (string, string) {
+func orgEnvFromSubdir(subdir string) (string, string) {
 	s := strings.Split(subdir, "~")
 	if len(s) == 2 {
 		return s[0], s[1]
@@ -138,23 +93,33 @@ func (m *manager) orgEnvFromSubdir(subdir string) (string, string) {
 	return "", ""
 }
 
-// signedURL constructs a signed URL that can be used to upload records.
-func (m *manager) signedURL(subdir, filename string) (string, error) {
-	org, env := m.orgEnvFromSubdir(subdir)
+// uploadDir gets a directory for where we should upload the file.
+func (m *manager) uploadDir() string {
+	now := m.now()
+	d := now.Format("2006-01-02")
+	t := now.Format("15-04-00")
+	return fmt.Sprintf(pathFmt, d, t)
+}
+
+// signedURL asks for a signed URL that can be used to upload gzip file
+func (m *manager) signedURL(subdir, fileName string) (string, error) {
+	org, env := orgEnvFromSubdir(subdir)
 	if org == "" || env == "" {
 		return "", fmt.Errorf("invalid subdir %s", subdir)
 	}
 
-	u := m.baseURL
-	u.Path = path.Join(u.Path, fmt.Sprintf(analyticsPath, org, env))
-	req, err := http.NewRequest("GET", u.String(), nil)
+	ur := m.baseURL
+	ur.Path = path.Join(ur.Path, fmt.Sprintf(analyticsPath, org, env))
+	req, err := http.NewRequest("GET", ur.String(), nil)
 	if err != nil {
 		return "", err
 	}
 
+	relPath := filepath.Join(m.uploadDir(), filepath.Base(fileName))
+
 	q := req.URL.Query()
 	q.Add("tenant", subdir)
-	q.Add("relative_file_path", path.Join(m.uploadDir(), filename))
+	q.Add("relative_file_path", relPath)
 	q.Add("file_content_type", "application/x-gzip")
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
@@ -168,7 +133,7 @@ func (m *manager) signedURL(subdir, filename string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("status (code %d) returned from %s: %s", resp.StatusCode, u.String(), resp.Status)
+		return "", fmt.Errorf("status (code %d) returned from %s: %s", resp.StatusCode, ur.String(), resp.Status)
 	}
 
 	var data struct {
@@ -178,12 +143,4 @@ func (m *manager) signedURL(subdir, filename string) (string, error) {
 		return "", fmt.Errorf("error decoding response: %s", err)
 	}
 	return data.URL, nil
-}
-
-// uploadDir gets a directory for where we should upload the file.
-func (m *manager) uploadDir() string {
-	now := m.now()
-	d := now.Format("2006-01-02")
-	t := now.Format("15-04-00")
-	return fmt.Sprintf(pathFmt, d, t)
 }

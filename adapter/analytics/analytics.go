@@ -15,16 +15,15 @@
 package analytics
 
 import (
+	"context"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
-	"path"
-	"strings"
+	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
+	"github.com/apigee/istio-mixer-adapter/adapter/util"
 	"istio.io/istio/mixer/pkg/adapter"
 )
 
@@ -32,9 +31,6 @@ const (
 	analyticsPath = "/analytics/organization/%s/environment/%s"
 	axRecordType  = "APIAnalytics"
 	pathFmt       = "date=%s/time=%s/"
-	bufferMode    = os.FileMode(0700)
-	tempDir       = "temp"
-	stagingDir    = "staging"
 
 	// This is a list of errors that the signedURL endpoint will return.
 	errUnauth     = "401 Unauthorized" // Auth credentials are wrong.
@@ -46,29 +42,9 @@ const (
 	// that. Hard code for now.
 	defaultCollectionInterval = 1 * time.Minute
 
-	closeChannelSize = 0
+	// limited to 2 for now to limit upload stress
+	numUploaders = 2
 )
-
-// A manager is a way for Istio to interact with Apigee's analytics platform.
-type manager struct {
-	env                adapter.Env
-	close              chan bool
-	client             *http.Client
-	now                func() time.Time
-	log                adapter.Logger
-	collectionInterval time.Duration
-	tempDir            string // open gzip files being written to
-	stagingDir         string // gzip files staged for upload
-	stagingFileLimit   int
-	bucketsLock        sync.RWMutex
-	buckets            map[string]*bucket // dir ("org~env") -> bucket
-	baseURL            url.URL
-	key                string
-	secret             string
-	sendChannelSize    int
-	closeWait          sync.WaitGroup
-	stageLock          sync.Mutex
-}
 
 // Start starts the manager.
 func (m *manager) Start(env adapter.Env) {
@@ -76,63 +52,116 @@ func (m *manager) Start(env adapter.Env) {
 	m.log = env.Logger()
 	m.log.Infof("starting analytics manager: %s", m.tempDir)
 
+	// start upload channel and workers
+	errNoRetry := fmt.Errorf("analytics closed, no retry on upload")
+	errHandler := func(err error) error {
+		if m.closed {
+			return errNoRetry
+		}
+		env.Logger().Errorf("analytics upload: %v", err)
+		return nil
+	}
+	m.startUploader(env, errHandler)
+
+	// handle anything hanging around in temp or staging
 	if err := m.crashRecovery(); err != nil {
 		m.log.Errorf("Error(s) recovering crashed data: %s", err)
 	}
 
-	env.ScheduleDaemon(func() {
-		m.uploadLoop()
-	})
+	m.startStagingSweeper(env)
+
 	m.log.Infof("started analytics manager: %s", m.tempDir)
 }
 
-// Close shuts down the manager.
+func (m *manager) startStagingSweeper(env adapter.Env) {
+	env.ScheduleDaemon(func() {
+		m.stagingLoop()
+	})
+}
+
+func (m *manager) startUploader(env adapter.Env, errHandler util.ErrorFunc) {
+	m.uploadersWait = sync.WaitGroup{}
+	ctx := context.Background()
+
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	limit := m.stagingFileLimit - numUploaders
+	send, receive, overflow := util.NewReservoir(env, limit)
+	m.uploadChan = send
+
+	// handle uploads
+	for i := 0; i < numUploaders; i++ {
+		l := util.Looper{
+			Env:     env,
+			Backoff: util.DefaultExponentialBackoff(),
+		}
+		env.ScheduleDaemon(func() {
+			m.uploadersWait.Add(1)
+			defer m.uploadersWait.Done()
+
+			for work := range receive {
+				l.Run(ctx, work.(util.WorkFunc), errHandler)
+			}
+		})
+	}
+
+	// handle overflow
+	env.ScheduleDaemon(func() {
+		m.uploadersWait.Add(1)
+		defer m.uploadersWait.Done()
+
+		for dropped := range overflow {
+			env.ScheduleWork(func() {
+				work := dropped.(util.WorkFunc)
+				work(canceledCtx)
+			})
+		}
+	})
+}
+
+// Close shuts down the manager
 func (m *manager) Close() {
 	if m == nil {
 		return
 	}
 	m.log.Infof("closing analytics manager: %s", m.tempDir)
+
 	m.bucketsLock.Lock()
-	m.closeWait.Add(len(m.buckets))
-	for _, b := range m.buckets {
-		b.stop()
-	}
-	m.buckets = nil
+	m.closed = true
 	m.bucketsLock.Unlock()
-	m.closeWait.Wait()
-	if err := m.uploadAll(); err != nil {
-		m.log.Errorf("Error pushing analytics: %s", err)
-	}
+
+	m.closeStaging <- true
+
+	// force stage and upload
+	m.stageAllBucketsWait()
+	close(m.uploadChan)
+	m.uploadersWait.Wait()
+
 	m.log.Infof("closed analytics manager")
 }
 
-// uploadLoop periodically uploads everything in the tempDir
-func (m *manager) uploadLoop() {
+// stagingLoop periodically closes and sweeps open buckets to staging
+func (m *manager) stagingLoop() {
 	t := time.NewTicker(m.collectionInterval)
 	for {
 		select {
 		case <-t.C:
-			if err := m.uploadAll(); err != nil {
-				m.log.Errorf("Error pushing analytics: %s", err)
-			}
-		case <-m.close:
-			m.log.Debugf("analytics upload loop closed: %s", m.tempDir)
+			m.stageAllBucketsWait()
+
+		case <-m.closeStaging:
+			m.log.Debugf("analytics staging loop closed: %s", m.tempDir)
 			return
 		}
 	}
 }
 
-// shortCircuitErr checks if we should bail early on this error (i.e. an error
-// that will be the same for all requests, like an auth fail or Apigee is down).
-func (m *manager) shortCircuitErr(err error) bool {
-	s := err.Error()
-	return strings.Contains(s, errUnauth) ||
-		strings.Contains(s, errNotFound) ||
-		strings.Contains(s, errApigeeDown)
-}
-
-// SendRecords sends the records asynchronously to the UAP primary server.
+// SendRecords is called by Mixer, spools records for sending
 func (m *manager) SendRecords(ctx *auth.Context, incoming []Record) error {
+	if m == nil || len(incoming) == 0 {
+		return nil
+	}
+
 	// Validate the records
 	now := m.now()
 	records := make([]Record, 0, len(incoming))
@@ -145,49 +174,66 @@ func (m *manager) SendRecords(ctx *auth.Context, incoming []Record) error {
 		records = append(records, record)
 	}
 
-	bucket, err := m.getBucket(ctx)
-	if err != nil {
-		return fmt.Errorf("get bucket: %s", err)
-	}
-
-	bucket.write(records)
-	return nil
+	return m.writeToBucket(ctx, records)
 }
 
-func (m *manager) getBucket(ctx *auth.Context) (*bucket, error) {
+func (m *manager) writeToBucket(ctx *auth.Context, records []Record) error {
 	tenant := fmt.Sprintf("%s~%s", ctx.Organization(), ctx.Environment())
 
 	m.bucketsLock.RLock()
-	if _, ok := m.buckets[tenant]; ok {
+	if bucket, ok := m.buckets[tenant]; ok {
+		bucket.write(records)
 		m.bucketsLock.RUnlock()
-		return m.buckets[tenant], nil
+		return nil
 	}
 
+	// no bucket, we'll have to work harder
 	m.bucketsLock.RUnlock()
 	m.bucketsLock.Lock()
 	defer m.bucketsLock.Unlock()
 
-	// double check after lock
-	if _, ok := m.buckets[tenant]; ok {
-		return m.buckets[tenant], nil
-	}
+	bucket, ok := m.buckets[tenant]
+	if !ok {
+		if err := m.prepTenant(tenant); err != nil {
+			return err
+		}
 
-	// ensure directory exists
-	dir := path.Join(m.tempDir, tenant)
+		var err error
+		bucket, err = newBucket(m, tenant, m.getTempDir(tenant))
+		if err != nil {
+			return err
+		}
+		m.buckets[tenant] = bucket
+	}
+	bucket.write(records)
+	return nil
+}
+
+// ensures tenant temp and staging dirs are created
+func (m *manager) prepTenant(tenant string) error {
+	bufferMode := os.FileMode(0700)
+
+	dir := m.getTempDir(tenant)
 	if err := os.MkdirAll(dir, bufferMode); err != nil {
-		return nil, fmt.Errorf("mkdir %s: %s", dir, err)
+		return fmt.Errorf("mkdir %s: %s", dir, err)
 	}
 
-	b := &bucket{
-		manager:  m,
-		log:      m.log,
-		dir:      dir,
-		tenant:   tenant,
-		incoming: make(chan []Record, m.sendChannelSize),
-		closer:   make(chan closeReq, closeChannelSize),
+	dir = m.getStagingDir(tenant)
+	if err := os.MkdirAll(dir, bufferMode); err != nil {
+		return fmt.Errorf("mkdir %s: %s", dir, err)
 	}
-	m.env.ScheduleDaemon(b.runLoop)
 
-	m.buckets[tenant] = b
-	return b, nil
+	return nil
+}
+
+func (m *manager) getTempDir(tenant string) string {
+	return filepath.Join(m.tempDir, tenant)
+}
+
+func (m *manager) getStagingDir(tenant string) string {
+	return filepath.Join(m.stagingDir, tenant)
+}
+
+func getTenantName(org, env string) string {
+	return fmt.Sprintf("%s~%s", org, env)
 }

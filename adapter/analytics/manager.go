@@ -19,7 +19,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
@@ -51,18 +52,21 @@ func newManager(opts Options) (*manager, error) {
 	if err := opts.validate(); err != nil {
 		return nil, err
 	}
-	// Ensure that the buffer path exists and we can access it.
-	td := path.Join(opts.BufferPath, tempDir)
-	sd := path.Join(opts.BufferPath, stagingDir)
+
+	// Ensure that base temp dir exists
+	bufferMode := os.FileMode(0700)
+	td := filepath.Join(opts.BufferPath, "temp")
 	if err := os.MkdirAll(td, bufferMode); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %s", td, err)
 	}
+	// Ensure that base stage dir exists
+	sd := filepath.Join(opts.BufferPath, "staging")
 	if err := os.MkdirAll(sd, bufferMode); err != nil {
 		return nil, fmt.Errorf("mkdir %s: %s", sd, err)
 	}
 
 	return &manager{
-		close:              make(chan bool),
+		closeStaging:       make(chan bool),
 		client:             opts.Client,
 		now:                time.Now,
 		collectionInterval: defaultCollectionInterval,
@@ -75,6 +79,29 @@ func newManager(opts Options) (*manager, error) {
 		secret:             opts.Secret,
 		sendChannelSize:    opts.SendChannelSize,
 	}, nil
+}
+
+// A manager is a way for Istio to interact with Apigee's analytics platform.
+type manager struct {
+	env                adapter.Env
+	closeStaging       chan bool
+	client             *http.Client
+	now                func() time.Time
+	log                adapter.Logger
+	collectionInterval time.Duration
+	tempDir            string // open gzip files being written to
+	stagingDir         string // gzip files staged for upload
+	stagingFileLimit   int
+	bucketsLock        sync.RWMutex
+	buckets            map[string]*bucket // dir ("org~env") -> bucket
+	baseURL            url.URL
+	key                string
+	secret             string
+	sendChannelSize    int
+	stageLock          sync.Mutex
+	closed             bool
+	uploadChan         chan<- interface{}
+	uploadersWait      sync.WaitGroup
 }
 
 // Options allows us to specify options for how this analytics manager will run.

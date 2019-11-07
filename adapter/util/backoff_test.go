@@ -96,3 +96,37 @@ func TestDefaultBackoff(t *testing.T) {
 		t.Errorf("want: %v, got: %v", defaultJitter, eb.jitter)
 	}
 }
+
+func TestCloneExponentialBackoff(t *testing.T) {
+	backoff1 := DefaultExponentialBackoff()
+	backoff2 := backoff1.Clone()
+
+	if &backoff1 == &backoff2 {
+		t.Errorf("must not be the same object!")
+	}
+
+	if backoff1.Attempt() != 0 {
+		t.Errorf("want 0, got %d", backoff1.Attempt())
+	}
+	backoff1.Duration()
+	if backoff1.Attempt() != 1 {
+		t.Errorf("want 1, got %d", backoff1.Attempt())
+	}
+
+	if backoff2.Attempt() != 0 {
+		t.Errorf("want 0, got %d", backoff2.Attempt())
+	}
+
+	backoff3 := backoff1.Clone()
+	if backoff3.Attempt() != 1 {
+		t.Errorf("want 1, got %d", backoff3.Attempt())
+	}
+
+	if backoff2.Duration() != backoff3.Duration() {
+		t.Errorf("durations not equal")
+	}
+
+	if backoff1.Duration() == backoff3.Duration() {
+		t.Errorf("durations should not be equal")
+	}
+}
