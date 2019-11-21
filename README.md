@@ -37,15 +37,13 @@ You should a top-level list similar to:
 
     LICENSE
     README.md
-    install/
     samples/
     apigee-istio
 
 `apigee-istio` (or apigee-istio.exe on Windows) is the Command Line Interface (CLI) for this project. 
 Add it to your PATH for quick access - or remember to specify the path for the commands below.
 
-The files in the samples/ and install/ directories contain the configuration for Istio and the adapter. We discuss 
-these below.
+The files in the samples/ directory contain sample configuration for Istio and the adapter.
 
 ## Provision Apigee for Istio
 

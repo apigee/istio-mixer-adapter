@@ -6,7 +6,6 @@ coverage:
     - "adapter/authtest/"
     - "adapter/integrationtest/"
     - "bin/"
-    - "install/"
     - "template/"
     - "apigee-istio/"
     - "context/"
