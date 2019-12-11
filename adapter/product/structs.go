@@ -24,20 +24,20 @@ type APIResponse struct {
 // An APIProduct is an Apigee API product. See the Apigee docs for details:
 // https://docs.apigee.com/api-platform/publish/what-api-product
 type APIProduct struct {
-	Attributes       []Attribute `json:"attributes,omitempty"`
-	CreatedAt        int64       `json:"createdAt,omitempty"`
-	CreatedBy        string      `json:"createdBy,omitempty"`
-	Description      string      `json:"description,omitempty"`
-	DisplayName      string      `json:"displayName,omitempty"`
-	Environments     []string    `json:"environments,omitempty"`
-	LastModifiedAt   int64       `json:"lastModifiedAt,omitempty"`
-	LastModifiedBy   string      `json:"lastModifiedBy,omitempty"`
-	Name             string      `json:"name,omitempty"`
-	QuotaLimit       string      `json:"quota,omitempty"`
-	QuotaInterval    string      `json:"quotaInterval,omitempty"`
-	QuotaTimeUnit    string      `json:"quotaTimeUnit,omitempty"`
-	Resources        []string    `json:"apiResources"`
-	Scopes           []string    `json:"scopes"`
+	Attributes []Attribute `json:"attributes,omitempty"`
+	// CreatedAt        int64       `json:"createdAt,omitempty"`
+	CreatedBy    string   `json:"createdBy,omitempty"`
+	Description  string   `json:"description,omitempty"`
+	DisplayName  string   `json:"displayName,omitempty"`
+	Environments []string `json:"environments,omitempty"`
+	// LastModifiedAt   int64       `json:"lastModifiedAt,omitempty"`
+	LastModifiedBy   string   `json:"lastModifiedBy,omitempty"`
+	Name             string   `json:"name,omitempty"`
+	QuotaLimit       string   `json:"quota,omitempty"`
+	QuotaInterval    string   `json:"quotaInterval,omitempty"`
+	QuotaTimeUnit    string   `json:"quotaTimeUnit,omitempty"`
+	Resources        []string `json:"apiResources"`
+	Scopes           []string `json:"scopes"`
 	Targets          []string
 	QuotaLimitInt    int64
 	QuotaIntervalInt int64
