@@ -32,3 +32,10 @@ func (r *Revision) UnmarshalJSON(b []byte) error {
 func (r Revision) String() string {
 	return fmt.Sprintf("%d", r)
 }
+
+// RevisionSlice is for sorting
+type RevisionSlice []Revision
+
+func (p RevisionSlice) Len() int           { return len(p) }
+func (p RevisionSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p RevisionSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

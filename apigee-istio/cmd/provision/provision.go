@@ -34,6 +34,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -163,13 +164,17 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			}
 		}
 
-		if err := p.getOrCreateKVM(verbosef); err != nil {
-			fatalf("error retrieving or creating kvm: %v", err)
+		if !p.IsHybrid { // TODO: not valid for hybrid
+			if err := p.getOrCreateKVM(verbosef); err != nil {
+				fatalf("error retrieving or creating kvm: %v", err)
+			}
 		}
 
-		cred, err = p.createCredential(verbosef)
-		if err != nil {
-			fatalf("error generating credential: %v", err)
+		if !p.IsHybrid { // TODO: not valid for hybrid
+			cred, err = p.createCredential(verbosef)
+			if err != nil {
+				fatalf("error generating credential: %v", err)
+			}
 		}
 
 		customizedProxy, err := getCustomizedProxy(tempDir, authProxyZip, replaceVirtualHosts)
@@ -185,6 +190,15 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			Key:    p.provisionKey,
 			Secret: p.provisionSecret,
 		}
+	}
+
+	if p.IsHybrid { // TODO: hybrid is not done
+		rev, err := p.Client.Proxies.GetHybridDeployedRevision(authProxyName)
+		if err != nil {
+			fatalf("Error attempting to verify proxy %s has been deployed: %v", authProxyName, err)
+		}
+		printf("Rev %v of %v is deployed, but I cannot fully verify. Good luck!", rev, authProxyName)
+		os.Exit(0)
 	}
 
 	// use generated credentials
@@ -493,7 +507,13 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn,
 
 func (p *provision) checkAndDeployProxy(name, file string, printf shared.FormatFn) error {
 	printf("checking if proxy %s deployment exists...", name)
-	oldRev, err := p.Client.Proxies.GetDeployedRevision(name, p.Env)
+	var oldRev *apigee.Revision
+	var err error
+	if p.IsHybrid {
+		oldRev, err = p.Client.Proxies.GetHybridDeployedRevision(name)
+	} else {
+		oldRev, err = p.Client.Proxies.GetDeployedRevision(name)
+	}
 	if err != nil {
 		return err
 	}
@@ -519,6 +539,7 @@ func (p *provision) checkAndDeployProxy(name, file string, printf shared.FormatF
 func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRev *apigee.Revision, file string, printf shared.FormatFn) error {
 	var newRev apigee.Revision = 1
 	if proxy != nil && len(proxy.Revisions) > 0 {
+		sort.Sort(apigee.RevisionSlice(proxy.Revisions))
 		newRev = proxy.Revisions[len(proxy.Revisions)-1] + 1
 		printf("proxy %s exists. highest revision is: %d", name, newRev-1)
 	}
@@ -542,7 +563,7 @@ func (p *provision) importAndDeployProxy(name string, proxy *apigee.Proxy, oldRe
 	}
 	defer resp.Body.Close()
 
-	if oldRev != nil {
+	if oldRev != nil && !p.IsHybrid { // it's not necessary to undeploy first in hybrid
 		printf("undeploying proxy %s revision %d on env %s...",
 			name, oldRev, p.Env)
 		_, resp, err = p.Client.Proxies.Undeploy(name, p.Env, *oldRev)

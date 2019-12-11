@@ -2,16 +2,19 @@ package apigee
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
-	"time"
 )
 
 const proxiesPath = "apis"
@@ -19,16 +22,18 @@ const proxiesPath = "apis"
 // ProxiesService is an interface for interfacing with the Apigee Edge Admin API
 // dealing with apiproxies.
 type ProxiesService interface {
-	List() ([]string, *Response, error)
+	// List() ([]string, *Response, error)
 	Get(string) (*Proxy, *Response, error)
-	Import(string, string) (*ProxyRevision, *Response, error)
-	Delete(string) (*DeletedProxyInfo, *Response, error)
-	DeleteRevision(string, Revision) (*ProxyRevision, *Response, error)
+	Import(proxyName string, source string) (*ProxyRevision, *Response, error)
+	// Delete(string) (*DeletedProxyInfo, *Response, error)
+	// DeleteRevision(string, Revision) (*ProxyRevision, *Response, error)
 	Deploy(string, string, Revision) (*ProxyRevisionDeployment, *Response, error)
 	Undeploy(string, string, Revision) (*ProxyRevisionDeployment, *Response, error)
-	Export(string, Revision) (string, *Response, error)
-	GetDeployments(string) (*ProxyDeployment, *Response, error)
-	GetDeployedRevision(proxy, env string) (*Revision, error)
+	// Export(string, Revision) (string, *Response, error)
+	GetDeployment(proxy string) (*EnvironmentDeployment, *Response, error)
+	GetDeployedRevision(proxy string) (*Revision, error)
+	GetHybridDeployments(proxy string) ([]HybridDeployment, *Response, error)
+	GetHybridDeployedRevision(proxy string) (*Revision, error)
 }
 
 // ProxiesServiceOp represents operations against Apigee proxies
@@ -37,6 +42,20 @@ type ProxiesServiceOp struct {
 }
 
 var _ ProxiesService = &ProxiesServiceOp{}
+
+// HybridDeployments holds an array of HybridDeployment objects.
+type HybridDeployments struct {
+	Deployments []HybridDeployment `json:"deployments,omitempty"`
+}
+
+// HybridDeployment contains information about a deployment in hybrid.
+type HybridDeployment struct {
+	Environment     string `json:"environment,omitempty"`
+	Name            string `json:"apiProxy,omitempty"`
+	Revision        string `json:"revision,omitempty"`
+	DeployStartTime string `json:"deployStartTime,omitempty"`
+	BasePath        string `json:"basePath,omitempty"`
+}
 
 // Proxy contains information about an API Proxy within an Edge organization.
 type Proxy struct {
@@ -129,25 +148,25 @@ type DeletedProxyInfo struct {
 //   Proxies []Proxy `json:"proxies"`
 // }
 
-// List retrieves the list of apiproxy names for the organization referred by the EdgeClient.
-func (s *ProxiesServiceOp) List() ([]string, *Response, error) {
-	req, e := s.client.NewRequest("GET", proxiesPath, nil)
-	if e != nil {
-		return nil, nil, e
-	}
-	namelist := make([]string, 0)
-	resp, e := s.client.Do(req, &namelist)
-	if e != nil {
-		return nil, resp, e
-	}
-	return namelist, resp, e
-}
+// // List retrieves the list of apiproxy names for the organization referred by the EdgeClient.
+// func (s *ProxiesServiceOp) List() ([]string, *Response, error) {
+// 	req, e := s.client.NewRequest("GET", proxiesPath, nil)
+// 	if e != nil {
+// 		return nil, nil, e
+// 	}
+// 	namelist := make([]string, 0)
+// 	resp, e := s.client.Do(req, &namelist)
+// 	if e != nil {
+// 		return nil, resp, e
+// 	}
+// 	return namelist, resp, e
+// }
 
 // Get retrieves the information about an API Proxy in an organization, information including
 // the list of available revisions, and the created and last modified dates and actors.
 func (s *ProxiesServiceOp) Get(proxy string) (*Proxy, *Response, error) {
-	path := path.Join(proxiesPath, proxy)
-	req, e := s.client.NewRequest("GET", path, nil)
+	urlPath := path.Join(proxiesPath, proxy)
+	req, e := s.client.NewRequestNoEnv("GET", urlPath, nil)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -159,11 +178,11 @@ func (s *ProxiesServiceOp) Get(proxy string) (*Proxy, *Response, error) {
 	return &returnedProxy, resp, e
 }
 
-func smartFilter(path string) bool {
-	if strings.HasSuffix(path, "~") {
+func smartFilter(urlPath string) bool {
+	if strings.HasSuffix(urlPath, "~") {
 		return false
 	}
-	if strings.HasSuffix(path, "#") && strings.HasPrefix(path, "#") {
+	if strings.HasSuffix(urlPath, "#") && strings.HasPrefix(urlPath, "#") {
 		return false
 	}
 	return true
@@ -189,8 +208,8 @@ func zipDirectory(source string, target string, filter func(string) bool) error 
 		baseDir = filepath.Base(source)
 	}
 
-	filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if filter == nil || filter(path) {
+	filepath.Walk(source, func(rootPath string, info os.FileInfo, err error) error {
+		if filter == nil || filter(rootPath) {
 			if err != nil {
 				return err
 			}
@@ -201,7 +220,7 @@ func zipDirectory(source string, target string, filter func(string) bool) error 
 			}
 
 			if baseDir != "" {
-				header.Name = filepath.Join(baseDir, strings.TrimPrefix(path, source))
+				header.Name = filepath.Join(baseDir, strings.TrimPrefix(rootPath, source))
 			}
 
 			// This archive will be unzipped by a Java process.  When ZIP64 extensions
@@ -222,7 +241,7 @@ func zipDirectory(source string, target string, filter func(string) bool) error 
 				return nil
 			}
 
-			file, err := os.Open(path)
+			file, err := os.Open(rootPath)
 			if err != nil {
 				return err
 			}
@@ -258,8 +277,8 @@ func (s *ProxiesServiceOp) Import(proxyName string, source string) (*ProxyRevisi
 		if e != nil {
 			return nil, nil, fmt.Errorf("while creating temp dir, error: %#v", e)
 		}
-		zipfileName = path.Join(tempDir, "apiproxy.zip")
-		e = zipDirectory(path.Join(source, "apiproxy"), zipfileName, smartFilter)
+		zipfileName = filepath.Join(tempDir, "apiproxy.zip")
+		e = zipDirectory(filepath.Join(source, "apiproxy"), zipfileName, smartFilter)
 		if e != nil {
 			return nil, nil, fmt.Errorf("while creating temp dir, error: %#v", e)
 		}
@@ -284,7 +303,7 @@ func (s *ProxiesServiceOp) Import(proxyName string, source string) (*ProxyRevisi
 	q.Add("action", "import")
 	q.Add("name", proxyName)
 	origURL.RawQuery = q.Encode()
-	path := origURL.String()
+	urlPath := origURL.String()
 
 	ioreader, err := os.Open(zipfileName)
 	if err != nil {
@@ -292,118 +311,146 @@ func (s *ProxiesServiceOp) Import(proxyName string, source string) (*ProxyRevisi
 	}
 	defer ioreader.Close()
 
-	req, e := s.client.NewRequest("POST", path, ioreader)
-	if e != nil {
-		return nil, nil, e
+	var req *http.Request
+	if !s.client.IsHybrid() {
+		req, err = s.client.NewRequestNoEnv("POST", urlPath, ioreader)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else { // hybrid API requires formdata format
+		var b bytes.Buffer
+		w := multipart.NewWriter(&b)
+		var fw io.Writer
+		if fw, err = w.CreateFormFile("file", zipfileName); err != nil {
+			return nil, nil, err
+		}
+		if _, err = io.Copy(fw, ioreader); err != nil {
+			return nil, nil, err
+		}
+		w.Close()
+
+		req, err = s.client.NewRequestNoEnv("POST", urlPath, &b)
+		if err != nil {
+			return nil, nil, err
+		}
+		req.Header.Set("Content-Type", w.FormDataContentType())
 	}
+
 	returnedProxyRevision := ProxyRevision{}
-	resp, e := s.client.Do(req, &returnedProxyRevision)
-	if e != nil {
-		return nil, resp, e
-	}
-	return &returnedProxyRevision, resp, e
-}
-
-// Export a revision of an API proxy within an organization, to a filesystem file.
-func (s *ProxiesServiceOp) Export(proxyName string, rev Revision) (string, *Response, error) {
-	// curl -u USER:PASSWORD \
-	//  http://MGMTSERVER/v1/o/ORGNAME/apis/APINAME/revisions/REVNUMBER?format=bundle > bundle.zip
-
-	path := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev))
-	// append the required query param
-	origURL, err := url.Parse(path)
+	res, err := s.client.Do(req, &returnedProxyRevision)
 	if err != nil {
-		return "", nil, err
+		return nil, res, err
 	}
-	q := origURL.Query()
-	q.Add("format", "bundle")
-	origURL.RawQuery = q.Encode()
-	path = origURL.String()
-
-	req, e := s.client.NewRequest("GET", path, nil)
-	if e != nil {
-		return "", nil, e
-	}
-	req.Header.Del("Accept")
-
-	t := time.Now()
-	filename := fmt.Sprintf("proxyName-r%d-%d%02d%02d-%02d%02d%02d.zip",
-		rev, t.Year(), t.Month(), t.Day(),
-		t.Hour(), t.Minute(), t.Second())
-
-	out, e := os.Create(filename)
-	if e != nil {
-		return "", nil, e
-	}
-
-	resp, e := s.client.Do(req, out)
-	if e != nil {
-		return "", resp, e
-	}
-	out.Close()
-	return filename, resp, e
+	return &returnedProxyRevision, res, err
 }
 
-// DeleteRevision deletes a specific revision of an API Proxy from an organization.
-// The revision must exist, and must not be currently deployed.
-func (s *ProxiesServiceOp) DeleteRevision(proxyName string, rev Revision) (*ProxyRevision, *Response, error) {
-	path := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev))
-	req, e := s.client.NewRequest("DELETE", path, nil)
-	if e != nil {
-		return nil, nil, e
-	}
-	proxyRev := ProxyRevision{}
-	resp, e := s.client.Do(req, &proxyRev)
-	if e != nil {
-		return nil, resp, e
-	}
-	return &proxyRev, resp, e
-}
+// // Export a revision of an API proxy within an organization, to a filesystem file.
+// func (s *ProxiesServiceOp) Export(proxyName string, rev Revision) (string, *Response, error) {
+// 	// curl -u USER:PASSWORD \
+// 	//  http://MGMTSERVER/v1/organizations/ORGNAME/apis/APINAME/revisions/REVNUMBER?format=bundle > bundle.zip
+
+// 	urlPath := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev))
+// 	// append the required query param
+// 	origURL, err := url.Parse(urlPath)
+// 	if err != nil {
+// 		return "", nil, err
+// 	}
+// 	q := origURL.Query()
+// 	q.Add("format", "bundle")
+// 	origURL.RawQuery = q.Encode()
+// 	urlPath = origURL.String()
+
+// 	req, e := s.client.NewRequestNoEnv("GET", urlPath, nil)
+// 	if e != nil {
+// 		return "", nil, e
+// 	}
+// 	req.Header.Del("Accept")
+
+// 	t := time.Now()
+// 	filename := fmt.Sprintf("proxyName-r%d-%d%02d%02d-%02d%02d%02d.zip",
+// 		rev, t.Year(), t.Month(), t.Day(),
+// 		t.Hour(), t.Minute(), t.Second())
+
+// 	out, e := os.Create(filename)
+// 	if e != nil {
+// 		return "", nil, e
+// 	}
+
+// 	resp, e := s.client.Do(req, out)
+// 	if e != nil {
+// 		return "", resp, e
+// 	}
+// 	out.Close()
+// 	return filename, resp, e
+// }
+
+// // DeleteRevision deletes a specific revision of an API Proxy from an organization.
+// // The revision must exist, and must not be currently deployed.
+// func (s *ProxiesServiceOp) DeleteRevision(proxyName string, rev Revision) (*ProxyRevision, *Response, error) {
+// 	urlPath := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev))
+// 	req, e := s.client.NewRequestNoEnv("DELETE", urlPath, nil)
+// 	if e != nil {
+// 		return nil, nil, e
+// 	}
+// 	proxyRev := ProxyRevision{}
+// 	resp, e := s.client.Do(req, &proxyRev)
+// 	if e != nil {
+// 		return nil, resp, e
+// 	}
+// 	return &proxyRev, resp, e
+// }
 
 // Undeploy a specific revision of an API Proxy from a particular environment within an Edge organization.
 func (s *ProxiesServiceOp) Undeploy(proxyName, env string, rev Revision) (*ProxyRevisionDeployment, *Response, error) {
-	path := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev), "deployments")
-	// append the query params
-	origURL, err := url.Parse(path)
+	urlPath := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev), "deployments")
+
+	var req *http.Request
+	var err error
+	if s.client.IsHybrid() {
+		req, err = s.client.NewRequest("DELETE", urlPath, nil)
+	} else {
+		origURL, err := url.Parse(urlPath)
+		if err != nil {
+			return nil, nil, err
+		}
+		q := origURL.Query()
+		q.Add("action", "undeploy")
+		q.Add("env", env)
+		origURL.RawQuery = q.Encode()
+		urlPath = origURL.String()
+		req, err = s.client.NewRequestNoEnv("POST", urlPath, nil)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
-	q := origURL.Query()
-	q.Add("action", "undeploy")
-	q.Add("env", env)
-	origURL.RawQuery = q.Encode()
-	path = origURL.String()
-
-	req, e := s.client.NewRequest("POST", path, nil)
-	if e != nil {
-		return nil, nil, e
-	}
 
 	deployment := ProxyRevisionDeployment{}
-	resp, e := s.client.Do(req, &deployment)
-	if e != nil {
-		return nil, resp, e
+	resp, err := s.client.Do(req, &deployment)
+	if err != nil {
+		return nil, resp, err
 	}
-	return &deployment, resp, e
+	return &deployment, resp, err
 }
 
 // Deploy a revision of an API proxy to a specific environment within an organization.
 func (s *ProxiesServiceOp) Deploy(proxyName, env string, rev Revision) (*ProxyRevisionDeployment, *Response, error) {
-	path := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev), "deployments")
+	urlPath := path.Join(proxiesPath, proxyName, "revisions", fmt.Sprintf("%d", rev), "deployments")
 	// append the query params
-	origURL, err := url.Parse(path)
+	origURL, err := url.Parse(urlPath)
 	if err != nil {
 		return nil, nil, err
 	}
 	q := origURL.Query()
-	q.Add("action", "deploy")
 	q.Add("override", "true")
-	q.Add("delay", "12")
-	q.Add("env", env)
+	if !s.client.IsHybrid() {
+		q.Add("action", "deploy")
+		q.Add("delay", "12")
+		q.Add("env", env)
+	}
 	origURL.RawQuery = q.Encode()
-	path = origURL.String()
+	urlPath = origURL.String()
 
-	req, e := s.client.NewRequest("POST", path, nil)
+	req, e := s.client.NewRequest("POST", urlPath, nil)
 	if e != nil {
 		return nil, nil, e
 	}
@@ -416,57 +463,92 @@ func (s *ProxiesServiceOp) Deploy(proxyName, env string, rev Revision) (*ProxyRe
 	return &deployment, resp, e
 }
 
-// Delete an API Proxy and all its revisions from an organization. This method
-// will fail if any of the revisions of the named API Proxy are currently deployed
-// in any environment.
-func (s *ProxiesServiceOp) Delete(proxyName string) (*DeletedProxyInfo, *Response, error) {
-	path := path.Join(proxiesPath, proxyName)
-	req, e := s.client.NewRequest("DELETE", path, nil)
+// // Delete an API Proxy and all its revisions from an organization. This method
+// // will fail if any of the revisions of the named API Proxy are currently deployed
+// // in any environment.
+// func (s *ProxiesServiceOp) Delete(proxyName string) (*DeletedProxyInfo, *Response, error) {
+// 	urlPath := path.Join(proxiesPath, proxyName)
+// 	req, e := s.client.NewRequestNoEnv("DELETE", urlPath, nil)
+// 	if e != nil {
+// 		return nil, nil, e
+// 	}
+// 	proxy := DeletedProxyInfo{}
+// 	resp, e := s.client.Do(req, &proxy)
+// 	if e != nil {
+// 		return nil, resp, e
+// 	}
+// 	return &proxy, resp, e
+// }
+
+// GetDeployment retrieves the information about the deployment of an API Proxy in an environment.
+// DOES NOT WORK WITH HYBRID!
+func (s *ProxiesServiceOp) GetDeployment(proxy string) (*EnvironmentDeployment, *Response, error) {
+	if s.client.IsHybrid() {
+		return nil, nil, errors.New("not compatible with hybrid")
+	}
+	urlPath := path.Join(proxiesPath, proxy, "deployments")
+	req, e := s.client.NewRequest("GET", urlPath, nil)
 	if e != nil {
 		return nil, nil, e
 	}
-	proxy := DeletedProxyInfo{}
-	resp, e := s.client.Do(req, &proxy)
+	deployment := EnvironmentDeployment{}
+	resp, e := s.client.Do(req, &deployment)
 	if e != nil {
 		return nil, resp, e
 	}
-	return &proxy, resp, e
+	return &deployment, resp, e
 }
 
-// GetDeployments retrieves the information about deployments of an API Proxy in
-// an organization, including the environment names and revision numbers.
-func (s *ProxiesServiceOp) GetDeployments(proxy string) (*ProxyDeployment, *Response, error) {
-	path := path.Join(proxiesPath, proxy, "deployments")
-	req, e := s.client.NewRequest("GET", path, nil)
+// GetDeployedRevision returns the Revision that is deployed to an environment.
+func (s *ProxiesServiceOp) GetDeployedRevision(proxy string) (*Revision, error) {
+	deployment, resp, err := s.GetDeployment(proxy)
+	if err != nil && resp == nil {
+		return nil, err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	for _, rev := range deployment.Revision {
+		if rev.State == "deployed" {
+			return &rev.Number, nil
+		}
+	}
+
+	return nil, nil
+}
+
+// GetHybridDeployments retrieves the information about deployments of an API Proxy in
+// an hybrid organization, including the environment names and revision numbers.
+func (s *ProxiesServiceOp) GetHybridDeployments(proxy string) ([]HybridDeployment, *Response, error) {
+	if !s.client.IsHybrid() {
+		return nil, nil, errors.New("not compatible with non-hybrid")
+	}
+	urlPath := path.Join(proxiesPath, proxy, "deployments")
+	req, e := s.client.NewRequest("GET", urlPath, nil)
 	if e != nil {
 		return nil, nil, e
 	}
-	deployments := ProxyDeployment{}
+	deployments := HybridDeployments{}
 	resp, e := s.client.Do(req, &deployments)
 	if e != nil {
 		return nil, resp, e
 	}
-	return &deployments, resp, e
+	return deployments.Deployments, resp, e
 }
 
-// GetDeployedRevision returns the Revision that is deployed to an environment.
-func (s *ProxiesServiceOp) GetDeployedRevision(proxy, env string) (*Revision, error) {
-	deployment, resp, err := s.GetDeployments(proxy)
+// GetHybridDeployedRevision returns the Revision that is deployed to an environment in hybrid.
+func (s *ProxiesServiceOp) GetHybridDeployedRevision(proxy string) (*Revision, error) {
+	deployments, resp, err := s.GetHybridDeployments(proxy)
 	if err != nil && resp == nil {
 		return nil, err
 	}
-	if deployment != nil {
-		if resp.StatusCode != 404 {
-			for _, ed := range deployment.Environments {
-				if ed.Name == env {
-					for _, rev := range ed.Revision {
-						if rev.State == "deployed" {
-							return &ed.Revision[0].Number, nil
-						}
-					}
-				}
-			}
+	if len(deployments) > 0 {
+		rev, err := strconv.ParseInt(strings.TrimSuffix(strings.TrimPrefix(deployments[0].Revision, "\""), "\""), 10, 32)
+		if err != nil {
+			return nil, err
 		}
+		r := Revision(rev)
+		return &r, nil
 	}
 
 	return nil, nil

@@ -45,11 +45,13 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 		for _, subC := range cmds {
 			// add general flags
 			subC.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
-				shared.DefaultRouterBase, "Apigee router base")
+				shared.DefaultRouterBase, "Apigee ro	uter base")
 			subC.PersistentFlags().StringVarP(&rootArgs.ManagementBase, "managementBase", "m",
 				shared.DefaultManagementBase, "Apigee management base")
 			subC.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
 				false, "verbose output")
+			subC.PersistentFlags().BoolVarP(&rootArgs.IsHybrid, "hybrid", "y",
+				false, "Apigee hybrid (automatically sets management base)")
 			subC.PersistentFlags().StringVarP(&rootArgs.NetrcPath, "netrc", "n",
 				"", "Path to a .netrc file to use (default is $HOME/.netrc")
 

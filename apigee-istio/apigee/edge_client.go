@@ -206,8 +206,8 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 		return nil, err
 	}
 
-	baseURL.Path = path.Join(baseURL.Path, "v1/o/", o.Org, "/")
-	baseURLEnv.Path = path.Join(baseURLEnv.Path, "v1/o/", o.Org, "environments/", o.Env)
+	baseURL.Path = path.Join(baseURL.Path, "v1/organizations/", o.Org, "/")
+	baseURLEnv.Path = path.Join(baseURLEnv.Path, "v1/organizations/", o.Org, "environments/", o.Env)
 
 	c := &EdgeClient{client: httpClient, BaseURL: baseURL, BaseURLEnv: baseURLEnv, UserAgent: userAgent}
 	c.Proxies = &ProxiesServiceOp{client: c}
@@ -298,7 +298,17 @@ func NewEdgeClient(o *EdgeClientOptions) (*EdgeClient, error) {
 // which will be resolved to the BaseURL of the Client. Relative URLS should
 // always be specified without a preceding slash. If specified, the value
 // pointed to by body is JSON encoded and included in as the request body.
+// The current environment path element will be included in the URL.
 func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+	return c.newRequest(method, urlStr, body, true)
+}
+
+// NewRequestNoEnv creates an API request as NewRequest, but does not include the environment path element.
+func (c *EdgeClient) NewRequestNoEnv(method, urlStr string, body interface{}) (*http.Request, error) {
+	return c.newRequest(method, urlStr, body, false)
+}
+
+func (c *EdgeClient) newRequest(method, urlStr string, body interface{}, includeEnv bool) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	ctype := ""
 	if err != nil {
@@ -306,8 +316,7 @@ func (c *EdgeClient) NewRequest(method, urlStr string, body interface{}) (*http.
 	}
 	u := c.BaseURL.ResolveReference(rel)
 
-	//TODO: find a better way...
-	if !strings.Contains(urlStr, "apis") {
+	if includeEnv {
 		u.Path = path.Join(c.BaseURLEnv.Path, rel.Path)
 	} else {
 		u.Path = path.Join(c.BaseURL.Path, rel.Path)
@@ -412,6 +421,11 @@ func (c *EdgeClient) Do(req *http.Request, v interface{}) (*Response, error) {
 	}
 
 	return response, err
+}
+
+// IsHybrid returns true if Apigee hybrid target
+func (c *EdgeClient) IsHybrid() bool {
+	return strings.Contains(c.BaseURL.Host, "apigee.googleapis.com")
 }
 
 func (r *ErrorResponse) Error() string {
