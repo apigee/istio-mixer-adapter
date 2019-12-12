@@ -259,7 +259,7 @@ func (t *token) rotateCert(printf, fatalf shared.FormatFn) {
 
 	resp, err := t.Client.Do(req, nil)
 	if err != nil {
-		if resp.StatusCode == 401 {
+		if resp != nil && resp.StatusCode == 401 {
 			fatalf("authentication failed, check your key and secret")
 		}
 		fatalf("rotation request error: %v", err)

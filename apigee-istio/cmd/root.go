@@ -45,7 +45,7 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 		for _, subC := range cmds {
 			// add general flags
 			subC.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
-				shared.DefaultRouterBase, "Apigee ro	uter base")
+				shared.DefaultRouterBase, "Apigee router base")
 			subC.PersistentFlags().StringVarP(&rootArgs.ManagementBase, "managementBase", "m",
 				shared.DefaultManagementBase, "Apigee management base")
 			subC.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
