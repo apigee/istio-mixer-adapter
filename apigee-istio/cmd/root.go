@@ -95,7 +95,7 @@ func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.C
 			printf("apigee-istio version %s %s [%s]",
 				shared.BuildInfo.Version, shared.BuildInfo.Date, shared.BuildInfo.Commit)
 
-			if rootArgs.Org == "" || rootArgs.Env == "" {
+			if rootArgs.RouterBase == "https://-.apigee.net" {
 				return
 			}
 
@@ -117,6 +117,9 @@ func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.C
 			printf("istio-auth proxy version: %v", version.Version)
 		},
 	}
+
+	subC.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
+		shared.DefaultRouterBase, "Apigee router base")
 
 	subC.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
 		"", "Apigee organization name")
