@@ -502,7 +502,7 @@ func (s *ProxiesServiceOp) GetDeployment(proxy string) (*EnvironmentDeployment, 
 // GetDeployedRevision returns the Revision that is deployed to an environment.
 func (s *ProxiesServiceOp) GetDeployedRevision(proxy string) (*Revision, error) {
 	deployment, resp, err := s.GetDeployment(proxy)
-	if err != nil && resp == nil {
+	if err != nil && (resp == nil || resp.StatusCode == http.StatusUnauthorized) {
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
@@ -539,7 +539,7 @@ func (s *ProxiesServiceOp) GetHybridDeployments(proxy string) ([]HybridDeploymen
 // GetHybridDeployedRevision returns the Revision that is deployed to an environment in hybrid.
 func (s *ProxiesServiceOp) GetHybridDeployedRevision(proxy string) (*Revision, error) {
 	deployments, resp, err := s.GetHybridDeployments(proxy)
-	if err != nil && resp == nil {
+	if err != nil && (resp == nil || resp.StatusCode == http.StatusUnauthorized) {
 		return nil, err
 	}
 	if len(deployments) > 0 {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ExtractVariables async="false" continueOnError="false" enabled="true" name="Extract-Revoke-Params">
+    <DisplayName>Extract Revoke Params</DisplayName>
+    <Properties/>
+    <JSONPayload>
+        <Variable name="client_id" type="string">
+            <JSONPath>$.client_id</JSONPath>
+        </Variable>
+        <Variable name="client_secret" type="string">
+            <JSONPath>$.client_secret</JSONPath>
+        </Variable>
+        <Variable name="token" type="string">
+            <JSONPath>$.token</JSONPath>
+        </Variable>
+        <Variable name="token_type_hint" type="string">
+            <JSONPath>$.token_type_hint</JSONPath>
+        </Variable>
+    </JSONPayload>
+    <Source clearPayload="false">request</Source>
+</ExtractVariables>

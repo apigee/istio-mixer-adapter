@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<GenerateJWT async="false" continueOnError="false" enabled="true" name="Generate-VerifyKey-Token">
+    <DisplayName>Generate VerifyKey Token</DisplayName>
+    <Algorithm>RS256</Algorithm>
+    <PrivateKey>
+        <Value ref="private.privateKey"/>
+        <Id ref="private.certificate1_kid"/>
+    </PrivateKey>
+    <Issuer ref="iss"/>
+    <Audience>istio</Audience>
+    <ExpiresIn>15m</ExpiresIn>
+    <NotBefore ref="nbf"/>
+    <AdditionalClaims>
+        <Claim name="client_id" ref="apigee.client_id"/>
+        <Claim name="api_product_list" ref="apiProductList" type="string" array="true"/>
+        <Claim name="application_name" ref="apigee.developer.app.name"/>
+        <Claim name="developer_email" ref="apigee.developer.email"/>
+    </AdditionalClaims>
+    <OutputVariable>jwtmessage</OutputVariable>
+</GenerateJWT>

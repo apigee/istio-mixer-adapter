@@ -17,10 +17,12 @@ fi
 
 ADAPTER_DIR="${GOPATH}/src/github.com/apigee/istio-mixer-adapter"
 DIST_DIR="${ADAPTER_DIR}/dist"
-PROXIES_DIR="${DIST_DIR}/proxies"
+PROXIES_ZIP_DIR="${DIST_DIR}/proxies"
+PROXIES_SOURCE_DIR="${ADAPTER_DIR}/proxies"
 
-AUTH_PROXY_SRC="${ADAPTER_DIR}/auth-proxy/apiproxy"
-INTERNAL_PROXY_SRC="${ADAPTER_DIR}/internal-proxy/apiproxy"
+LEGACY_AUTH_PROXY_SRC="${PROXIES_SOURCE_DIR}/auth-proxy-legacy"
+INTERNAL_PROXY_SRC="${PROXIES_SOURCE_DIR}/internal-proxy"
+HYBRID_AUTH_PROXY_SRC="${PROXIES_SOURCE_DIR}/auth-proxy-hybrid"
 
 if [ ! -d "${ADAPTER_DIR}" ]; then
   echo "could not find istio-mixer-adapter repo, please put it in:"
@@ -28,34 +30,35 @@ if [ ! -d "${ADAPTER_DIR}" ]; then
   exit 1
 fi
 
-if [ ! -d "${PROXIES_DIR}" ]; then
-  mkdir -p "${PROXIES_DIR}"
+if [ ! -d "${PROXIES_ZIP_DIR}" ]; then
+  mkdir -p "${PROXIES_ZIP_DIR}"
 fi
 
-PROXY_TEMP_DIR="${DIST_DIR}/apiproxy"
-cd "${DIST_DIR}"
-rm -rf "${PROXY_TEMP_DIR}"
-cp -R "${AUTH_PROXY_SRC}" "${PROXY_TEMP_DIR}"
-
-PROXIES_FILE="${PROXY_TEMP_DIR}/proxies/default.xml"
-
-# auth proxy
-ZIP=${PROXIES_DIR}/istio-auth.zip
+# legacy saas auth proxy
+ZIP=${PROXIES_ZIP_DIR}/istio-auth-legacy.zip
 echo "building ${ZIP}"
 rm -f "${ZIP}"
+cd "${LEGACY_AUTH_PROXY_SRC}"
+zip -qr "${ZIP}" apiproxy
+
+# hybrid auth proxy
+ZIP=${PROXIES_ZIP_DIR}/istio-auth-hybrid.zip
+echo "building ${ZIP}"
+rm -f "${ZIP}"
+cd "${HYBRID_AUTH_PROXY_SRC}"
 zip -qr "${ZIP}" apiproxy
 
 # internal proxy
-ZIP=${PROXIES_DIR}/istio-internal.zip
+ZIP=${PROXIES_ZIP_DIR}/istio-internal.zip
 echo "building ${ZIP}"
-rm -rf "${PROXY_TEMP_DIR}"
-cp -R "${INTERNAL_PROXY_SRC}" "${PROXY_TEMP_DIR}"
 rm -f "${ZIP}"
+cd "${INTERNAL_PROXY_SRC}"
 zip -qr "${ZIP}" apiproxy
 
 # create resource
 RESOURCE_FILE="${ADAPTER_DIR}/apigee-istio/proxies/proxies.go"
 echo "building ${RESOURCE_FILE}"
+cd "${DIST_DIR}"
 go-bindata -nomemcopy -pkg "proxies" -prefix "proxies" -o "${RESOURCE_FILE}" proxies
 
 echo "done"

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Javascript timeLimit="20000" async="false" continueOnError="false" enabled="true" name="Set-JWT-Variables">
+    <DisplayName>Set JWT Variables</DisplayName>
+    <FaultRules/>
+    <Properties/>
+    <ResourceURL>jsc://set-jwt-variables.js</ResourceURL>
+</Javascript>
