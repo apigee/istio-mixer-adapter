@@ -294,8 +294,9 @@ func (p *provision) createHybridCredential(verbosef shared.FormatFn) (*credentia
 	}
 
 	// create developer
+	devEmail := p.developerEmail
 	dev := developer{
-		Email:     p.developerEmail,
+		Email:     devEmail,
 		FirstName: istioAuthName,
 		LastName:  istioAuthName,
 		UserName:  istioAuthName,
