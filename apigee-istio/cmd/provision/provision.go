@@ -294,9 +294,8 @@ func (p *provision) createHybridCredential(verbosef shared.FormatFn) (*credentia
 	}
 
 	// create developer
-	devEmail := "istio-auth@apigee.com" // TODO: email?
 	dev := developer{
-		Email:     devEmail,
+		Email:     p.developerEmail,
 		FirstName: istioAuthName,
 		LastName:  istioAuthName,
 		UserName:  istioAuthName,
