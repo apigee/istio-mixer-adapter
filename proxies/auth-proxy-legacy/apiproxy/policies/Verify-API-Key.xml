@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<VerifyAPIKey async="false" continueOnError="false" enabled="true" name="Verify-API-Key">
+    <DisplayName>Verify API Key</DisplayName>
+    <FaultRules>
+        <FaultRule name="protocol_and_api_key_faults">
+            <Step>
+                <Condition>(fault.name="InvalidApiKey")</Condition>
+                <FaultRules/>
+                <Name>fault_invalid_key</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="FailedToResolveAPIKey")</Condition>
+                <FaultRules/>
+                <Name>fault_missing_key</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="InvalidApiKeyForGivenResource")</Condition>
+                <FaultRules/>
+                <Name>fault_insufficient_key_permissions</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="ApiKeyNotApproved")</Condition>
+                <FaultRules/>
+                <Name>fault_key_not_approved</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="invalid_client-app_not_approved")</Condition>
+                <FaultRules/>
+                <Name>fault_invalid_client_app</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="DeveloperStatusNotActive")</Condition>
+                <FaultRules/>
+                <Name>fault_developer_inactive</Name>
+            </Step>
+            <Step>
+                <Condition>(fault.name="CompanyStatusNotActive")</Condition>
+                <FaultRules/>
+                <Name>fault_company_inactive</Name>
+            </Step>
+        </FaultRule>
+    </FaultRules>
+    <Properties/>
+    <APIKey ref="apikey"></APIKey>
+</VerifyAPIKey>

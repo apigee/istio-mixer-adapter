@@ -29,8 +29,8 @@ import (
 
 const (
 	servicesAttr          = "istio-services"
-	productsURLFormat     = "/v1/o/%s/apiproducts"               // ManagementBase
-	productAttrPathFormat = "/v1/o/%s/apiproducts/%s/attributes" // ManagementBase, prod
+	productsURLFormat     = "/v1/organizations/%s/apiproducts"               // ManagementBase
+	productAttrPathFormat = "/v1/organizations/%s/apiproducts/%s/attributes" // ManagementBase, prod
 )
 
 type bindings struct {

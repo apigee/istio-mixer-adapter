@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<ProxyEndpoint name="default">
+    <Description/>
+    <FaultRules/>
+    <Flows>
+        <Flow name="Verify API Key">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Clear-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Extract-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>apikey is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Access-App-Info</Name>
+                </Step>
+                <Step>
+                    <Name>Products-to-JSON</Name>
+                </Step>
+                <Step>
+                    <Name>Get-Private-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Set-JWT-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>Generate-VerifyKey-Token</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Set-Response</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/verifyApiKey") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="Get API Products">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>JavaCallout</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/products") and (request.verb = "GET")</Condition>
+        </Flow>
+        <Flow name="Obtain Access Token">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Clear-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Extract-OAuth-Params</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>client_id is null OR client_secret is null OR grant_type is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Create-OAuth-Request</Name>
+                </Step>
+                <Step>
+                    <Name>Access-App-Info</Name>
+                </Step>
+                <Step>
+                    <Name>Products-to-JSON</Name>
+                </Step>
+                <Step>
+                    <Name>AccessTokenRequest</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>oauthV2.AccessTokenRequest.failed is true</Condition>
+                </Step>
+                <Step>
+                    <Name>Set-JWT-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>Get-Private-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Generate-Access-Token</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Set-Response</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/token") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="Refresh Access Token">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Clear-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Extract-Refresh-Params</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>client_id is null or client_secret is null or grant_type is null or refresh_token is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Create-Refresh-Request</Name>
+                </Step>
+                <Step>
+                    <Name>Access-App-Info</Name>
+                </Step>
+                <Step>
+                    <Name>Products-to-JSON</Name>
+                </Step>
+                <Step>
+                    <Name>RefreshAccessToken</Name>
+                </Step>
+                <Step>
+                    <Name>Set-JWT-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>Get-Private-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Generate-Access-Token</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Set-Response</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/refresh") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="Revoke Refresh Token">
+            <Description>Revokes a refresh token</Description>
+            <Request>
+                <Step>
+                    <Name>Extract-Revoke-Params</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>client_id is null or client_secret is null or token is null or token_type_hint != "refresh_token"</Condition>
+                </Step>
+                <Step>
+                    <Name>RevokeRefreshToken</Name>
+                </Step>
+            </Request>
+            <Response/>
+            <Condition>(proxy.pathsuffix MatchesPath "/revoke") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="Get JWK Public Keys">
+            <Description>This flow returns public keys as JWK</Description>
+            <Request>
+                <Step>
+                    <Name>Get-Public-Keys</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>private.certificate1 is null or private.certificate1_kid is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Generate-JWK</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Send-JWK-Message</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/certs") and (request.verb = "GET")</Condition>
+        </Flow>
+        <Flow name="Get Version">
+            <Description>Get the version of the API Proxy</Description>
+            <Request/>
+            <Response>
+                <Step>
+                    <Name>Send-Version</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/version") and (request.verb = "GET")</Condition>
+        </Flow>
+        <Flow name="Rotate Key">
+            <Description/>
+            <Request>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Extract-Rotate-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                    <Condition>certificate1 is null or certificate1_kid is null or private_key is null</Condition>
+                </Step>
+                <Step>
+                    <Name>Retrieve-Cert</Name>
+                </Step>
+                <Step>
+                    <Name>Update-Keys</Name>
+                </Step>
+            </Request>
+            <Response/>
+            <Condition>(proxy.pathsuffix MatchesPath "/rotate") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="DistributedQuota">
+            <Request>
+                <Step>
+                    <Name>Verify-API-Key</Name>
+                </Step>
+                <Step>
+                    <Name>Set-Quota-Variables</Name>
+                </Step>
+                <Step>
+                    <Name>DistributedQuota</Name>
+                </Step>
+                <Step>
+                    <Name>Eval-Quota-Result</Name>
+                </Step>
+            </Request>
+            <Response>
+                <Step>
+                    <Name>Set-Quota-Response</Name>
+                </Step>
+            </Response>
+            <Condition>(proxy.pathsuffix MatchesPath "/quotas") and (request.verb = "POST")</Condition>
+        </Flow>
+        <Flow name="Unknown Request">
+            <Description>Unknown Request</Description>
+            <Request>
+                <Step>
+                    <Name>Raise-Fault-Unknown-Request</Name>
+                </Step>
+            </Request>
+            <Response/>
+        </Flow>
+    </Flows>
+    <PostFlow name="PostFlow">
+        <Request/>
+        <Response/>
+    </PostFlow>
+    <PreFlow name="PreFlow">
+        <Request>
+            <Step>
+                <Name>Decode-Basic-Authentication</Name>
+            </Step>
+        </Request>
+        <Response/>
+    </PreFlow>
+    <HTTPProxyConnection>
+        <BasePath>/istio-auth</BasePath>
+        <Properties/>
+    </HTTPProxyConnection>
+    <RouteRule name="noroute"/>
+</ProxyEndpoint>

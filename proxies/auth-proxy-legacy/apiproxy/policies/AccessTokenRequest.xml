@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OAuthV2 async="false" continueOnError="false" enabled="true" name="AccessTokenRequest">
+    <DisplayName>AccessTokenRequest</DisplayName>
+    <FaultRules/>
+    <Properties/>
+    <Attributes/>
+    <GenerateErrorResponse enabled="true">
+        <Format>FORM_PARAM</Format>
+    </GenerateErrorResponse>
+    <ExpiresIn ref="token_expiry">300000</ExpiresIn>
+    <ExternalAuthorization>false</ExternalAuthorization>
+    <Operation>GenerateAccessToken</Operation>
+    <RefreshTokenExpiresIn ref="refresh_token_expiry">3600000</RefreshTokenExpiresIn>
+    <GenerateResponse enabled="false">
+        <Format>FORM_PARAM</Format>
+    </GenerateResponse>
+    <ReuseRefreshToken>true</ReuseRefreshToken>
+    <SupportedGrantTypes>
+        <GrantType>password</GrantType>
+        <GrantType>client_credentials</GrantType>
+    </SupportedGrantTypes>
+    <Tokens/>
+</OAuthV2>
