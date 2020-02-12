@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"testing"
@@ -103,4 +104,19 @@ func TestReadPropertiesFile(t *testing.T) {
 			t.Errorf("expected: %s at key: %s, got: %s", v, k, props[k])
 		}
 	}
+}
+
+func TestFreeport(t *testing.T) {
+	p, err := FreePort()
+	if err != nil {
+		t.Errorf("shouldn't get error: %v", err)
+	}
+
+	addr := fmt.Sprintf("localhost:%d", p)
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Errorf("shouldn't get error: %v", err)
+	}
+
+	l.Close()
 }
