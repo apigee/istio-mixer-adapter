@@ -103,6 +103,7 @@ func readRecordsFromGZipFile(fileName string) ([]Record, error) {
 
 func TestCrashRecovery(t *testing.T) {
 	t.Parallel()
+	env := adaptertest.NewEnv(t)
 
 	fs := newFakeServer(t)
 	fs.failUpload = http.StatusInternalServerError
@@ -114,13 +115,22 @@ func TestCrashRecovery(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 	baseURL, _ := url.Parse(fs.URL())
-	m, err := newManager(Options{
-		BufferPath:       d,
-		StagingFileLimit: 10,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+	now := time.Now
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         d,
+		StagingFileLimit:   10,
+		now:                now,
+		CollectionInterval: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
@@ -173,7 +183,6 @@ func TestCrashRecovery(t *testing.T) {
 	gz.Close()
 	f.Close()
 
-	env := adaptertest.NewEnv(t)
 	m.Start(env)
 
 	files, err := ioutil.ReadDir(stagingDir)

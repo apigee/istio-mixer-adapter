@@ -25,7 +25,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/auth"
@@ -45,14 +44,12 @@ Usage:
 */
 
 func createManager(options Options, log adapter.Logger) *Manager {
-	isClosedInt := int32(0)
-
 	return &Manager{
 		baseURL:     options.BaseURL,
 		log:         log,
 		closedChan:  make(chan bool),
 		returnChan:  make(chan map[string]*APIProduct),
-		isClosed:    &isClosedInt,
+		closed:      util.NewAtomicBool(false),
 		refreshRate: options.RefreshRate,
 		client:      options.Client,
 		key:         options.Key,
@@ -64,7 +61,7 @@ func createManager(options Options, log adapter.Logger) *Manager {
 type Manager struct {
 	baseURL          *url.URL
 	log              adapter.Logger
-	isClosed         *int32
+	closed           *util.AtomicBool
 	closedChan       chan bool
 	returnChan       chan map[string]*APIProduct
 	refreshRate      time.Duration
@@ -82,6 +79,7 @@ func (p *Manager) start(env adapter.Env) {
 		setChan:   make(chan ProductsMap),
 		getChan:   make(chan ProductsMap),
 		closeChan: make(chan struct{}),
+		closed:    util.NewAtomicBool(false),
 	}
 	env.ScheduleDaemon(func() {
 		p.productsMux.mux()
@@ -105,7 +103,7 @@ func (p *Manager) start(env adapter.Env) {
 
 // Products atomically gets a mapping of name => APIProduct.
 func (p *Manager) Products() ProductsMap {
-	if atomic.LoadInt32(p.isClosed) == int32(1) {
+	if p.closed.IsTrue() {
 		return nil
 	}
 	return p.productsMux.Get()
@@ -113,7 +111,7 @@ func (p *Manager) Products() ProductsMap {
 
 // Close shuts down the manager.
 func (p *Manager) Close() {
-	if p == nil || atomic.SwapInt32(p.isClosed, 1) == int32(1) {
+	if p == nil || p.closed.SetTrue() {
 		return
 	}
 	p.log.Infof("closing product manager")
@@ -368,27 +366,31 @@ type productsMux struct {
 	setChan   chan ProductsMap
 	getChan   chan ProductsMap
 	closeChan chan struct{}
-	closed    bool
+	closed    *util.AtomicBool
 }
 
 func (h productsMux) Get() ProductsMap {
 	return <-h.getChan
 }
+
 func (h productsMux) Set(s ProductsMap) {
-	if !h.closed {
+	if h.closed.IsFalse() {
 		h.setChan <- s
 	}
 }
+
 func (h productsMux) Close() {
-	close(h.closeChan)
+	if !h.closed.SetTrue() {
+		close(h.closeChan)
+	}
 }
+
 func (h productsMux) mux() {
 	var productsMap ProductsMap
 	for {
 		if productsMap == nil {
 			select {
 			case <-h.closeChan:
-				h.closed = true
 				close(h.setChan)
 				close(h.getChan)
 				return
@@ -400,7 +402,6 @@ func (h productsMux) mux() {
 		case productsMap = <-h.setChan:
 		case h.getChan <- productsMap:
 		case <-h.closeChan:
-			h.closed = true
 			close(h.setChan)
 			close(h.getChan)
 			return
