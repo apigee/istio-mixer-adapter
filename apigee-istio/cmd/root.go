@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/bindings"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
@@ -28,13 +26,6 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/spf13/cobra"
 )
-
-func init() {
-	// Apigee does not support http2 at present
-	if !strings.Contains(os.Getenv("GODEBUG"), "http2client=0") {
-		os.Setenv("GODEBUG", os.Getenv("GODEBUG")+",http2client=0")
-	}
-}
 
 // GetRootCmd returns the root of the cobra command-tree.
 func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {

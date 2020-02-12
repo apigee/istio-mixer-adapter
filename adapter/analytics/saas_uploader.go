@@ -18,30 +18,66 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/apigee/istio-mixer-adapter/adapter/util"
+	"istio.io/istio/mixer/pkg/adapter"
 )
 
-func (m *manager) uploadWorkFunc(tenant, fileName string) util.WorkFunc {
-	return func(ctx context.Context) error {
-		if ctx.Err() != nil {
-			m.log.Warningf("canceled upload of %s: %v", fileName, ctx.Err())
-			err := os.Remove(fileName)
-			if err != nil && !os.IsNotExist(err) {
-				m.log.Warningf("unable to remove file %s: %v", fileName, err)
-			}
+type uploader interface {
+	workFunc(tenant, fileName string) util.WorkFunc
+	write(records []Record, writer io.Writer) error
+	isGzipped() bool
+}
+
+type saasUploader struct {
+	log     adapter.Logger
+	client  *http.Client
+	baseURL *url.URL
+	key     string
+	secret  string
+	now     func() time.Time
+}
+
+func (s *saasUploader) isGzipped() bool {
+	return true
+}
+
+// format and write records
+func (s *saasUploader) write(records []Record, writer io.Writer) error {
+	enc := json.NewEncoder(writer)
+	for _, record := range records {
+		if err := enc.Encode(record); err != nil {
+			return fmt.Errorf("json encode: %s", err)
 		}
-		return m.upload(tenant, fileName)
+	}
+	return nil
+}
+
+func (s *saasUploader) workFunc(tenant, fileName string) util.WorkFunc {
+	return func(ctx context.Context) error {
+		if ctx.Err() == nil {
+			return s.upload(tenant, fileName)
+		}
+
+		s.log.Warningf("canceled upload of %s: %v", fileName, ctx.Err())
+		err := os.Remove(fileName)
+		if err != nil && !os.IsNotExist(err) {
+			s.log.Warningf("unable to remove file %s: %v", fileName, err)
+		}
+		return nil
 	}
 }
 
-// upload sends a file to UAP
-func (m *manager) upload(tenant, fileName string) error {
+// upload sends a file to SaaS UAP
+func (s *saasUploader) upload(tenant, fileName string) error {
 
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -53,8 +89,8 @@ func (m *manager) upload(tenant, fileName string) error {
 		return err
 	}
 
-	m.log.Debugf("getting signed URL for %s", fileName)
-	signedURL, err := m.signedURL(tenant, fileName)
+	s.log.Debugf("getting signed URL for %s", fileName)
+	signedURL, err := s.signedURL(tenant, fileName)
 	if err != nil {
 		return fmt.Errorf("signedURL: %s", err)
 	}
@@ -68,8 +104,8 @@ func (m *manager) upload(tenant, fileName string) error {
 	req.Header.Set("x-amz-server-side-encryption", "AES256")
 	req.ContentLength = fi.Size()
 
-	m.log.Debugf("uploading %s to %s", fileName, signedURL)
-	resp, err := m.client.Do(req)
+	s.log.Debugf("uploading %s to %s", fileName, signedURL)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("client.Do(): %s", err)
 	}
@@ -85,37 +121,37 @@ func (m *manager) upload(tenant, fileName string) error {
 	return nil
 }
 
-func orgEnvFromSubdir(subdir string) (string, string) {
-	s := strings.Split(subdir, "~")
-	if len(s) == 2 {
-		return s[0], s[1]
+func (s *saasUploader) orgEnvFromSubdir(subdir string) (string, string) {
+	splits := strings.Split(subdir, "~")
+	if len(splits) == 2 {
+		return splits[0], splits[1]
 	}
 	return "", ""
 }
 
 // uploadDir gets a directory for where we should upload the file.
-func (m *manager) uploadDir() string {
-	now := m.now()
+func (s *saasUploader) uploadDir() string {
+	now := s.now()
 	d := now.Format("2006-01-02")
 	t := now.Format("15-04-00")
 	return fmt.Sprintf(pathFmt, d, t)
 }
 
 // signedURL asks for a signed URL that can be used to upload gzip file
-func (m *manager) signedURL(subdir, fileName string) (string, error) {
-	org, env := orgEnvFromSubdir(subdir)
+func (s *saasUploader) signedURL(subdir, fileName string) (string, error) {
+	org, env := s.orgEnvFromSubdir(subdir)
 	if org == "" || env == "" {
 		return "", fmt.Errorf("invalid subdir %s", subdir)
 	}
 
-	ur := m.baseURL
+	ur := *s.baseURL
 	ur.Path = path.Join(ur.Path, fmt.Sprintf(analyticsPath, org, env))
 	req, err := http.NewRequest("GET", ur.String(), nil)
 	if err != nil {
 		return "", err
 	}
 
-	relPath := filepath.Join(m.uploadDir(), filepath.Base(fileName))
+	relPath := filepath.Join(s.uploadDir(), filepath.Base(fileName))
 
 	q := req.URL.Query()
 	q.Add("tenant", subdir)
@@ -124,9 +160,9 @@ func (m *manager) signedURL(subdir, fileName string) (string, error) {
 	q.Add("encrypt", "true")
 	req.URL.RawQuery = q.Encode()
 
-	req.SetBasicAuth(m.key, m.secret)
+	req.SetBasicAuth(s.key, s.secret)
 
-	resp, err := m.client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return "", err
 	}

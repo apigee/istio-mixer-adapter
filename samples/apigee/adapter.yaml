@@ -1,3 +1,6 @@
+# Example deployment for Apigee Adapter. 
+# This will work without modiciation for SaaS.
+# For Hybrid, you must uncomment and properly configure the secret volumes.
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
@@ -15,6 +18,9 @@ spec:
       - name: apigee-adapter
         image: "gcr.io/apigee-api-management-istio/apigee-adapter:1.4.1"
         imagePullPolicy: IfNotPresent #Always
+        env:
+        - name: GODEBUG # value must be 0, as apigee does not support http 2
+          value: http2client=0
         ports:
         - containerPort: 5000
         readinessProbe:
@@ -35,6 +41,22 @@ spec:
           requests:
             cpu: 10m
             memory: 100Mi
+      #   volumeMounts:
+      #   - mountPath: /opt/apigee/customer
+      #     name: cwc-volume
+      #     readOnly: true
+      #   - mountPath: /opt/apigee/tls
+      #     name: tls-volume
+      #     readOnly: true
+      # volumes:
+      # - name: cwc-volume
+      #   secret:
+      #     defaultMode: 420
+      #     secretName: REPLACE ME
+      # - name: tls-volume
+      #   secret:
+      #     defaultMode: 420
+      #     secretName: REPLACE ME
 ---
 apiVersion: v1
 kind: Service
@@ -49,4 +71,3 @@ spec:
     name: http
   selector:
     app: apigee-adapter
----

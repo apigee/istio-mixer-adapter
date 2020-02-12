@@ -30,12 +30,14 @@ import (
 
 func TestStagingSizeCap(t *testing.T) {
 	t.Parallel()
+	env := adaptertest.NewEnv(t)
 
 	fs := newFakeServer(t)
 	fs.failUpload = http.StatusInternalServerError
 	defer fs.close()
 
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	now := func() time.Time { return time.Unix(ts, 0) }
 
 	workDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -44,18 +46,25 @@ func TestStagingSizeCap(t *testing.T) {
 	defer os.RemoveAll(workDir)
 
 	baseURL, _ := url.Parse(fs.URL())
-	m, err := newManager(Options{
-		BufferPath:       workDir,
-		StagingFileLimit: 3,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         workDir,
+		StagingFileLimit:   3,
+		now:                now,
+		CollectionInterval: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.now = func() time.Time { return time.Unix(ts, 0) }
 
 	records := []Record{
 		{
@@ -74,7 +83,6 @@ func TestStagingSizeCap(t *testing.T) {
 		},
 	}
 
-	env := adaptertest.NewEnv(t)
 	m.Start(env)
 
 	t1 := "hi~test"

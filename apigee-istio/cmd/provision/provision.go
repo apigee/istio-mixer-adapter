@@ -653,6 +653,9 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn,
 		},
 		Spec: spec,
 	}
+	if p.IsHybrid {
+		handler.Metadata.Namespace = "apigee"
+	}
 	formattedBytes, err := yaml.Marshal(handler)
 	if err != nil {
 		return err

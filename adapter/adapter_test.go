@@ -42,23 +42,7 @@ import (
 	"istio.io/istio/mixer/template/authorization"
 )
 
-func TestValidateBuild(t *testing.T) {
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
-	}))
-	defer ts.Close()
-
-	serverURL, err := url.Parse(ts.URL)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	d, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("ioutil.TempDir: %s", err)
-	}
-	defer os.RemoveAll(d)
+func TestBadConfig(t *testing.T) {
 
 	b := GetInfo().NewBuilder().(*builder)
 
@@ -69,7 +53,7 @@ func TestValidateBuild(t *testing.T) {
 		t.Errorf("Validate() missing config should have errors")
 	} else {
 		want := `6 errors occurred:
-	* apigee_base: required
+	* apigee_base or hybrid_config: required
 	* customer_base: required
 	* org_name: required
 	* env_name: required
@@ -90,12 +74,16 @@ func TestValidateBuild(t *testing.T) {
 		EnvName:      "env",
 		Key:          "key",
 		Secret:       "secret",
+		Analytics: &config.ParamsAnalyticsOptions{
+			CollectionInterval: pbtypes.DurationProto(30 * time.Second),
+		},
 	})
 	if errs := b.Validate(); errs == nil {
 		t.Errorf("Validate() bad config should have errors")
 	} else {
-		want := `2 errors occurred:
+		want := `3 errors occurred:
 	* apigee_base: must be a valid url: parse not an url: invalid URI for request
+	* analytics/collection_interval: must be a greater than: 2m0s
 	* customer_base: must be a valid url: parse not an url: invalid URI for request
 
 `
@@ -104,7 +92,48 @@ func TestValidateBuild(t *testing.T) {
 		}
 	}
 
-	// good config
+	// bad config items
+	b.SetAdapterConfig(&config.Params{
+		CustomerBase: "http://localhost/foo",
+		HybridConfig: "some/bad/file",
+		OrgName:      "org",
+		EnvName:      "env",
+		Key:          "key",
+		Secret:       "secret",
+	})
+	if errs := b.Validate(); errs == nil {
+		t.Errorf("Validate() bad config should have errors")
+	} else {
+		want := `1 error occurred:
+	* hybrid_config: some/bad/file is not a valid file
+
+`
+		if errs.String() != want {
+			t.Errorf("Validate() want: \n%s.\nGot: \n%s", want, errs)
+		}
+	}
+}
+
+func TestGoodConfig(t *testing.T) {
+
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(404)
+	}))
+	defer ts.Close()
+
+	serverURL, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir: %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	b := GetInfo().NewBuilder().(*builder)
+
 	b.SetAdapterConfig(GetInfo().DefaultConfig)
 	validConfig := config.Params{
 		ApigeeBase:    serverURL.String(),
@@ -116,7 +145,8 @@ func TestValidateBuild(t *testing.T) {
 		TempDir:       d,
 		ClientTimeout: pbtypes.DurationProto(30 * time.Second),
 		Analytics: &config.ParamsAnalyticsOptions{
-			FileLimit: 10,
+			FileLimit:          10,
+			CollectionInterval: pbtypes.DurationProto(2 * time.Minute),
 		},
 		Products: &config.ParamsProductOptions{
 			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
@@ -152,7 +182,8 @@ func TestValidateBuild(t *testing.T) {
 		TempDir:       d,
 		ClientTimeout: validConfig.ClientTimeout,
 		Analytics: &config.ParamsAnalyticsOptions{
-			FileLimit: 10,
+			FileLimit:          10,
+			CollectionInterval: pbtypes.DurationProto(2 * time.Minute),
 		},
 		Products: &config.ParamsProductOptions{
 			RefreshRate: pbtypes.DurationProto(2 * time.Minute),
@@ -258,12 +289,13 @@ func TestHandleAnalytics(t *testing.T) {
 	defer os.RemoveAll(d)
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		BufferPath:       d,
-		StagingFileLimit: 10,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+		BufferPath:         d,
+		StagingFileLimit:   10,
+		BaseURL:            baseURL,
+		Key:                "key",
+		Secret:             "secret",
+		Client:             http.DefaultClient,
+		CollectionInterval: time.Minute,
 	})
 	if err != nil {
 		t.Fatalf("analytics.NewManager: %s", err)

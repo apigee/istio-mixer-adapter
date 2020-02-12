@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -30,10 +31,11 @@ func TestLegacySelect(t *testing.T) {
 		LegacyEndpoint:   true,
 		BufferPath:       "",
 		StagingFileLimit: 10,
-		BaseURL:          url.URL{},
+		BaseURL:          &url.URL{},
 		Key:              "key",
 		Secret:           "secret",
 		Client:           http.DefaultClient,
+		now:              time.Now,
 	}
 
 	m, err := NewManager(env, opts)
@@ -52,12 +54,14 @@ func TestStandardSelect(t *testing.T) {
 	env := adaptertest.NewEnv(t)
 
 	opts := Options{
-		BufferPath:       "/tmp/apigee-ax/buffer/",
-		StagingFileLimit: 10,
-		BaseURL:          url.URL{},
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+		BufferPath:         "/tmp/apigee-ax/buffer/",
+		StagingFileLimit:   10,
+		BaseURL:            &url.URL{},
+		Key:                "key",
+		Secret:             "secret",
+		Client:             http.DefaultClient,
+		now:                time.Now,
+		CollectionInterval: time.Minute,
 	}
 
 	m, err := NewManager(env, opts)
@@ -78,10 +82,11 @@ func TestStandardBadOptions(t *testing.T) {
 	opts := Options{
 		BufferPath:       "/tmp/apigee-ax/buffer/",
 		StagingFileLimit: 0,
-		BaseURL:          url.URL{},
+		BaseURL:          &url.URL{},
 		Key:              "",
 		Secret:           "",
 		Client:           http.DefaultClient,
+		now:              time.Now,
 	}
 
 	want := "all analytics options are required"

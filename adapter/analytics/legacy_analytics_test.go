@@ -73,10 +73,10 @@ func TestAnalyticsSubmit(t *testing.T) {
 		t.Errorf("invalid organization. want: %s, got: %s", context.Organization(), ts.Request.Organization)
 	}
 	if context.Environment() != ts.Request.Environment {
-		t.Errorf("invalid environment. want: %s, got: %s", context.Organization(), ts.Request.Organization)
+		t.Errorf("invalid environment. want: %s, got: %s", context.Environment(), ts.Request.Environment)
 	}
 	if len(ts.Request.Records) != 1 {
-		t.Errorf("invalid # records. want: 1, got: len(ts.axRequest.Records)")
+		t.Errorf("invalid # records. want: 1, got: %d", len(ts.Request.Records))
 	}
 }
 

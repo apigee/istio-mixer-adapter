@@ -33,9 +33,7 @@ func (m *manager) stageFile(tenant, tempFile string) {
 		return
 	}
 
-	// queue upload
-	m.uploadChan <- m.uploadWorkFunc(tenant, stagedFile)
-
+	m.upload(tenant, stagedFile)
 	m.log.Debugf("staged file: %s", stagedFile)
 }
 

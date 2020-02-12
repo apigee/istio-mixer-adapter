@@ -28,6 +28,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -176,6 +177,7 @@ func (fs *fakeServer) uploadedRecords(tenant string) []Record {
 
 func TestPushAnalytics(t *testing.T) {
 	t.Parallel()
+	env := adaptertest.NewEnv(t)
 
 	fs := newFakeServer(t)
 	defer fs.close()
@@ -183,6 +185,7 @@ func TestPushAnalytics(t *testing.T) {
 	t1 := getTenantName("hi", "test")
 	t2 := getTenantName("otherorg", "test")
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	now := func() time.Time { return time.Unix(ts, 0) }
 
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -191,20 +194,26 @@ func TestPushAnalytics(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	baseURL, _ := url.Parse(fs.URL())
-	m, err := newManager(Options{
-		BufferPath:       testDir,
-		StagingFileLimit: 10,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         testDir,
+		StagingFileLimit:   10,
+		now:                now,
+		CollectionInterval: 5 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 10 * time.Millisecond
-	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
+	uploadDir := fmt.Sprintf("date=%s/time=%s", now().Format("2006-01-02"), now().Format("15-04-00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {
@@ -283,7 +292,6 @@ func TestPushAnalytics(t *testing.T) {
 		},
 	}
 
-	env := adaptertest.NewEnv(t)
 	m.Start(env)
 	defer m.Close()
 
@@ -347,6 +355,7 @@ func TestPushAnalytics(t *testing.T) {
 
 func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	t.Parallel()
+	env := adaptertest.NewEnv(t)
 
 	fs := newFakeServer(t)
 	defer fs.close()
@@ -354,6 +363,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	t1 := getTenantName("hi", "test")
 	t2 := getTenantName("hi", "test~2")
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	now := func() time.Time { return time.Unix(ts, 0) }
 
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -362,20 +372,26 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	baseURL, _ := url.Parse(fs.URL())
-	m, err := newManager(Options{
-		BufferPath:       testDir,
-		StagingFileLimit: 10,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         testDir,
+		StagingFileLimit:   10,
+		now:                now,
+		CollectionInterval: 100 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 100 * time.Millisecond
-	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
+	uploadDir := fmt.Sprintf("date=%s/time=%s", now().Format("2006-01-02"), now().Format("15-04-00"))
 
 	sendRecords := map[string][]testRecordPush{
 		t1: {{
@@ -441,7 +457,6 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 		}},
 	}
 
-	env := adaptertest.NewEnv(t)
 	m.Start(env)
 
 	tc := authtest.NewContext(fs.URL(), env)
@@ -492,6 +507,7 @@ func TestPushAnalyticsMultipleRecords(t *testing.T) {
 
 func TestLoad(t *testing.T) {
 	t.Parallel()
+	env := adaptertest.NewEnv(t)
 
 	const SendRecs = 100
 
@@ -500,6 +516,7 @@ func TestLoad(t *testing.T) {
 
 	t1 := "load~test"
 	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+	now := func() time.Time { return time.Unix(ts, 0) }
 
 	testDir, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -508,20 +525,26 @@ func TestLoad(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	baseURL, _ := url.Parse(fs.URL())
-	m, err := newManager(Options{
-		BufferPath:       testDir,
-		StagingFileLimit: 10,
-		BaseURL:          *baseURL,
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         testDir,
+		StagingFileLimit:   10,
+		now:                now,
+		CollectionInterval: 5 * time.Millisecond,
 	})
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
-	m.now = func() time.Time { return time.Unix(ts, 0) }
-	m.collectionInterval = 5 * time.Millisecond
-	uploadDir := fmt.Sprintf("date=%s/time=%s", m.now().Format("2006-01-02"), m.now().Format("15-04-00"))
+	uploadDir := fmt.Sprintf("date=%s/time=%s", now().Format("2006-01-02"), now().Format("15-04-00"))
 
 	record := Record{
 		Organization:                 "load",
@@ -538,7 +561,6 @@ func TestLoad(t *testing.T) {
 		}},
 	}
 
-	env := adaptertest.NewEnv(t)
 	m.Start(env)
 
 	tc := authtest.NewContext(fs.URL(), env)
@@ -605,6 +627,122 @@ func checkAndClearGatewayFlowIDs(fs *fakeServer, t *testing.T) {
 				fs.pushes()[tid][i].records[j].GatewayFlowID = ""
 				rec.GatewayFlowID = "" // clear for DeepEqual check
 			}
+		}
+	}
+}
+
+func TestUploadFailure(t *testing.T) {
+	t.Parallel()
+	env := adaptertest.NewEnv(t)
+
+	fs := newFakeServer(t)
+	fs.failUpload = http.StatusInternalServerError
+	defer fs.close()
+
+	ts := int64(1521221450) // This timestamp is roughly 11:30 MST on Mar. 16, 2018.
+
+	d, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(): %s", err)
+	}
+	defer os.RemoveAll(d)
+
+	baseURL, _ := url.Parse(fs.URL())
+	now := func() time.Time { return time.Unix(ts, 0) }
+
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: baseURL,
+		key:     "key",
+		secret:  "secret",
+		now:     now,
+	}
+
+	m, err := newManager(uploader, Options{
+		BufferPath:         d,
+		StagingFileLimit:   10,
+		SendChannelSize:    0,
+		now:                now,
+		CollectionInterval: time.Minute,
+	})
+	if err != nil {
+		t.Fatalf("newManager: %s", err)
+	}
+
+	records := []Record{
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProxy:                     "proxy",
+		},
+		{
+			Organization:                 "hi",
+			Environment:                  "test",
+			ClientReceivedStartTimestamp: ts * 1000,
+			ClientReceivedEndTimestamp:   ts * 1000,
+			APIProduct:                   "product",
+		},
+	}
+
+	m.env = env
+	m.log = env.Logger()
+
+	t1 := "hi~test"
+	tc := authtest.NewContext(fs.URL(), env)
+	tc.SetOrganization("hi")
+	tc.SetEnvironment("test")
+	authCtx := &auth.Context{Context: tc}
+
+	// since we're using a custom errorHandler we can't call m.Start() and need to do this setup
+	var uploadError error
+	errH := func(err error) error {
+		env.Logger().Errorf("errH: %v", err)
+		uploadError = err
+		return err
+	}
+	m.startUploader(env, errH)
+	m.startStagingSweeper(env)
+
+	if err := m.SendRecords(authCtx, records); err != nil {
+		t.Errorf("Error on SendRecords(): %s", err)
+	}
+
+	// Records are sent async, so we should not have sent any yet.
+	if len(fs.pushes()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.pushes()), fs.pushes())
+	}
+
+	m.Close()
+
+	if uploadError != nil {
+		if !strings.Contains(uploadError.Error(), "500 Internal Server Error") {
+			t.Errorf("unexpected err on upload(): %s", err)
+		}
+	} else {
+		t.Errorf("expected 500 error on upload()")
+	}
+
+	// Should have triggered the process by now, but we don't want any records sent.
+	if len(fs.pushes()) > 0 {
+		t.Errorf("Got %d records sent, want 0: %v", len(fs.pushes()), fs.pushes())
+	}
+	if fs.failedCalls == 0 {
+		t.Errorf("Should have hit signedURL endpoint at least once.")
+	}
+
+	// All the files should still be there.
+	for p, wantCount := range map[string]int{
+		m.getTempDir(t1):    0,
+		m.getStagingDir(t1): 1,
+	} {
+		files, err := ioutil.ReadDir(p)
+		if err != nil {
+			t.Errorf("ioutil.ReadDir(%s): %s", p, err)
+		} else if len(files) != wantCount {
+			t.Errorf("got %d records on disk, want %d", len(files), wantCount)
 		}
 	}
 }
