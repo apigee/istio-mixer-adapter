@@ -625,25 +625,6 @@ func (p *provision) createLegacyCredential(printf shared.FormatFn) (*credential,
 }
 
 func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn, verifyErrors error) error {
-	spec := specification{
-		Adapter: "apigee",
-		Connection: connection{
-			Address: "apigee-adapter:5000",
-		},
-		Params: params{
-			ApigeeBase:   p.InternalProxyURL,
-			OrgName:      p.Org,
-			EnvName:      p.Env,
-			Key:          cred.Key,
-			Secret:       cred.Secret,
-			CustomerBase: p.CustomerProxyURL,
-		},
-	}
-	if p.IsOPDK {
-		spec.Params.AnalyticsOptions = analyticsOptions{
-			LegacyEndpoint: true,
-		}
-	}
 	handler := apigeeHandler{
 		APIVersion: "config.istio.io/v1alpha2",
 		Kind:       "handler",
@@ -651,10 +632,31 @@ func (p *provision) printApigeeHandler(cred *credential, printf shared.FormatFn,
 			Name:      "apigee-handler",
 			Namespace: "istio-system",
 		},
-		Spec: spec,
+		Spec: specification{
+			Adapter: "apigee",
+			Connection: connection{
+				Address: "apigee-adapter:5000",
+			},
+			Params: params{
+				ApigeeBase:   p.InternalProxyURL,
+				CustomerBase: p.CustomerProxyURL,
+				OrgName:      p.Org,
+				EnvName:      p.Env,
+				Key:          cred.Key,
+				Secret:       cred.Secret,
+			},
+		},
+	}
+	if p.IsOPDK {
+		handler.Spec.Params.AnalyticsOptions = analyticsOptions{
+			LegacyEndpoint: true,
+		}
 	}
 	if p.IsHybrid {
-		handler.Metadata.Namespace = "apigee"
+		handler.Spec.Params.HybridConfig = "/opt/apigee/customer/default.properties"
+		handler.Spec.Params.AnalyticsOptions = analyticsOptions{
+			CollectionInterval: "10s",
+		}
 	}
 	formattedBytes, err := yaml.Marshal(handler)
 	if err != nil {
@@ -944,10 +946,10 @@ func zipDir(source, file string) error {
 }
 
 type apigeeHandler struct {
-	APIVersion string      `yaml:"apiVersion"`
-	Kind       string      `yaml:"kind"`
-	Metadata   metadata    `yaml:"metadata"`
-	Spec       interface{} `yaml:"spec"`
+	APIVersion string        `yaml:"apiVersion"`
+	Kind       string        `yaml:"kind"`
+	Metadata   metadata      `yaml:"metadata"`
+	Spec       specification `yaml:"spec"`
 }
 
 type metadata struct {
@@ -964,6 +966,7 @@ type specification struct {
 type params struct {
 	ApigeeBase       string           `yaml:"apigee_base,omitempty"`
 	CustomerBase     string           `yaml:"customer_base"`
+	HybridConfig     string           `yaml:"hybrid_config,omitempty"`
 	OrgName          string           `yaml:"org_name"`
 	EnvName          string           `yaml:"env_name"`
 	Key              string           `yaml:"key"`
@@ -972,7 +975,8 @@ type params struct {
 }
 
 type analyticsOptions struct {
-	LegacyEndpoint bool `yaml:"legacy_endpoint"`
+	LegacyEndpoint     bool   `yaml:"legacy_endpoint,omitempty"`
+	CollectionInterval string `yaml:"collection_interval,omitempty"`
 }
 
 type credential struct {
