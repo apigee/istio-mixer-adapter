@@ -16,29 +16,40 @@ package analytics
 
 import (
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"sync"
 )
 
-func newBucket(m *manager, tenant, dir string) (*bucket, error) {
+func newBucket(m *manager, up uploader, tenant, dir string) (*bucket, error) {
 	b := &bucket{
 		manager:  m,
+		uploader: up,
 		tenant:   tenant,
 		dir:      dir,
 		incoming: make(chan []Record, m.sendChannelSize),
 	}
 
-	f, err := ioutil.TempFile(b.dir, fmt.Sprintf("%d-*.gz", b.manager.now().Unix()))
+	var tempFileSpec string
+	if up.isGzipped() {
+		tempFileSpec = fmt.Sprintf("%d-*.gz", b.manager.now().Unix())
+	} else {
+		tempFileSpec = fmt.Sprintf("%d-*.txt", b.manager.now().Unix())
+	}
+
+	f, err := ioutil.TempFile(b.dir, tempFileSpec)
 	if err != nil {
-		m.log.Errorf("AX Records Lost. Can't create bucket file: %s", err)
+		m.log.Errorf("AX Records lost. Can't create bucket file: %s", err)
 		return nil, err
 	}
-	b.w = &writer{
-		f:  f,
-		gz: gzip.NewWriter(f),
+	b.w = &fileWriter{
+		file:   f,
+		writer: f,
+	}
+	if up.isGzipped() {
+		b.w.writer = gzip.NewWriter(f)
 	}
 
 	m.env.ScheduleDaemon(b.runLoop)
@@ -48,9 +59,10 @@ func newBucket(m *manager, tenant, dir string) (*bucket, error) {
 // A bucket writes analytics to a temp file
 type bucket struct {
 	manager  *manager
+	uploader uploader
 	tenant   string
 	dir      string
-	w        *writer
+	w        *fileWriter
 	incoming chan []Record
 	wait     *sync.WaitGroup
 }
@@ -69,16 +81,14 @@ func (b *bucket) close(wait *sync.WaitGroup) {
 }
 
 func (b *bucket) fileName() string {
-	return b.w.f.Name()
+	return b.w.file.Name()
 }
 
 func (b *bucket) runLoop() {
 	log := b.manager.log
 
 	for records := range b.incoming {
-		if err := b.w.write(records); err != nil {
-			log.Errorf("writing records: %s", err)
-		}
+		b.uploader.write(records, b.w.writer)
 	}
 
 	if err := b.w.close(); err != nil {
@@ -93,29 +103,19 @@ func (b *bucket) runLoop() {
 	log.Debugf("bucket closed: %s", b.fileName())
 }
 
-type writer struct {
-	gz *gzip.Writer
-	f  *os.File
+type fileWriter struct {
+	file   *os.File
+	writer io.Writer
 }
 
-func (w *writer) write(records []Record) error {
-	enc := json.NewEncoder(w.gz)
-	for _, r := range records {
-		if err := enc.Encode(r); err != nil {
-			return fmt.Errorf("json encode: %s", err)
+func (w *fileWriter) close() error {
+	if gzw, ok := w.writer.(*gzip.Writer); ok {
+		if err := gzw.Close(); err != nil {
+			return fmt.Errorf("gz.Close: %s", err)
 		}
 	}
-	if err := w.gz.Flush(); err != nil {
-		return fmt.Errorf("gz.Flush: %s", err)
-	}
-	return nil
-}
 
-func (w *writer) close() error {
-	if err := w.gz.Close(); err != nil {
-		return fmt.Errorf("gz.Close: %s", err)
-	}
-	if err := w.f.Close(); err != nil {
+	if err := w.file.Close(); err != nil {
 		return fmt.Errorf("f.Close: %s", err)
 	}
 	return nil

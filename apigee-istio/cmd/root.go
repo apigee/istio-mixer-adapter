@@ -16,11 +16,11 @@ package cmd
 
 import (
 	"flag"
-
 	"fmt"
-
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/bindings"
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/cmd/provision"
@@ -28,6 +28,13 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee-istio/shared"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	// Apigee does not support http2 at present
+	if !strings.Contains(os.Getenv("GODEBUG"), "http2client=0") {
+		os.Setenv("GODEBUG", os.Getenv("GODEBUG")+",http2client=0")
+	}
+}
 
 // GetRootCmd returns the root of the cobra command-tree.
 func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
@@ -50,6 +57,8 @@ func GetRootCmd(args []string, printf, fatalf shared.FormatFn) *cobra.Command {
 				shared.DefaultManagementBase, "Apigee management base")
 			subC.PersistentFlags().BoolVarP(&rootArgs.Verbose, "verbose", "v",
 				false, "verbose output")
+			subC.PersistentFlags().BoolVarP(&rootArgs.IsHybrid, "hybrid", "y",
+				false, "Apigee hybrid (automatically sets management base)")
 			subC.PersistentFlags().StringVarP(&rootArgs.NetrcPath, "netrc", "n",
 				"", "Path to a .netrc file to use (default is $HOME/.netrc")
 
@@ -93,7 +102,7 @@ func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.C
 			printf("apigee-istio version %s %s [%s]",
 				shared.BuildInfo.Version, shared.BuildInfo.Date, shared.BuildInfo.Commit)
 
-			if rootArgs.Org == "" || rootArgs.Env == "" {
+			if rootArgs.RouterBase == "https://-.apigee.net" {
 				return
 			}
 
@@ -115,6 +124,9 @@ func version(rootArgs *shared.RootArgs, printf, fatalf shared.FormatFn) *cobra.C
 			printf("istio-auth proxy version: %v", version.Version)
 		},
 	}
+
+	subC.PersistentFlags().StringVarP(&rootArgs.RouterBase, "routerBase", "r",
+		shared.DefaultRouterBase, "Apigee router base")
 
 	subC.PersistentFlags().StringVarP(&rootArgs.Org, "org", "o",
 		"", "Apigee organization name")

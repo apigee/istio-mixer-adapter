@@ -15,6 +15,11 @@
 package util
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net"
+	"os"
 	"strings"
 	"testing"
 
@@ -67,4 +72,51 @@ func TestTruncate(t *testing.T) {
 			t.Errorf("want: '%s', got: '%s'", ea.want, got)
 		}
 	}
+}
+
+func TestReadPropertiesFile(t *testing.T) {
+	tf, err := ioutil.TempFile("", "properties")
+	if err != nil {
+		t.Fatalf("TempFile: %v", err)
+	}
+	defer os.Remove(tf.Name())
+
+	sourceMap := map[string]string{
+		"a.valid.port": "apigee-udca-theganyo-apigee-test.apigee.svc.cluster.local:20001",
+		"a.valid.url":  "https://apigee-synchronizer-theganyo-apigee-test.apigee.svc.cluster.local:8843/v1/versions/active/zip",
+	}
+	for k, v := range sourceMap {
+		line := fmt.Sprintf("%s=%s\n", k, v)
+		if _, err := tf.WriteString(line); err != nil {
+			log.Fatal(err)
+		}
+	}
+	if err := tf.Close(); err != nil {
+		log.Fatal(err)
+	}
+	props, err := ReadPropertiesFile(tf.Name())
+	if err != nil {
+		t.Fatalf("ReadPropertiesFile: %v", err)
+	}
+
+	for k, v := range sourceMap {
+		if props[k] != v {
+			t.Errorf("expected: %s at key: %s, got: %s", v, k, props[k])
+		}
+	}
+}
+
+func TestFreeport(t *testing.T) {
+	p, err := FreePort()
+	if err != nil {
+		t.Errorf("shouldn't get error: %v", err)
+	}
+
+	addr := fmt.Sprintf("localhost:%d", p)
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		t.Errorf("shouldn't get error: %v", err)
+	}
+
+	l.Close()
 }

@@ -255,7 +255,7 @@ func TestGRPCAdapter_HandleAuthorization(t *testing.T) {
 	}
 	checkResult, err := s.HandleAuthorization(ctx, r)
 	if err != nil {
-		t.Errorf("error in HandleAuthorization: %v", err)
+		t.Fatalf("error in HandleAuthorization: %v", err)
 	}
 	expected := status.WithUnauthenticated("missing authentication")
 	if !reflect.DeepEqual(expected, checkResult.Status) {

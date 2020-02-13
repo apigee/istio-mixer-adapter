@@ -3,6 +3,7 @@ package apigee
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,7 +23,7 @@ func (t Timestamp) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON implements the json.Unmarshaler interface.
 // Time is expected in RFC3339 or Unix format.
 func (t *Timestamp) UnmarshalJSON(b []byte) error {
-	ms, err := strconv.ParseInt(string(b), 10, 64)
+	ms, err := strconv.ParseInt(strings.TrimSuffix(strings.TrimPrefix(string(b), "\""), "\""), 10, 64)
 	if err != nil {
 		return err
 	}

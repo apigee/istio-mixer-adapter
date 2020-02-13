@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	adaptertest "istio.io/istio/mixer/pkg/adapter/test"
 )
@@ -37,18 +38,26 @@ func TestBucket(t *testing.T) {
 	defer os.RemoveAll(testDir)
 
 	env := adaptertest.NewEnv(t)
+	now := time.Now
 
-	opts := Options{
-		LegacyEndpoint:   true,
-		BufferPath:       testDir,
-		StagingFileLimit: 10,
-		BaseURL:          url.URL{},
-		Key:              "key",
-		Secret:           "secret",
-		Client:           http.DefaultClient,
+	uploader := &saasUploader{
+		log:     env.Logger(),
+		client:  http.DefaultClient,
+		baseURL: &url.URL{},
+		key:     "key",
+		secret:  "secret",
+		now:     now,
 	}
 
-	m, err := newManager(opts)
+	opts := Options{
+		LegacyEndpoint:     true,
+		BufferPath:         testDir,
+		StagingFileLimit:   10,
+		now:                now,
+		CollectionInterval: time.Minute,
+	}
+
+	m, err := newManager(uploader, opts)
 	if err != nil {
 		t.Fatalf("newManager: %s", err)
 	}
@@ -64,7 +73,7 @@ func TestBucket(t *testing.T) {
 	m.Start(env)
 	defer m.Close()
 
-	b, err := newBucket(m, tenant, tempDir)
+	b, err := newBucket(m, uploader, tenant, tempDir)
 	if err != nil {
 		t.Fatalf("newBucket: %v", err)
 	}

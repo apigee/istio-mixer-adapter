@@ -45,16 +45,21 @@ import (
 )
 
 const (
-	jsonClaimsKey    = "json_claims"
-	apiKeyAttribute  = "api_key"
-	gatewaySource    = "istio"
-	tempDirMode      = os.FileMode(0700)
-	certPollInterval = 0 // jwt validation not currently needed
+	jsonClaimsKey             = "json_claims"
+	apiKeyAttribute           = "api_key"
+	gatewaySource             = "istio"
+	tempDirMode               = os.FileMode(0700)
+	certPollInterval          = 0 // jwt validation not currently needed
+	minSaaSCollectionInterval = 2 * time.Minute
+
+	// if APIGEE_ORG or APIGEE_ENV are set in os env, only those values can be valid in the configuration
+	orgEnvKey = "APIGEE_ORG"
+	envEnvKey = "APIGEE_ENV"
 )
 
 type (
 	builder struct {
-		adapterConfig *config.Params
+		handlerConfig *config.Params
 	}
 
 	handler struct {
@@ -130,9 +135,10 @@ func GetInfo() adapter.Info {
 				RefreshRate: pbtypes.DurationProto(2 * time.Minute),
 			},
 			Analytics: &config.ParamsAnalyticsOptions{
-				LegacyEndpoint:  false,
-				FileLimit:       1024,
-				SendChannelSize: 10,
+				LegacyEndpoint:     false,
+				FileLimit:          1024,
+				SendChannelSize:    10,
+				CollectionInterval: pbtypes.DurationProto(2 * time.Minute),
 			},
 			Auth: &config.ParamsAuthOptions{
 				ApiKeyCacheDuration: pbtypes.DurationProto(30 * time.Minute),
@@ -162,38 +168,53 @@ func toDuration(durationProto *pbtypes.Duration) time.Duration {
 
 // Implements adapter.HandlerBuilder
 func (b *builder) SetAdapterConfig(cfg adapter.Config) {
-	b.adapterConfig = cfg.(*config.Params)
+	b.handlerConfig = cfg.(*config.Params)
 }
 
 // Implements adapter.HandlerBuilder
 func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handler, error) {
 	redacts := []interface{}{
-		b.adapterConfig.Key,
-		b.adapterConfig.Secret,
+		b.handlerConfig.Key,
+		b.handlerConfig.Secret,
 	}
-	redactedConfig := util.SprintfRedacts(redacts, "%#v", *b.adapterConfig)
+	redactedConfig := util.SprintfRedacts(redacts, "%#v", *b.handlerConfig)
 	env.Logger().Infof("Handler config: %#v", redactedConfig)
 
-	apigeeBase, err := url.Parse(b.adapterConfig.ApigeeBase)
+	envOrg := os.Getenv(orgEnvKey)
+	if envOrg != "" && envOrg != b.handlerConfig.OrgName {
+		return nil, fmt.Errorf("invalid tenant org: %s", b.handlerConfig.OrgName)
+	}
+
+	envEnv := os.Getenv(envEnvKey)
+	if envEnv != "" && envEnv != b.handlerConfig.EnvName {
+		return nil, fmt.Errorf("invalid tenant env: %s", b.handlerConfig.EnvName)
+	}
+
+	// apigeeBase not required for hybrid, ignore if the hybrid config is set
+	var apigeeBase *url.URL
+	hybridConfigFile := b.handlerConfig.HybridConfig
+	if hybridConfigFile == "" {
+		var err error
+		if apigeeBase, err = url.Parse(b.handlerConfig.ApigeeBase); err != nil {
+			return nil, err
+		}
+	}
+
+	customerBase, err := url.Parse(b.handlerConfig.CustomerBase)
 	if err != nil {
 		return nil, err
 	}
 
-	customerBase, err := url.Parse(b.adapterConfig.CustomerBase)
-	if err != nil {
-		return nil, err
-	}
-
-	analyticsDir := filepath.Join(b.adapterConfig.TempDir, "analytics")
+	analyticsDir := filepath.Join(b.handlerConfig.TempDir, "analytics")
 	if err := os.MkdirAll(analyticsDir, tempDirMode); err != nil {
 		return nil, err
 	}
 
-	if b.adapterConfig.ClientTimeout == nil || toDuration(b.adapterConfig.ClientTimeout) < time.Second {
+	if b.handlerConfig.ClientTimeout == nil || toDuration(b.handlerConfig.ClientTimeout) < time.Second {
 		return nil, fmt.Errorf("ClientTimeout must be > 1")
 	}
 	tr := http.DefaultTransport
-	if b.adapterConfig.AllowUnverifiedSSLCert {
+	if b.handlerConfig.AllowUnverifiedSSLCert {
 		tr = &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
@@ -205,20 +226,20 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
-			TLSClientConfig:       &tls.Config{InsecureSkipVerify: b.adapterConfig.AllowUnverifiedSSLCert},
+			TLSClientConfig:       &tls.Config{InsecureSkipVerify: b.handlerConfig.AllowUnverifiedSSLCert},
 		}
 	}
 	httpClient := &http.Client{
-		Timeout:   toDuration(b.adapterConfig.ClientTimeout),
+		Timeout:   toDuration(b.handlerConfig.ClientTimeout),
 		Transport: tr,
 	}
 
 	productMan, err := product.NewManager(env, product.Options{
 		Client:      httpClient,
 		BaseURL:     customerBase,
-		RefreshRate: toDuration(b.adapterConfig.Products.RefreshRate),
-		Key:         b.adapterConfig.Key,
-		Secret:      b.adapterConfig.Secret,
+		RefreshRate: toDuration(b.handlerConfig.Products.RefreshRate),
+		Key:         b.handlerConfig.Key,
+		Secret:      b.handlerConfig.Secret,
 	})
 	if err != nil {
 		return nil, err
@@ -227,7 +248,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	authMan, err := auth.NewManager(env, auth.Options{
 		PollInterval:        certPollInterval,
 		Client:              httpClient,
-		APIKeyCacheDuration: toDuration(b.adapterConfig.Auth.ApiKeyCacheDuration),
+		APIKeyCacheDuration: toDuration(b.handlerConfig.Auth.ApiKeyCacheDuration),
 	})
 	if err != nil {
 		return nil, err
@@ -236,23 +257,26 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 	quotaMan, err := quota.NewManager(env, quota.Options{
 		BaseURL: customerBase,
 		Client:  httpClient,
-		Key:     b.adapterConfig.Key,
-		Secret:  b.adapterConfig.Secret,
+		Key:     b.handlerConfig.Key,
+		Secret:  b.handlerConfig.Secret,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	analyticsMan, err := analytics.NewManager(env, analytics.Options{
-		LegacyEndpoint:   b.adapterConfig.Analytics.LegacyEndpoint,
-		BufferPath:       analyticsDir,
-		StagingFileLimit: int(b.adapterConfig.Analytics.FileLimit),
-		BaseURL:          *apigeeBase,
-		Key:              b.adapterConfig.Key,
-		Secret:           b.adapterConfig.Secret,
-		Client:           httpClient,
-		SendChannelSize:  int(b.adapterConfig.Analytics.SendChannelSize),
+		LegacyEndpoint:     b.handlerConfig.Analytics.LegacyEndpoint,
+		BufferPath:         analyticsDir,
+		StagingFileLimit:   int(b.handlerConfig.Analytics.FileLimit),
+		BaseURL:            apigeeBase,
+		Key:                b.handlerConfig.Key,
+		Secret:             b.handlerConfig.Secret,
+		Client:             httpClient,
+		SendChannelSize:    int(b.handlerConfig.Analytics.SendChannelSize),
+		HybridConfigFile:   hybridConfigFile,
+		CollectionInterval: toDuration(b.handlerConfig.Analytics.CollectionInterval),
 	})
+	env.Logger().Infof("new manager: %#v", analyticsMan)
 	if err != nil {
 		return nil, err
 	}
@@ -261,15 +285,15 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		env:            env,
 		apigeeBase:     apigeeBase,
 		customerBase:   customerBase,
-		orgName:        b.adapterConfig.OrgName,
-		envName:        b.adapterConfig.EnvName,
-		key:            b.adapterConfig.Key,
-		secret:         b.adapterConfig.Secret,
+		orgName:        b.handlerConfig.OrgName,
+		envName:        b.handlerConfig.EnvName,
+		key:            b.handlerConfig.Key,
+		secret:         b.handlerConfig.Secret,
 		productMan:     productMan,
 		authMan:        authMan,
 		analyticsMan:   analyticsMan,
 		quotaMan:       quotaMan,
-		apiKeyClaimKey: b.adapterConfig.Auth.ApiKeyClaim,
+		apiKeyClaimKey: b.handlerConfig.Auth.ApiKeyClaim,
 	}
 
 	return h, nil
@@ -278,31 +302,54 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 // Implements adapter.HandlerBuilder
 func (b *builder) Validate() (errs *adapter.ConfigErrors) {
 
-	if b.adapterConfig.ApigeeBase == "" {
-		errs = errs.Append("apigee_base", fmt.Errorf("required"))
-	} else if _, err := url.ParseRequestURI(b.adapterConfig.ApigeeBase); err != nil {
-		errs = errs.Append("apigee_base", fmt.Errorf("must be a valid url: %v", err))
+	if os.Getenv(orgEnvKey) != "" && os.Getenv(orgEnvKey) != b.handlerConfig.OrgName {
+		errs = errs.Append("org_name", fmt.Errorf("org is restricted, %s is invalid", b.handlerConfig.OrgName))
 	}
 
-	if b.adapterConfig.CustomerBase == "" {
+	if os.Getenv(envEnvKey) != "" && os.Getenv(envEnvKey) != b.handlerConfig.EnvName {
+		errs = errs.Append("env_name", fmt.Errorf("env is restricted, %s is invalid", b.handlerConfig.EnvName))
+	}
+
+	if b.handlerConfig.HybridConfig == "" {
+		if b.handlerConfig.ApigeeBase == "" {
+			errs = errs.Append("apigee_base or hybrid_config", fmt.Errorf("required"))
+		} else if _, err := url.ParseRequestURI(b.handlerConfig.ApigeeBase); err != nil {
+			errs = errs.Append("apigee_base", fmt.Errorf("must be a valid url: %v", err))
+		}
+
+		if b.handlerConfig.Analytics != nil && b.handlerConfig.Analytics.CollectionInterval != nil {
+			ci := toDuration(b.handlerConfig.Analytics.CollectionInterval)
+			if ci < minSaaSCollectionInterval {
+				errs = errs.Append("analytics/collection_interval", fmt.Errorf("must be a greater than: %s", minSaaSCollectionInterval))
+			}
+		}
+
+	} else { // isHybrid
+		info, err := os.Stat(b.handlerConfig.HybridConfig)
+		if os.IsNotExist(err) || info.IsDir() {
+			errs = errs.Append("hybrid_config", fmt.Errorf("%s is not a valid file", b.handlerConfig.HybridConfig))
+		}
+	}
+
+	if b.handlerConfig.CustomerBase == "" {
 		errs = errs.Append("customer_base", fmt.Errorf("required"))
-	} else if _, err := url.ParseRequestURI(b.adapterConfig.CustomerBase); err != nil {
+	} else if _, err := url.ParseRequestURI(b.handlerConfig.CustomerBase); err != nil {
 		errs = errs.Append("customer_base", fmt.Errorf("must be a valid url: %v", err))
 	}
 
-	if b.adapterConfig.OrgName == "" {
+	if b.handlerConfig.OrgName == "" {
 		errs = errs.Append("org_name", fmt.Errorf("required"))
 	}
 
-	if b.adapterConfig.EnvName == "" {
+	if b.handlerConfig.EnvName == "" {
 		errs = errs.Append("env_name", fmt.Errorf("required"))
 	}
 
-	if b.adapterConfig.Key == "" {
+	if b.handlerConfig.Key == "" {
 		errs = errs.Append("key", fmt.Errorf("required"))
 	}
 
-	if b.adapterConfig.Secret == "" {
+	if b.handlerConfig.Secret == "" {
 		errs = errs.Append("secret", fmt.Errorf("required"))
 	}
 

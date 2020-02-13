@@ -15,6 +15,7 @@
 package shared
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -26,8 +27,13 @@ import (
 const (
 	// DefaultManagementBase is the default management API URL for Apigee
 	DefaultManagementBase = "https://api.enterprise.apigee.com"
+
+	// HybridManagementBase is the default management API URL for Apigee Hybrid
+	HybridManagementBase = "https://apigee.googleapis.com"
+
 	// DefaultRouterBase is the default (fake format) for base of the organization router URL
 	DefaultRouterBase = "https://{org}-{env}.apigee.net"
+
 	// RouterBaseFormat is the real format for base of the organization router URL
 	RouterBaseFormat = "https://%s-%s.apigee.net"
 
@@ -58,6 +64,7 @@ type RootArgs struct {
 	Token          string
 	NetrcPath      string
 	IsOPDK         bool
+	IsHybrid       bool
 
 	// the following is derived in Resolve()
 	InternalProxyURL string
@@ -68,21 +75,31 @@ type RootArgs struct {
 
 // Resolve is used to populate shared args, it's automatically called prior when creating the root command
 func (r *RootArgs) Resolve(skipAuth bool) error {
+	if r.IsHybrid || r.ManagementBase == HybridManagementBase {
+		r.IsHybrid = true
+		r.ManagementBase = HybridManagementBase
+	}
+	r.IsOPDK = !r.IsHybrid && r.ManagementBase != DefaultManagementBase
+
 	if r.RouterBase == DefaultRouterBase {
+		if r.IsOPDK || r.IsHybrid {
+			return errors.New("you must specify a router base with Hybrid or OPDK")
+		}
 		r.RouterBase = fmt.Sprintf(RouterBaseFormat, r.Org, r.Env)
 	}
-	r.IsOPDK = !strings.Contains(r.ManagementBase, "api.enterprise.apigee.com")
 
-	// calculate internal proxy URL from router URL (reuse the scheme and domain)
-	if r.IsOPDK {
-		r.InternalProxyURL = fmt.Sprintf(internalProxyURLFormatOPDK, r.RouterBase)
-	} else {
-		u, err := url.Parse(r.RouterBase)
-		if err != nil {
-			return err
+	// calculate internal proxy URL from router URL (reuse the scheme and domain) - not valid for Hybrid!
+	if !r.IsHybrid {
+		if r.IsOPDK {
+			r.InternalProxyURL = fmt.Sprintf(internalProxyURLFormatOPDK, r.RouterBase)
+		} else {
+			u, err := url.Parse(r.RouterBase)
+			if err != nil {
+				return err
+			}
+			domain := u.Host[strings.Index(u.Host, ".")+1:]
+			r.InternalProxyURL = fmt.Sprintf(internalProxyURLFormat, u.Scheme, domain)
 		}
-		domain := u.Host[strings.Index(u.Host, ".")+1:]
-		r.InternalProxyURL = fmt.Sprintf(internalProxyURLFormat, u.Scheme, domain)
 	}
 	r.CustomerProxyURL = fmt.Sprintf(customerProxyURLFormat, r.RouterBase)
 

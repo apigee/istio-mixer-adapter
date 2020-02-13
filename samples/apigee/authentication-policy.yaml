@@ -1,5 +1,6 @@
 # Creates an Authentication policy and binds it to service.
-# The example forces requests to the "helloworld" service to have a valid JWT.
+# The example forces requests to helloworld or httpbin services 
+# to have a valid JWT.
 # Configure issuer, jwks_uri, and services as appropriate.
 ---
 # Define an Istio Auth Policy
@@ -11,6 +12,7 @@ metadata:
 spec:
   targets:
   - name: helloworld
+  - name: httpbin
   peers:
 #  - mtls: {}  # uncomment if you're using mTLS between services in your mesh
   origins:

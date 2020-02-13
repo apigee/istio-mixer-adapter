@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<AssignMessage async="false" continueOnError="false" enabled="true" name="Set-Quota-Response">
+    <DisplayName>Set Quota Response</DisplayName>
+    <Remove>
+        <FormParams/>
+    </Remove>
+    <Set>
+        <Payload contentType="application/json" variablePrefix="@" variableSuffix="#">{
+    "allowed": @quota.allow#,
+    "used": @quota.used#,
+    "exceeded": @quota.exceeded#,
+    "expiryTime": @ratelimit.DistributedQuota.expiry.time#,
+    "timestamp": @system.timestamp#
+}</Payload>
+    </Set>
+    <IgnoreUnresolvedVariables>true</IgnoreUnresolvedVariables>
+    <AssignTo createNew="false" type="response"/>
+</AssignMessage>

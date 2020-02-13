@@ -15,7 +15,10 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
+	"net"
+	"os"
 	"strings"
 )
 
@@ -38,4 +41,48 @@ func Truncate(in string, end int) string {
 		out = fmt.Sprintf("%s...", out[0:end])
 	}
 	return out
+}
+
+// ReadPropertiesFile Parses a simple properties file (xx=xx format)
+func ReadPropertiesFile(fileName string) (map[string]string, error) {
+	config := map[string]string{}
+	f, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	scan := bufio.NewScanner(f)
+	for scan.Scan() {
+		text := scan.Text()
+		if eq := strings.Index(text, "="); eq >= 0 {
+			if key := strings.TrimSpace(text[:eq]); len(key) > 0 {
+				value := ""
+				if len(text) > eq {
+					value = strings.TrimSpace(text[eq+1:])
+				}
+				config[key] = value
+			}
+		}
+	}
+
+	if err := scan.Err(); err != nil {
+		return nil, err
+	}
+
+	return config, nil
+}
+
+// FreePort returns a free port number
+func FreePort() (int, error) {
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return 0, err
+	}
+
+	port := listener.Addr().(*net.TCPAddr).Port
+	if err := listener.Close(); err != nil {
+		return 0, err
+	}
+	return port, nil
 }

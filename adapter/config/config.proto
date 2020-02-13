@@ -50,11 +50,12 @@ syntax = "proto3";
 // spec:
 //   apigee_base: https://istioservices.apigee.net/edgemicro
 //   customer_base: https://myorg-test.apigee.net/istio-auth
+//   hybrid_config: /opt/apigee/customer/default.properties
 //   org_name: myorg
 //   env_name: test
 //   key: mykey
 //   secret: mysecret
-//   temp_dir: "/tmp/apigee-istio"
+//   temp_dir: /tmp/apigee-istio
 //   client_timeout: 30s
 //   allowUnverifiedSSLCert: false
 //   products:
@@ -101,18 +102,18 @@ message Params {
     // Secret is used to authenticate to the Apigee proxy endpoints, generated during provisioning.
     // Required.
     string secret        = 6;
-
     // The local directory to be used by the adapter for temporary files.
     // Optional. Default: "/tmp/apigee-istio".
     string temp_dir = 7;
-
     // The timeout to be used for adapter requests to Apigee servers.
     // Optional. Default: "30s" (30 seconds).
     google.protobuf.Duration client_timeout = 8;
-
     // Set to true to allow an unknown server SSL Certificate (eg. self-signed)
     // Optional. Default: false.
     bool allowUnverifiedSSLCert = 9;
+    // Path to the local Apigee Hybrid configuration file.
+    // Optional. Presence indicates Hybrid environment, must not be set for SaaS or OPDK.
+    string hybrid_config = 10;
 
     // Options specific to to products handling.
     message product_options {
@@ -131,9 +132,12 @@ message Params {
         // The number of analytics files that can be buffered before oldest files are dropped.
         // Optional. Default: 1024.
         int64 file_limit = 2;
-        // The size of the channel used to buffer record sends in memory.
+        // The size of the channel used to buffer rfecord sends in memory.
         // Optional. Default: 10.
         int64 send_channel_size = 3;
+        // How often spooled analytics are swept and sent to Apigee.
+        // Optional. Default: "2m" (2 minutes).
+        google.protobuf.Duration collection_interval = 4;
     }
     // Options specific to to analytics handling.
     analytics_options analytics = 16;
