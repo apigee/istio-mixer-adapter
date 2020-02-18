@@ -502,7 +502,7 @@ func (s *ProxiesServiceOp) GetDeployment(proxy string) (*EnvironmentDeployment, 
 // GetDeployedRevision returns the Revision that is deployed to an environment.
 func (s *ProxiesServiceOp) GetDeployedRevision(proxy string) (*Revision, error) {
 	deployment, resp, err := s.GetDeployment(proxy)
-	if err != nil && (resp == nil || resp.StatusCode == http.StatusUnauthorized) {
+	if err != nil && (resp == nil || resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden) {
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusNotFound {
