@@ -160,7 +160,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 		}
 		defer os.RemoveAll(tempDir)
 
-		replaceVirtualHosts := func(proxyDir string) error {
+		replaceVH := func(proxyDir string) error {
 			proxiesFile := filepath.Join(proxyDir, "proxies", "default.xml")
 			bytes, err := ioutil.ReadFile(proxiesFile)
 			if err != nil {
@@ -179,8 +179,28 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 			return nil
 		}
 
+		replaceVHAndAuthTarget := func(proxyDir string) error {
+			if err := replaceVH(proxyDir); err != nil {
+				return err
+			}
+
+			if p.IsOPDK {
+				policiesFile := filepath.Join(proxyDir, "policies", "Authenticate-Call.xml")
+				bytes, err := ioutil.ReadFile(policiesFile)
+				if err != nil {
+					return errors.Wrapf(err, "error reading file %s", policiesFile)
+				}
+				oldTarget := "https://edgemicroservices.apigee.net"
+				bytes = []byte(strings.Replace(string(bytes), oldTarget, p.RouterBase, 1))
+				if err := ioutil.WriteFile(policiesFile, bytes, 0); err != nil {
+					return errors.Wrapf(err, "error writing %s", policiesFile)
+				}
+			}
+			return nil
+		}
+
 		if p.IsOPDK {
-			if err := p.deployInternalProxy(replaceVirtualHosts, tempDir, verbosef); err != nil {
+			if err := p.deployInternalProxy(replaceVH, tempDir, verbosef); err != nil {
 				fatalf("error deploying internal proxy: %v", err)
 			}
 		}
@@ -190,7 +210,7 @@ func (p *provision) run(printf, fatalf shared.FormatFn) {
 		if p.IsHybrid {
 			customizedProxy, err = getCustomizedProxy(tempDir, hybridAuthProxyZip, nil)
 		} else {
-			customizedProxy, err = getCustomizedProxy(tempDir, legacyAuthProxyZip, replaceVirtualHosts)
+			customizedProxy, err = getCustomizedProxy(tempDir, legacyAuthProxyZip, replaceVHAndAuthTarget)
 		}
 		if err != nil {
 			fatalf(err.Error())
