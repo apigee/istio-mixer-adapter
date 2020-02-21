@@ -4,9 +4,11 @@
 # Run this if any of the proto files (config, authorization, analytics) are changed.
 # See RELEASING.md for documentation of full release process.
 
-ISTIO_ROOT="${GOPATH-$HOME/go}/src/github.com/apigee/istio-mixer-adapter"
-MIXGEN=$ISTIO_ROOT/vendor/istio.io/istio/mixer/tools/mixgen/main.go
-DEFINITIONS_FILE="${ISTIO_ROOT}/samples/apigee/definitions.yaml"
+SCRIPTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+ROOTDIR="$(dirname "$SCRIPTPATH")"
+
+MIXGEN=$ROOTDIR/mixgen/main.go
+DEFINITIONS_FILE="${ROOTDIR}/samples/apigee/definitions.yaml"
 
 read -r -d '' DEFINITIONS_BASE <<"EOT"
 # This file generated via bin/build_grpc_definitions.sh. Regenerate if
@@ -69,10 +71,10 @@ EOT
 templateDS=$GOPATH/src/istio.io/istio/mixer/template/authorization/template_handler_service.descriptor_set
 AUTHORIZATION=$(go run $MIXGEN template -d $templateDS -n apigee-authorization)
 
-templateDS=$GOPATH/src/github.com/apigee/istio-mixer-adapter/template/analytics/template_handler_service.descriptor_set
+templateDS=$GOPATH/src/github.com/apigee/istio-mixer-adapter/mixer/analytics/template_handler_service.descriptor_set
 ANALYTICS=$(go run $MIXGEN template -d $templateDS -n apigee-analytics)
 
-templateDS=$GOPATH/src/github.com/apigee/istio-mixer-adapter/adapter/config/config.proto_descriptor
+templateDS=$GOPATH/src/github.com/apigee/istio-mixer-adapter/mixer/config/config.proto_descriptor
 APIGEE=$(go run $MIXGEN adapter -c $templateDS -s=false -t apigee-authorization -t apigee-analytics -n apigee)
 
 NEWLINE=$'\n'

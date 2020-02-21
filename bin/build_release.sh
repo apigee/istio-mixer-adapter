@@ -13,7 +13,7 @@ fi
 if [[ `command -v goreleaser` == "" ]]; then
   echo "goreleaser not installed, installing..."
   cd "${GOPATH}/bin/"
-  wget https://github.com/goreleaser/goreleaser/releases/download/v0.117.1/goreleaser_Linux_x86_64.tar.gz
+  wget https://github.com/goreleaser/goreleaser/releases/download/v0.127.1/goreleaser_Linux_x86_64.tar.gz
   tar xfz goreleaser_Linux_x86_64.tar.gz goreleaser
   rm goreleaser_Linux_x86_64.tar.gz
 fi

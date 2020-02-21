@@ -5,9 +5,9 @@ import (
 	coreLog "log"
 	"os"
 
-	"github.com/apigee/istio-mixer-adapter/adapter"
+	"github.com/apigee/istio-mixer-adapter/mixer"
 	"github.com/spf13/cobra"
-	"istio.io/istio/pkg/log"
+	"istio.io/pkg/log"
 )
 
 var address string
@@ -22,7 +22,7 @@ func main() {
 				coreLog.Fatal(err)
 			}
 
-			s, err := adapter.NewGRPCAdapter(address)
+			s, err := mixer.NewGRPCAdapter(address)
 			if err != nil {
 				fmt.Printf("unable to start server: %v", err)
 				os.Exit(-1)
