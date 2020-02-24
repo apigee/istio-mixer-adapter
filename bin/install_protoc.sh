@@ -7,4 +7,5 @@ if [[ `command -v protoc` == "" ]]; then
   sudo mv -f /tmp/protoc/bin/protoc /usr/bin/
   sudo mv -f /tmp/protoc/include/google /usr/local/include/
   rm -rf /tmp/protoc
+  go get github.com/gogo/protobuf/protoc-gen-gogoslick
 fi

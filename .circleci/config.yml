@@ -10,10 +10,12 @@ jobs:
     steps:
       - checkout
       - run:
+          command: go mod download
+      - run:
           command: ./bin/install_protoc.sh
           name: install protoc
       - run:
-          command: go generate ./...
+          command: cd mixer;go generate ./...
           name: generate protos
       - run:
           command: go test -coverprofile=coverage.txt ./...
@@ -34,10 +36,12 @@ jobs:
     steps:
       - checkout
       - run:
+          command: go mod download
+      - run:
           command: ./bin/install_protoc.sh
           name: install protoc
       - run:
-          command: go generate ./...
+          command: cd mixer;go generate ./...
           name: generate protos
       - run:
           name: Run tests
