@@ -9,7 +9,6 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: dep ensure
       - run:
           command: ./bin/install_protoc.sh
           name: install protoc
@@ -34,7 +33,6 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run: dep ensure
       - run:
           command: ./bin/install_protoc.sh
           name: install protoc
