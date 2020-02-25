@@ -10,8 +10,6 @@ jobs:
     steps:
       - checkout
       - run:
-          command: go mod download
-      - run:
           command: ./bin/install_protoc.sh
           name: install protoc
       - run:
@@ -35,8 +33,6 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run:
-          command: go mod download
       - run:
           command: ./bin/install_protoc.sh
           name: install protoc
