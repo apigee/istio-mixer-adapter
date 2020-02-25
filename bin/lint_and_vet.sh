@@ -1,3 +1,6 @@
 #!/usr/bin/env bash
-golint ./apigee/... ./mixer/... || exit 1
-go vet ./apigee-istio/... ./mixer/... ./apigee/... || exit 1
+(echo lint apigee; cd apigee; golint ./...)
+(echo lint mixer; cd mixer; golint .)
+(echo vet apigee; cd apigee; go vet ./...)
+(echo vet mixer; cd mixer; go vet .)
+(echo vet apigee-istio; cd apigee-istio; go vet ./...)

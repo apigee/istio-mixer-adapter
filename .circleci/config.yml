@@ -15,7 +15,7 @@ jobs:
           command: ./bin/install_protoc.sh
           name: install protoc
       - run:
-          command: cd mixer;go generate ./...
+          command: (cd mixer;go generate ./...)
           name: generate protos
       - run:
           command: go test -coverprofile=coverage.txt ./...
@@ -41,7 +41,7 @@ jobs:
           command: ./bin/install_protoc.sh
           name: install protoc
       - run:
-          command: cd mixer;go generate ./...
+          command: (cd mixer;go generate ./...)
           name: generate protos
       - run:
           name: Run tests

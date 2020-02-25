@@ -1,7 +1,7 @@
 # .goreleaser.yml
 # Build customization
 builds:
-  - main: ./apigee-istio/main.go
+  - dir: apigee-istio
     binary: apigee-istio
     goos:
       - windows

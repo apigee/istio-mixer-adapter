@@ -35,8 +35,8 @@ import (
 
 	"github.com/apigee/istio-mixer-adapter/apigee/analytics"
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
-	"github.com/apigee/istio-mixer-adapter/apigee/config"
 	analyticsT "github.com/apigee/istio-mixer-adapter/mixer/analytics"
+	"github.com/apigee/istio-mixer-adapter/mixer/config"
 	pbtypes "github.com/gogo/protobuf/types"
 	"istio.io/istio/mixer/pkg/adapter/test"
 	"istio.io/istio/mixer/template/authorization"
@@ -288,7 +288,7 @@ func TestHandleAnalytics(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 
-	analyticsMan, err := analytics.NewManager(env, analytics.Options{
+	analyticsMan, err := analytics.NewManager(analytics.Options{
 		BufferPath:         d,
 		StagingFileLimit:   10,
 		BaseURL:            baseURL,
