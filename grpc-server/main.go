@@ -5,6 +5,7 @@ import (
 	coreLog "log"
 	"os"
 
+	alog "github.com/apigee/istio-mixer-adapter/apigee/log"
 	"github.com/apigee/istio-mixer-adapter/mixer"
 	"github.com/spf13/cobra"
 	"istio.io/pkg/log"
@@ -14,6 +15,7 @@ var address string
 
 func main() {
 	options := log.DefaultOptions()
+	alog.Log = log.FindScope(log.DefaultScopeName)
 
 	rootCmd := &cobra.Command{
 		Run: func(cmd *cobra.Command, args []string) {

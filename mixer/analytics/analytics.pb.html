@@ -20,7 +20,7 @@ metadata:
   namespace: istio-system
 spec:
   api_key: request.api_key | request.headers[&quot;x-api-key&quot;] | &quot;&quot;
-  api_proxy: api.service | destination.service | &quot;&quot;
+  api_proxy: api.service | destination.service.host | &quot;&quot;
   response_status_code: response.code | 0
   client_ip: source.ip | ip(&quot;0.0.0.0&quot;)
   request_verb: request.method | &quot;&quot;

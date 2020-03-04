@@ -82,9 +82,9 @@ func TestBadConfig(t *testing.T) {
 		t.Errorf("Validate() bad config should have errors")
 	} else {
 		want := `3 errors occurred:
-	* apigee_base: must be a valid url: parse not an url: invalid URI for request
+	* apigee_base: must be a valid url: parse "not an url": invalid URI for request
 	* analytics/collection_interval: must be a greater than: 2m0s
-	* customer_base: must be a valid url: parse not an url: invalid URI for request
+	* customer_base: must be a valid url: parse "not an url": invalid URI for request
 
 `
 		if errs.String() != want {

@@ -82,9 +82,6 @@ type (
 
 // make handler implement Context...
 
-func (h *handler) Log() adapter.Logger {
-	return h.env.Logger()
-}
 func (h *handler) ApigeeBase() *url.URL {
 	return h.apigeeBase
 }
@@ -174,15 +171,12 @@ func (b *builder) SetAdapterConfig(cfg adapter.Config) {
 
 // Implements adapter.HandlerBuilder
 func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handler, error) {
-	// TODO
-	log.Log = env.Logger()
-
 	redacts := []interface{}{
 		b.handlerConfig.Key,
 		b.handlerConfig.Secret,
 	}
 	redactedConfig := util.SprintfRedacts(redacts, "%#v", *b.handlerConfig)
-	env.Logger().Infof("Handler config: %#v", redactedConfig)
+	log.Infof("Handler config: %#v", redactedConfig)
 
 	envOrg := os.Getenv(orgEnvKey)
 	if envOrg != "" && envOrg != b.handlerConfig.OrgName {
@@ -280,7 +274,7 @@ func (b *builder) Build(context context.Context, env adapter.Env) (adapter.Handl
 		HybridConfigFile:   hybridConfigFile,
 		CollectionInterval: toDuration(b.handlerConfig.Analytics.CollectionInterval),
 	})
-	env.Logger().Infof("new manager: %#v", analyticsMan)
+	log.Infof("new manager: %#v", analyticsMan)
 	if err != nil {
 		return nil, err
 	}
@@ -379,7 +373,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 	if len(instances) == 0 {
 		return nil
 	}
-	h.Log().Debugf("HandleAnalytics: %d instances", len(instances))
+	log.Debugf("HandleAnalytics: %d instances", len(instances))
 
 	var authContext *auth.Context
 	var records = make([]analytics.Record, 0, len(instances))
@@ -406,12 +400,7 @@ func (h *handler) HandleAnalytics(ctx context.Context, instances []*analyticsT.I
 		// Apigee expects RequestURI to include query parameters. Istio's request.path matches this.
 		// However, Apigee expects RequestPath exclude query parameters and there is no corresponding
 		// Istio attribute. Thus, we need to drop the query params from request.path for RequestPath.
-		splits := strings.Split(inst.RequestPath, "?")
-		if len(splits) > 0 {
-			record.RequestPath = splits[0]
-		} else {
-			record.RequestPath = "/"
-		}
+		record.RequestPath = strings.SplitN(record.RequestURI, "?", 2)[0]
 
 		// important: This assumes that the Auth is the same for all records!
 		if authContext == nil {
@@ -443,20 +432,20 @@ var checkResultMissingAuth = adapter.CheckResult{Status: status.WithUnauthentica
 
 // Handle Authentication, Authorization, and Quotas
 func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance) (adapter.CheckResult, error) {
-	if h.Log().DebugEnabled() {
+	if log.DebugEnabled() {
 		redacts := []interface{}{
 			inst.Subject.Properties[apiKeyAttribute],
 			inst.Subject.Properties[jsonClaimsKey],
 		}
 		redactedSub := util.SprintfRedacts(redacts, "%#v", *inst.Subject)
-		h.Log().Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
+		log.Debugf("HandleAuthorization: Subject: %s, Action: %#v", redactedSub, *inst.Action)
 	}
 
 	claims := h.resolveClaimsInterface(inst.Subject.Properties)
 	apiKey, _ := inst.Subject.Properties[apiKeyAttribute].(string)
 	authContext, err := h.authMan.Authenticate(h, apiKey, claims, h.apiKeyClaimKey)
 	if err != nil {
-		h.Log().Debugf("authenticate err: %v", err)
+		log.Debugf("authenticate err: %v", err)
 		switch err {
 		case auth.ErrNoAuth:
 			return checkResultMissingAuth, nil
@@ -476,11 +465,16 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 
 	var anyQuotas, exceeded bool
 	var anyError error
+	args := quota.Args{
+		DeduplicationID: quotaArgs.DeduplicationID,
+		BestEffort:      quotaArgs.BestEffort,
+		QuotaAmount:     quotaArgs.QuotaAmount,
+	}
 	// apply to all matching products
 	for _, p := range products {
 		if p.QuotaLimitInt > 0 {
 			anyQuotas = true
-			result, err := h.quotaMan.Apply(authContext, p, quotaArgs)
+			result, err := h.quotaMan.Apply(authContext, p, args)
 			if err != nil {
 				anyError = err
 			} else if result.Exceeded > 0 {
@@ -489,15 +483,15 @@ func (h *handler) HandleAuthorization(ctx context.Context, inst *authT.Instance)
 		}
 	}
 	if anyError != nil {
-		h.Log().Debugf("authenticate err: %v", anyError)
+		log.Debugf("authenticate err: %v", anyError)
 		return checkResultNil, anyError
 	}
 	if exceeded {
-		h.Log().Debugf("quota exceeded: %v", err)
+		log.Debugf("quota exceeded: %v", err)
 		return checkResultQuotaExceeded, nil
 	}
 
-	h.Log().Debugf("request authorized")
+	log.Debugf("request authorized")
 
 	var okResult adapter.CheckResult
 	if anyQuotas {
@@ -516,7 +510,7 @@ func (h *handler) resolveClaims(claimsIn map[string]string) map[string]interface
 	if encoded, ok := claimsIn[jsonClaimsKey]; ok && encoded != "" {
 		err := json.Unmarshal([]byte(encoded), &claims)
 		if err != nil {
-			h.Log().Errorf("error resolving %s claims: %v, data: %v", jsonClaimsKey, err, encoded)
+			log.Errorf("error resolving %s claims: %v, data: %v", jsonClaimsKey, err, encoded)
 		}
 	}
 

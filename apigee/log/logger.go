@@ -28,24 +28,30 @@ var Log Logger = &defaultLogger{}
 
 // Infof logs at the info level
 func Infof(format string, args ...interface{}) {
-	Log.Infof(format, args)
+	if InfoEnabled() {
+		Log.Infof(format, args...)
+	}
 }
 
-// Warningf logs suspect situations and recoverable errors
-func Warningf(format string, args ...interface{}) {
-	Log.Warningf(format, args)
+// Warnf logs suspect situations and recoverable errors
+func Warnf(format string, args ...interface{}) {
+	if WarnEnabled() {
+		Log.Warnf(format, args...)
+	}
 }
 
 // Errorf logs error conditions.
-// In addition to generating a log record for the error, this also returns
-// an error instance for convenience.
-func Errorf(format string, args ...interface{}) error {
-	return Log.Errorf(format, args)
+func Errorf(format string, args ...interface{}) {
+	if ErrorEnabled() {
+		Log.Errorf(format, args...)
+	}
 }
 
 // Debugf logs potentially verbose debug-time data
 func Debugf(format string, args ...interface{}) {
-	Log.Warningf(format, args)
+	if DebugEnabled() {
+		Log.Debugf(format, args...)
+	}
 }
 
 // InfoEnabled returns whether output of messages at the info level is currently enabled.
@@ -74,12 +80,10 @@ type Logger interface {
 	Debugf(format string, args ...interface{})
 	// Infof logs informational data
 	Infof(format string, args ...interface{})
-	// Warningf logs suspect situations and recoverable errors
-	Warningf(format string, args ...interface{})
+	// Warnf logs suspect situations and recoverable errors
+	Warnf(format string, args ...interface{})
 	// Errorf logs error conditions.
-	// In addition to generating a log record for the error, this also returns
-	// an error instance for convenience.
-	Errorf(format string, args ...interface{}) error
+	Errorf(format string, args ...interface{}) 
 
 	// DebugEnabled returns whether output of messages at the debug level is currently enabled.
 	DebugEnabled() bool
@@ -95,26 +99,30 @@ type defaultLogger struct {
 }
 
 func (d *defaultLogger) Infof(format string, args ...interface{}) {
-	l.Printf(format, args...)
+	if d.InfoEnabled() {
+		l.Printf(format, args...)
+	}
 }
 
-// Warningf logs suspect situations and recoverable errors
-func (d *defaultLogger) Warningf(format string, args ...interface{}) {
-	l.Printf(format, args...)
+// Warnf logs suspect situations and recoverable errors
+func (d *defaultLogger) Warnf(format string, args ...interface{}) {
+	if d.WarnEnabled() {
+		l.Printf(format, args...)
+	}
 }
 
 // Errorf logs error conditions.
-// In addition to generating a log record for the error, this also returns
-// an error instance for convenience.
-func (d *defaultLogger) Errorf(format string, args ...interface{}) error {
-	e := fmt.Errorf(format, args...)
-	l.Printf(e.Error())
-	return e
+func (d *defaultLogger) Errorf(format string, args ...interface{}) {
+	if d.ErrorEnabled() {
+		fmt.Errorf(format, args...)
+	}
 }
 
 // Debugf logs potentially verbose debug-time data
 func (d *defaultLogger) Debugf(format string, args ...interface{}) {
-	l.Printf(format, args...)
+	if d.DebugEnabled() {
+		l.Printf(format, args...)
+	}
 }
 
 // InfoEnabled returns whether output of messages at the info level is currently enabled.

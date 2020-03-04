@@ -72,7 +72,7 @@ func (m *manager) crashRecovery() error {
 			}
 
 			if err := os.Remove(tempFile); err != nil {
-				log.Warningf("unable to remove temp file: %s", tempFile)
+				log.Warnf("unable to remove temp file: %s", tempFile)
 			}
 
 			m.upload(tenant, stageFile)
@@ -83,7 +83,7 @@ func (m *manager) crashRecovery() error {
 
 // recoverFile recovers gzipped data in a file and puts it into a new file.
 func (m *manager) recoverFile(oldName string, newFile *os.File) error {
-	log.Warningf("recover file: %s", oldName)
+	log.Warnf("recover file: %s", oldName)
 	in, err := os.Open(oldName)
 	if err != nil {
 		return fmt.Errorf("open %s: %s", oldName, err)

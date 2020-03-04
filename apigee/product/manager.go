@@ -143,7 +143,9 @@ func (p *Manager) pollingClosure(apiURL url.URL) func(ctx context.Context) error
 		}
 
 		if resp.StatusCode != 200 {
-			return log.Errorf("products request failed (%d): %s", resp.StatusCode, string(body))
+			err := fmt.Errorf("products request failed (%d): %s", resp.StatusCode, string(body))
+			log.Errorf(err.Error())
+			return err
 		}
 
 		var res APIResponse

@@ -116,12 +116,14 @@ func (b *bucket) sync() error {
 	body := new(bytes.Buffer)
 	err := json.NewEncoder(body).Encode(r)
 	if err != nil {
-		return log.Errorf("encode: %v", err)
+		log.Errorf("encode: %v", err)
+		return err
 	}
 
 	req, err := http.NewRequest(http.MethodPost, b.quotaURL, body)
 	if err != nil {
-		return log.Errorf("new request: %v", err)
+		log.Errorf("new request: %v", err)
+		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -132,14 +134,16 @@ func (b *bucket) sync() error {
 
 	resp, err := b.manager.client.Do(req)
 	if err != nil {
-		return log.Errorf("do request: %v", err)
+		log.Errorf("do request: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
 
 	buf := bytes.NewBuffer(make([]byte, 0, resp.ContentLength))
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
-		return log.Errorf("read body: %v", err)
+		log.Errorf("read body: %v", err)
+		return err
 	}
 	respBody := buf.Bytes()
 
@@ -147,7 +151,8 @@ func (b *bucket) sync() error {
 	case 200:
 		var quotaResult Result
 		if err = json.Unmarshal(respBody, &quotaResult); err != nil {
-			return log.Errorf("bad response: %s", string(respBody))
+			log.Errorf("bad response: %s", string(respBody))
+			return err
 		}
 
 		log.Debugf("quota synced: %#v", quotaResult)
@@ -163,7 +168,8 @@ func (b *bucket) sync() error {
 		return nil
 
 	default:
-		return log.Errorf("bad response (%d): %s", resp.StatusCode, string(respBody))
+		log.Errorf("bad response (%d): %s", resp.StatusCode, string(respBody))
+		return err
 	}
 }
 

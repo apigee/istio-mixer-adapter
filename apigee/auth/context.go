@@ -31,7 +31,7 @@ const (
 	applicationNameClaim = "application_name"
 	scopesClaim          = "scopes"
 	expClaim             = "exp"
-	developerEmailClaim  = "application_developeremail"
+	developerEmailClaim  = "developer_email"
 	accessTokenClaim     = "access_token"
 )
 

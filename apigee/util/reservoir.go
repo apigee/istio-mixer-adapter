@@ -53,7 +53,7 @@ func NewReservoir(limit int) (chan<- interface{}, <-chan interface{}, <-chan int
 						case overflow <- v:
 							// log.Debugf("overflow: %v", v)
 						default:
-							log.Warningf("dropped: %v", v)
+							log.Warnf("dropped: %v", v)
 						}
 					}
 				} else {

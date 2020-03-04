@@ -26,7 +26,6 @@ import (
 	"github.com/apigee/istio-mixer-adapter/apigee/auth"
 	"github.com/apigee/istio-mixer-adapter/apigee/authtest"
 	"github.com/apigee/istio-mixer-adapter/apigee/product"
-	"istio.io/istio/mixer/pkg/adapter"
 )
 
 func TestQuota(t *testing.T) {
@@ -54,7 +53,7 @@ func TestQuota(t *testing.T) {
 		QuotaTimeUnit:    "second",
 	}
 
-	args := adapter.QuotaArgs{
+	args := Args{
 		QuotaAmount: 1,
 		BestEffort:  true,
 	}
@@ -289,7 +288,7 @@ func TestDisconnected(t *testing.T) {
 		QuotaTimeUnit:    "second",
 	}
 
-	args := adapter.QuotaArgs{
+	args := Args{
 		QuotaAmount: 1,
 		BestEffort:  true,
 	}
@@ -372,7 +371,7 @@ func TestWindowExpired(t *testing.T) {
 		QuotaTimeUnit:    "second",
 	}
 
-	args := adapter.QuotaArgs{
+	args := Args{
 		QuotaAmount: 1,
 		BestEffort:  true,
 	}

@@ -35,7 +35,7 @@ syntax = "proto3";
 //   namespace: istio-system
 // spec:
 //   api_key: request.api_key | request.headers["x-api-key"] | ""
-//   api_proxy: api.service | destination.service | ""
+//   api_proxy: api.service | destination.service.host | ""
 //   response_status_code: response.code | 0
 //   client_ip: source.ip | ip("0.0.0.0")
 //   request_verb: request.method | ""

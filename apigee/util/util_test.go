@@ -22,8 +22,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-
-	"istio.io/istio/mixer/template/authorization"
 )
 
 func TestSprintfRedacted(t *testing.T) {
@@ -32,24 +30,26 @@ func TestSprintfRedacted(t *testing.T) {
 	batman := "Bruce Wayne"
 	ironman := "Tony Stark"
 
-	inst := &authorization.Instance{
-		Subject: &authorization.Subject{
-			Properties: map[string]interface{}{
-				"superman": superman,
-				"ironman":  ironman,
-				"batman":   batman,
-			},
-		},
+	test := map[string]interface{}{
+		"superman": superman,
+		"ironman":  ironman,
+		"batman":   batman,
 	}
 
 	redacts := []interface{}{superman, batman}
-	result := SprintfRedacts(redacts, "%#v", *inst.Subject)
+	result := SprintfRedacts(redacts, "%#v", test)
 
 	if strings.Contains(result, superman) {
 		t.Errorf("should not contain %s, got: %s", superman, result)
 	}
+	if !strings.Contains(result, "Clark...") {
+		t.Errorf("should contain %s, got: %s", "Clark...", result)
+	}
 	if strings.Contains(result, batman) {
 		t.Errorf("should not contain %s, got: %s", batman, result)
+	}
+	if !strings.Contains(result, "Bruce...") {
+		t.Errorf("should contain %s, got: %s", "Bruce...", result)
 	}
 	if !strings.Contains(result, ironman) {
 		t.Errorf("should contain %s, got: %s", ironman, result)

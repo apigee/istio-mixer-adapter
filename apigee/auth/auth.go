@@ -124,7 +124,7 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 	if !authContext.isAuthenticated() && len(claims) > 0 {
 		claimsError = authContext.setClaims(claims)
 		if authAttempted && claimsError == nil {
-			log.Warningf("apiKey verification error: %s, using jwt claims", authenticationError)
+			log.Warnf("apiKey verification error: %s, using jwt claims", authenticationError)
 			authenticationError = nil
 		}
 		authAttempted = true
@@ -144,7 +144,7 @@ func (m *Manager) Authenticate(ctx context.Context, apiKey string,
 
 	if log.DebugEnabled() {
 		redacts := []interface{}{authContext.APIKey, authContext.AccessToken, authContext.ClientID}
-		redactedAC := util.SprintfRedacts(redacts, "%v", authContext)
+		redactedAC := util.SprintfRedacts(redacts, "%#v", authContext)
 		if authenticationError == nil {
 			log.Debugf("Authenticate success: %s", redactedAC)
 		} else {

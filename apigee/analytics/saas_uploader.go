@@ -66,10 +66,10 @@ func (s *saasUploader) workFunc(tenant, fileName string) util.WorkFunc {
 			return s.upload(tenant, fileName)
 		}
 
-		log.Warningf("canceled upload of %s: %v", fileName, ctx.Err())
+		log.Warnf("canceled upload of %s: %v", fileName, ctx.Err())
 		err := os.Remove(fileName)
 		if err != nil && !os.IsNotExist(err) {
-			log.Warningf("unable to remove file %s: %v", fileName, err)
+			log.Warnf("unable to remove file %s: %v", fileName, err)
 		}
 		return nil
 	}

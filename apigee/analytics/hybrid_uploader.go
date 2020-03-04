@@ -82,9 +82,9 @@ func (h *hybridUploader) workFunc(tenant, fileName string) util.WorkFunc {
 			return h.upload(fileName)
 		}
 
-		log.Warningf("canceled upload of %s: %v", fileName, ctx.Err())
+		log.Warnf("canceled upload of %s: %v", fileName, ctx.Err())
 		if err := os.Remove(fileName); err != nil && !os.IsNotExist(err) {
-			log.Warningf("unable to remove file %s: %v", fileName, err)
+			log.Warnf("unable to remove file %s: %v", fileName, err)
 		}
 		return nil
 	}
