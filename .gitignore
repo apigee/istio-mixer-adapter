@@ -32,8 +32,8 @@ bin/protoc-*
 *.swo
 
 # Generated proto files
-mixer/analytics/template_handler_service.*
-mixer/analytics/*.pb.go
+# mixer/analytics/template_handler_service.*
+# mixer/analytics/*.pb.go
 apigee-istio/apigee-istio
 
 # dist

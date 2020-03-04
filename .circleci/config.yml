@@ -9,12 +9,12 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run:
-          command: ./bin/install_protoc.sh
-          name: install protoc
-      - run:
-          command: (cd mixer;go generate ./...)
-          name: generate protos
+      # - run:
+      #     command: ./bin/install_protoc.sh
+      #     name: install protoc
+      # - run:
+      #     command: (cd mixer;go generate ./...)
+      #     name: generate protos
       - run:
           command: go test -coverprofile=coverage.txt ./...
           name: Run tests
@@ -33,12 +33,12 @@ jobs:
     working_directory: /go/src/github.com/apigee/istio-mixer-adapter
     steps:
       - checkout
-      - run:
-          command: ./bin/install_protoc.sh
-          name: install protoc
-      - run:
-          command: (cd mixer;go generate ./...)
-          name: generate protos
+      # - run:
+      #     command: ./bin/install_protoc.sh
+      #     name: install protoc
+      # - run:
+      #     command: (cd mixer;go generate ./...)
+      #     name: generate protos
       - run:
           name: Run tests
           command: go test -coverprofile=coverage.txt ./...
