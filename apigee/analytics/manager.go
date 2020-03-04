@@ -311,6 +311,9 @@ func (m *manager) SendRecords(ctx *auth.Context, incoming []Record) error {
 }
 
 func (m *manager) writeToBucket(ctx *auth.Context, records []Record) error {
+	if len(records) == 0 {
+		return nil
+	}
 	tenant := fmt.Sprintf("%s~%s", ctx.Organization(), ctx.Environment())
 
 	m.bucketsLock.RLock()
