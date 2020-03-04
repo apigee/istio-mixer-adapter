@@ -16,7 +16,7 @@ jobs:
       #     command: (cd mixer;go generate ./...)
       #     name: generate protos
       - run:
-          command: go test -coverprofile=coverage.txt ./...
+          command: ./bin/test.sh
           name: Run tests
       - run:
           command: bash <(curl -s https://codecov.io/bash)
@@ -41,7 +41,7 @@ jobs:
       #     name: generate protos
       - run:
           name: Run tests
-          command: go test -coverprofile=coverage.txt ./...
+          command: ./bin/test.sh
       - run:
           name: upload codecov
           command: bash <(curl -s https://codecov.io/bash)

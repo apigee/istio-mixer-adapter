@@ -34,6 +34,9 @@ bin/protoc-*
 # Generated proto files
 # mixer/analytics/template_handler_service.*
 # mixer/analytics/*.pb.go
+
+coverage.txt
+
 apigee-istio/apigee-istio
 
 # dist

@@ -254,7 +254,7 @@ func TestDisconnected(t *testing.T) {
 	}
 	serverResult := Result{}
 	ts := testServer(&serverResult, now, errC)
-	defer ts.Close()
+	ts.Close()
 
 	context := authtest.NewContext(ts.URL)
 	context.SetOrganization("org")
@@ -301,7 +301,7 @@ func TestDisconnected(t *testing.T) {
 	// force sync error
 	err = m.forceSync(getQuotaID(authContext, p))
 	if err == nil {
-		t.Fatalf("should have received error: %s", err)
+		t.Fatalf("should have received error!")
 	}
 
 	_, err = m.Apply(authContext, p, args)
