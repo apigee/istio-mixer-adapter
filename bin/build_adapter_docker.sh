@@ -81,9 +81,8 @@ fi
 
 echo "Building mixer adapter image..."
 
-ADAPTER_DIR=$ROOTDIR
-SERVER_DIR="${ADAPTER_DIR}/grpc-server"
-TARGET_DIR="${ADAPTER_DIR}/dist"
+SERVER_DIR="${ROOTDIR}/grpc-server"
+TARGET_DIR="${ROOTDIR}/dist"
 
 cd "${SERVER_DIR}"
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o apigee-adapter .
