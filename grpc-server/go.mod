@@ -9,7 +9,7 @@ replace github.com/apigee/istio-mixer-adapter/mixer => ../mixer
 replace github.com/apigee/istio-mixer-adapter/envoy => ../envoy
 
 require (
-	github.com/apigee/istio-mixer-adapter/apigee v0.0.0 // indirect
+	github.com/apigee/istio-mixer-adapter/apigee v0.0.0
 	github.com/apigee/istio-mixer-adapter/envoy v0.0.0-00010101000000-000000000000
 	github.com/apigee/istio-mixer-adapter/mixer v0.0.0-00010101000000-000000000000
 	github.com/google/go-cmp v0.3.1 // indirect

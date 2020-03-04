@@ -6,7 +6,6 @@
 # Prereqs:
 # - docker is installed.
 # - gcloud is installed.
-# - GOPATH is set.
 #
 # Variables:
 # - GCLOUD_SERVICE_KEY - auth key for the service account (used in CI to build nightly)
@@ -14,6 +13,9 @@
 # - TARGET_DOCKER_IMAGE - the name of the docker image to build.
 # - DEBUG - set DEBUG=1 to also build and push a debug image.
 # - TARGET_DOCKER_DEBUG_IMAGE - the name of the docker debug image to build.
+
+SCRIPTPATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+ROOTDIR="$(dirname "$SCRIPTPATH")"
 
 # https://github.com/grpc-ecosystem/grpc-health-probe/releases
 GRPC_HEALTH_PROBE_VERSION=v0.2.1
@@ -79,12 +81,7 @@ fi
 
 echo "Building mixer adapter image..."
 
-ADAPTER_DIR="${GOPATH}/src/github.com/apigee/istio-mixer-adapter"
-if [ ! -d "${ADAPTER_DIR}" ]; then
-  echo "could not find istio-mixer-adapter repo, please put it in:"
-  echo "${ADAPTER_DIR}"
-  exit 1
-fi
+ADAPTER_DIR=$ROOTDIR
 SERVER_DIR="${ADAPTER_DIR}/grpc-server"
 TARGET_DIR="${ADAPTER_DIR}/dist"
 
