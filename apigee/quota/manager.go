@@ -117,7 +117,6 @@ func getQuotaID(auth *auth.Context, p *product.APIProduct) string {
 // Apply a quota request to the local quota bucket and schedule for sync
 func (m *Manager) Apply(auth *auth.Context, p *product.APIProduct, args Args) (*Result, error) {
 
-	// TODO: move dup cache to mixer and create Request there to pass in
 	if result := m.dupCache.Get(args.DeduplicationID); result != nil {
 		return result, nil
 	}
