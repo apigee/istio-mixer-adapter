@@ -1,5 +1,5 @@
 # Example deployment for Apigee Adapter. 
-# This will work without modiciation for SaaS.
+# This will work without modification for SaaS.
 # For Hybrid, you must uncomment and properly configure the secret volumes.
 apiVersion: extensions/v1beta1
 kind: Deployment
