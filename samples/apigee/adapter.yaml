@@ -1,13 +1,16 @@
 # Example deployment for Apigee Adapter. 
 # This will work without modiciation for SaaS.
 # For Hybrid, you must uncomment and properly configure the secret volumes.
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: apigee-adapter
   namespace: istio-system
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: apigee-adapter
   template:
     metadata:
       labels:
