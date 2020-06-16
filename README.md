@@ -4,6 +4,14 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/apigee/istio-mixer-adapter)](https://goreportcard.com/report/github.com/apigee/istio-mixer-adapter)
 [![codecov.io](https://codecov.io/github/apigee/istio-mixer-adapter/coverage.svg?branch=master)](https://codecov.io/github/apigee/istio-mixer-adapter?branch=master)
 
+---
+
+Update: With the deprecation of Istio's Mixer and policy support, we have created a new project that
+relies only on Envoy, but still integrates with and allows policy control in Istio. Please check out
+the [Apigee Envoy Adapter](https://docs.apigee.com/api-platform/envoy-adapter/concepts) project.
+
+---
+
 This is the source repository for Apigee's Istio Mixer Adapter. This allows users of Istio to
 incorporate Apigee Authentication, Authorization, and Analytics policies to protect and
 report through the Apigee UI.
