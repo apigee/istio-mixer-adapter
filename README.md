@@ -16,6 +16,8 @@ We're also pleased that these features will remain open source:
 Please migrate to the Apigee Adapter for Envoy as soon as possible. For more information, please contact
 [Apigee support](https://cloud.google.com/apigee/support).
 
+---
+
 # Istio Apigee Adapter
 
 [![CircleCI](https://circleci.com/gh/apigee/istio-mixer-adapter.svg?style=shield)](https://circleci.com/gh/apigee/istio-mixer-adapter)
