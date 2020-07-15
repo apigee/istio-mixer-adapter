@@ -1,3 +1,21 @@
+# Deprecation Notice
+In March of this year, the Istio community announced deprecation for Istio Mixer. The Istio Mixer component 
+is critical for the functioning of this project, so we took the opportunity to rethink and redesign the
+Istio Adapter to rely only on native Envoy filters for even more flexible deployment of Apigee-integrated
+authorization, global quota, and analytics.
+
+Apigee announced a beta release of the newly-created 
+[Apigee Adapter for Envoy](https://docs.apigee.com/release/notes/apigee-adapter-for-envoy-release-notes) in the blog post
+[Announcing API management for services that use Envoy](https://cloud.google.com/blog/products/api-management/announcing-api-management-for-services-that-use-envoy).
+
+We're also pleased that these features will remain open source:
+* https://github.com/apigee/apigee-remote-service-envoy
+* https://github.com/apigee/apigee-remote-service-cli
+* https://github.com/apigee/apigee-remote-service-golib
+
+Please migrate to the Apigee Adapter for Envoy as soon as possible. For more information, please contact
+[Apigee support](https://cloud.google.com/apigee/support).
+
 # Istio Apigee Adapter
 
 [![CircleCI](https://circleci.com/gh/apigee/istio-mixer-adapter.svg?style=shield)](https://circleci.com/gh/apigee/istio-mixer-adapter)
@@ -6,17 +24,11 @@
 
 ---
 
-Update: With the deprecation of Istio's Mixer and policy support, we have created a new project that
-relies only on Envoy, but still integrates with and allows policy control in Istio. Please check out
-the [Apigee Envoy Adapter](https://docs.apigee.com/api-platform/envoy-adapter/concepts) project.
-
----
-
 This is the source repository for Apigee's Istio Mixer Adapter. This allows users of Istio to
 incorporate Apigee Authentication, Authorization, and Analytics policies to protect and
 report through the Apigee UI.
 
-A Quick Start Tutorial continues below, but complete Apigee documentation on the concepts and usage of this adapter is also available on the [Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts) site. For more information and product support, please [contact Apigee support](https://apigee.com/about/support/portal).
+A Quick Start Tutorial continues below, but complete Apigee documentation on the concepts and usage of this adapter is also available on the [Apigee Adapter for Istio](https://docs.apigee.com/api-platform/istio-adapter/concepts) site.
 
 ---
 
@@ -276,9 +288,3 @@ This call should now be successful.
 One more thing: Let's head back to the [Apigee Edge UI](https://apigee.com/edge).
 
 Click the `Analyze` in the menu on the left and check out some of the nifty analytics information on your requests!
-
----
-
-To join the Apigee pre-release program for additional documentation and support, please contact 
-[apigee support](https://apigee.com/about/support/portal)
-
